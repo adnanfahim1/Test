@@ -10,14 +10,11 @@
 
   <style>
     :root {
-      /* LAVENDER BACKGROUND */
-      --bg1: #e6ddff;
-      --bg2: #f3efff;
+      --bg1: #ffd6e7;
+      --bg2: #ffeef6;
       --card: #ffffffcc;
-
-      /* LIGHT ROYAL BLUE YES BUTTON */
-      --yes: #5b8cff;
-      --yesHover: #3f6fe0;
+      --yes: #ff3b7a;
+      --yesHover: #ff1f68;
     }
 
     * { box-sizing: border-box; }
@@ -33,6 +30,7 @@
       padding: 16px;
     }
 
+    /* FULL-SCREEN CONFETTI CANVAS */
     #confettiCanvas {
       position: fixed;
       inset: 0;
@@ -93,10 +91,7 @@
       background: var(--yes);
       color: #fff;
     }
-
-    #yesBtn:hover {
-      background: var(--yesHover);
-    }
+    #yesBtn:hover { background: var(--yesHover); }
 
     #noBtn {
       left: 62%;
@@ -138,15 +133,16 @@
   <canvas id="confettiCanvas"></canvas>
 
   <main class="card">
+    <!-- ANIMAL WITH HEART -->
     <svg class="art" viewBox="0 0 320 240" xmlns="http://www.w3.org/2000/svg">
       <defs>
         <linearGradient id="fur" x1="0" x2="1">
-          <stop offset="0" stop-color="#e9d5ff"/>
-          <stop offset="1" stop-color="#c4b5fd"/>
+          <stop offset="0" stop-color="#f7c7a1"/>
+          <stop offset="1" stop-color="#f2a97b"/>
         </linearGradient>
         <linearGradient id="heart" x1="0" x2="1">
-          <stop offset="0" stop-color="#a78bfa"/>
-          <stop offset="1" stop-color="#7c3aed"/>
+          <stop offset="0" stop-color="#ff4d7d"/>
+          <stop offset="1" stop-color="#ff1f68"/>
         </linearGradient>
       </defs>
 
@@ -162,8 +158,8 @@
                C140 210 90 180 90 120Z"
             fill="url(#fur)"/>
 
-      <path d="M110 92 L95 55 L140 78 Z" fill="#c4b5fd"/>
-      <path d="M270 92 L285 55 L240 78 Z" fill="#c4b5fd"/>
+      <path d="M110 92 L95 55 L140 78 Z" fill="#f2a97b"/>
+      <path d="M270 92 L285 55 L240 78 Z" fill="#f2a97b"/>
 
       <circle cx="160" cy="130" r="8"/>
       <circle cx="220" cy="130" r="8"/>
@@ -172,7 +168,7 @@
                C182 160 190 164 190 170
                C190 164 198 160 198 152
                C198 148 194 144 190 144Z"
-            fill="#c084fc"/>
+            fill="#ff7aa2"/>
     </svg>
 
     <h1>Nabiha will you be my forever valentine?</h1>
@@ -182,6 +178,7 @@
       <button id="noBtn">No</button>
     </section>
 
+    <!-- HINT -->
     <div class="hint" id="hint">HINT: “No” bole kisu nai 😈</div>
 
     <section class="result" id="result">
@@ -201,6 +198,7 @@
     const result = document.getElementById("result");
     const hint = document.getElementById("hint");
 
+    /* ---------- CONFETTI ---------- */
     const confettiCanvas = document.getElementById("confettiCanvas");
 
     function resizeConfettiCanvas() {
@@ -222,6 +220,7 @@
 
     function fullScreenConfetti() {
       const end = Date.now() + 1600;
+
       (function frame() {
         confettiInstance({
           particleCount: 12,
@@ -244,12 +243,14 @@
       }, 300);
     }
 
+    /* ---------- YES BUTTON GROWS ---------- */
     let yesScale = 1;
     function growYes() {
       yesScale = Math.min(2.2, yesScale + 0.1);
       yesBtn.style.transform = `translateY(-50%) scale(${yesScale})`;
     }
 
+    /* ---------- NO BUTTON RUNS AWAY ---------- */
     function clamp(n, min, max) {
       return Math.max(min, Math.min(max, n));
     }
@@ -288,9 +289,10 @@
 
     noBtn.addEventListener("click", e => e.preventDefault());
 
+    /* ---------- YES CLICK ---------- */
     yesBtn.addEventListener("click", () => {
       zone.style.display = "none";
-      hint.style.display = "none";
+      hint.style.display = "none";     // HIDE THE HINT
       result.style.display = "block";
       resizeConfettiCanvas();
       fullScreenConfetti();
@@ -298,3 +300,5 @@
   </script>
 </body>
 </html>
+
+
