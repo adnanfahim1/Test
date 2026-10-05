@@ -1,4 +1,4 @@
-# Bulk Studio: Claude + Higgsfield bulk generator (Chrome & Opera)
+# PikGen: Claude + Higgsfield bulk generator (Chrome & Opera)
 
 Type one idea → Claude writes up to 500 different prompts → you review/edit them →
 Higgsfield generates the images or videos → files are saved straight into a folder on your PC.
@@ -22,7 +22,7 @@ You do **not** need to install Node or build anything. The ready-to-load extensi
 1. Go to `chrome://extensions`
 2. Turn on **Developer mode** (top right).
 3. Click **Load unpacked** and choose the `extension` folder (inside `bulk-gen-extension`).
-4. Pin it: puzzle-piece icon in the toolbar → pin **Bulk Studio**.
+4. Pin it: puzzle-piece icon in the toolbar → pin **PikGen**.
 
 ### Opera
 1. Go to `opera://extensions`
@@ -36,7 +36,7 @@ the extension's card in `chrome://extensions` / `opera://extensions`.
 
 ## First-time setup
 
-1. Click the Bulk Studio icon → a tab opens → press **Start**.
+1. Click the PikGen icon → a tab opens → press **Start**.
 2. Go to **Settings**:
    - **Anthropic API key**: from <https://platform.claude.com/settings/keys>. Press **Test connection**.
    - **Higgsfield API key**: from the Higgsfield developer console, in the form `KEY_ID:KEY_SECRET`.
@@ -84,7 +84,7 @@ While it runs you'll see Queued / Running / Done / Failed and thumbnails as file
 - Each failed generation is retried **2 times automatically**. After that, use **Retry failed**.
 - If Higgsfield says it's busy (rate limit), the extension waits and runs fewer jobs at once, then speeds back up.
 - If a file can't be downloaded, **Retry failed** re-downloads it without paying for a new generation.
-- **Keep the Bulk Studio tab open while a batch runs.** If you close it or the browser restarts,
+- **Keep the PikGen tab open while a batch runs.** If you close it or the browser restarts,
   open it again → **Start** → **Resume**. Jobs that were already at Higgsfield are picked up again, not
   paid for twice. (Higgsfield keeps finished files for a limited time. Their docs reportedly say at least 7 days. Resume well before that.)
 

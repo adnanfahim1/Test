@@ -224,5 +224,6 @@ if (!result.title.includes('finished')) fail(`title ${result.title}`);
 if (errors.length) fail(`page errors: ${errors.join(' | ')}`);
 if (!process.exitCode) console.log('E2E PASS');
 
+if (process.env.SHOT) { await page.setViewportSize({width:1280,height:900}); await page.screenshot({path: process.env.SHOT + '/main.png'}); await page.goto('chrome-extension://' + extId + '/ui/studio.html'); await page.screenshot({path: process.env.SHOT + '/gate.png'}); }
 await context.close();
 server.close();

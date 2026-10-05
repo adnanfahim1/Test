@@ -1,4 +1,4 @@
-// Bulk Studio page: the main screen of the extension.
+// PikGen page: the main screen of the extension.
 // It connects the form, Claude (prompt writing), Higgsfield (generation),
 // the queue and your output folder.
 

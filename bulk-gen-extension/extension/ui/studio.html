@@ -3,14 +3,16 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Bulk Studio</title>
+  <title>PikGen</title>
+  <link rel="icon" href="../icons/icon32.png" />
   <link rel="stylesheet" href="studio.css" />
 </head>
 <body>
   <!-- START GATE: nothing runs (no API calls, no resuming) until you press Start. -->
   <section id="gate" class="gate">
     <div class="gate-card">
-      <h1>Bulk Studio</h1>
+      <img src="../icons/logo.png" alt="" class="gate-logo" />
+      <h1>PikGen</h1>
       <p>Claude writes the prompts. Higgsfield makes the images and videos. Files go into your folder.</p>
       <button id="startBtn" class="btn primary big">Start</button>
       <p class="muted small">Nothing is sent anywhere until you press Start.</p>
@@ -19,7 +21,7 @@
 
   <div id="app" class="app" hidden>
     <header class="topbar">
-      <strong>Bulk Studio</strong>
+      <span class="brand"><img src="../icons/logo.png" alt="" /><strong>PikGen</strong></span>
       <nav class="tabs">
         <button class="tab active" data-tab="generate">Generate</button>
         <button class="tab" data-tab="batches">Batches</button>

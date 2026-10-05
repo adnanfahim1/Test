@@ -1,5 +1,5 @@
 // Background service worker. Its only job: clicking the toolbar icon opens the
-// Bulk Studio tab (or switches to it if it's already open).
+// PikGen tab (or switches to it if it's already open).
 // All the real work happens in the Studio tab, and only after you press Start.
 
 const STUDIO_URL = chrome.runtime.getURL('ui/studio.html');
