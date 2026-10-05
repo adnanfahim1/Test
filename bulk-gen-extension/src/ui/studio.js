@@ -47,6 +47,13 @@ function errText(err) {
   for (const secret of [state.settings?.anthropicKey, state.settings?.higgsfieldKey]) {
     if (secret && secret.length > 6) text = text.split(secret).join('[hidden]');
   }
+  // Plain-language versions of common account problems
+  if (/credit balance is too low/i.test(text)) {
+    return 'Your Claude API account has no credit. Buy API credits at platform.claude.com → Settings → Billing (a Claude.ai Pro/Max subscription does not cover the API). Or tick "Use my lines exactly" to skip Claude.';
+  }
+  if (/invalid x-api-key|authentication_error/i.test(text)) {
+    return 'Claude rejected your API key. Check it in Settings (it starts with sk-ant-).';
+  }
   return text;
 }
 
