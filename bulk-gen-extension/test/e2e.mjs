@@ -18,7 +18,10 @@ const COUNT = IMAGES || Number(process.argv[2] || 5);
 const CONCURRENCY = Number(process.argv[3] || 3);
 const CHAOS = !!process.env.CHAOS;
 const T0 = Date.now();
-const VIDEO = !!process.env.VIDEO; // run in Video mode instead of Image mode
+const VIDEO = !!process.env.VIDEO || !!process.env.MOTION;
+// BUILTIN=1: no hand-made models, use PikGen's built-in Qwen edit. MOTION=1: built-in Genjutsu motion transfer.
+const BUILTIN = !!process.env.BUILTIN || !!process.env.MOTION;
+const MOTION = !!process.env.MOTION; // run in Video mode instead of Image mode
 
 // ---------- fake servers ----------
 const PNG = Buffer.from(
@@ -76,7 +79,7 @@ const server = http.createServer(async (req, res) => {
     stats.uploads = (stats.uploads || 0) + 1;
     return json(200, {});
   }
-  if (req.method === 'POST' && /^\/fake\/model\/text-to-(image|video)$/.test(url.pathname)) {
+  if (req.method === 'POST' && /^\/(fake\/model\/text-to-(image|video)|alibaba\/qwen-image-3\/edit|higgsfield\/genjutsu\/motion-transfer\/v1\.0)$/.test(url.pathname)) {
     // CHAOS: the fake server allows only 3 jobs at a time (429 above that), and every 11th submit gets a server error
     stats.submitAttempts = (stats.submitAttempts || 0) + 1;
     if (process.env.TRACE) console.log('submit', ((Date.now() - T0) / 1000).toFixed(1));
@@ -91,8 +94,10 @@ const server = http.createServer(async (req, res) => {
     stats.maxActive = Math.max(stats.maxActive, stats.active);
     const id = `req-${nextId++}`;
     const sent = JSON.parse(body);
-    if (sent.input_images?.[0]?.image_url?.includes('/public/')) stats.withImage = (stats.withImage || 0) + 1;
-    jobs.set(id, { polls: 0, params: sent, video: url.pathname.endsWith('video') });
+    if (sent.input_images?.[0]?.image_url?.includes('/public/') || sent.image_urls?.[0]?.includes('/public/')) stats.withImage = (stats.withImage || 0) + 1;
+    stats.lastBody = sent;
+    stats.lastPath = url.pathname;
+    jobs.set(id, { polls: 0, params: sent, video: url.pathname.endsWith('video') || url.pathname.includes('genjutsu') });
     return json(200, { request_id: id, status: 'queued', status_url: '', cancel_url: '' });
   }
   const m = /^\/requests\/([^/]+)\/status$/.exec(url.pathname);
@@ -154,7 +159,7 @@ await page.goto(`chrome-extension://${extId}/ui/studio.html?test=1`);
 
 // Settings pointing at the fake server (as if typed into the Settings tab).
 await page.evaluate(
-  ({ base, concurrency }) =>
+  ({ base, concurrency, BUILTIN }) =>
     chrome.storage.local.set({
       settings: {
         anthropicKey: 'sk-ant-fake',
@@ -162,15 +167,15 @@ await page.evaluate(
         anthropicBaseUrl: base,
         higgsfieldBaseUrl: base,
         concurrency,
-        defaultImageModel: 'fake-img',
+        ...(BUILTIN ? {} : { defaultImageModel: 'fake-img',
         defaultVideoModel: 'fake-vid',
         models: [
           { id: 'fake-vid', name: 'Fake Video', type: 'video', path: 'fake/model/text-to-video', options: { aspect_ratio: ['16:9', '9:16'], duration: [5, 10] }, fixed: {}, price: 0.2, imageField: 'input_images', imageFormat: 'list' },
           { id: 'fake-img', name: 'Fake Image', type: 'image', path: 'fake/model/text-to-image', options: { aspect_ratio: ['16:9', '9:16'] }, fixed: { resolution: '2K' }, price: 0.01, imageField: 'input_images', imageFormat: 'list' },
-        ],
+        ] }),
       },
     }),
-  { base, concurrency: CONCURRENCY },
+  { base, concurrency: CONCURRENCY, BUILTIN },
 );
 
 const t0 = Date.now();
@@ -189,18 +194,20 @@ await page.click('[data-tab=generate]');
 
 // Generate tab
 if (VIDEO) await page.click('.seg-btn[data-kind=video]');
-await page.fill('#basePrompt', 'A red sneaker on a sand dune');
+if (!MOTION) await page.fill('#basePrompt', 'A red sneaker on a sand dune');
 if (IMAGES) {
   // make N small real PNG files and pick them with "Choose images"
   const files = Array.from({ length: IMAGES }, (_, i) => ({ name: `product-${i + 1}.png`, mimeType: 'image/png', buffer: PNG }));
   await page.setInputFiles('#imageFiles', files);
   await page.waitForFunction((n) => document.querySelectorAll('#refStrip img').length === n, IMAGES);
+  if (BUILTIN) console.log('model after loading pictures:', await page.$eval('#modelSelect', (s) => s.selectedOptions[0].textContent));
+  if (MOTION) await page.setInputFiles('#motionFile', { name: 'dance.mp4', mimeType: 'video/mp4', buffer: Buffer.alloc(4096, 7) });
   console.log('quantity box (auto):', await page.inputValue('#quantity'));
   if (process.env.SHOT_REF) { await page.setViewportSize({ width: 1280, height: 1100 }); await page.locator('.ref-box').screenshot({ path: process.env.SHOT_REF }); }
 } else {
   await page.fill('#quantity', String(COUNT));
 }
-await page.selectOption('#optionsBox select', { label: '9:16' });
+if (!BUILTIN) await page.selectOption('#optionsBox select', { label: '9:16' });
 await page.fill('#batchName', 'E2E Test');
 await page.click('#previewBtn');
 await page.waitForFunction((n) => document.querySelectorAll('#promptList li').length === n, COUNT, { timeout: 60000 });
@@ -267,15 +274,20 @@ if (!/^e2e-test_\d{4}-\d{2}-\d{2}$/.test(folder)) fail(`folder name ${folder}`);
 if (!files[0].startsWith('e2e-test_001_edited-first-prompt') || !files[0].endsWith(VIDEO ? '.mp4' : '.png')) fail(`file name ${files[0]}`);
 if (!csv.includes('number,final_prompt,model,settings,status,file_name,error,time')) fail('manifest header');
 if ((csv.match(/,done,/g) || []).length !== expected) fail('manifest done rows');
-if (!csv.includes('9:16') || !csv.includes(VIDEO ? 'duration' : '2K')) fail('settings in manifest');
+if (!BUILTIN && (!csv.includes('9:16') || !csv.includes(VIDEO ? 'duration' : '2K'))) fail('settings in manifest');
+if (BUILTIN && !MOTION && !(csv.includes('1:1') && csv.includes('1k'))) fail('qwen settings in manifest');
+if (BUILTIN) console.log('last request:', stats.lastPath, JSON.stringify(stats.lastBody));
 if (CHAOS ? stats.submits < expected : stats.submits !== expected) fail(`submits ${stats.submits}`);
 if (stats.maxActive > CONCURRENCY) fail(`concurrency exceeded: ${stats.maxActive}`);
 if (!result.title.includes('finished')) fail(`title ${result.title}`);
 if (errors.length) fail(`page errors: ${errors.join(' | ')}`);
 if (IMAGES) {
-  if (stats.uploads !== expected) fail(`uploads ${stats.uploads}, expected ${expected} (one per picture actually used)`);
+  if (stats.uploads !== expected + (MOTION ? 1 : 0)) fail(`uploads ${stats.uploads}, expected ${expected} (one per picture actually used)`);
   if (stats.withImage !== stats.submits) fail(`only ${stats.withImage} of ${stats.submits} requests had the reference image`);
-  if (!stats.visionCalls) fail('Claude never saw the images');
+  if (!MOTION && !stats.visionCalls) fail('Claude never saw the images');
+  if (MOTION && (stats.lastBody.prompt !== undefined || !stats.lastBody.video_url?.includes('/public/'))) fail('genjutsu body wrong');
+  if (BUILTIN && !MOTION && stats.lastPath !== '/alibaba/qwen-image-3/edit') fail('did not use Qwen edit');
+  if (MOTION && !stats.lastPath.includes('genjutsu')) fail('did not use Genjutsu');
   if (!csv.includes('product-1.png')) fail('reference image missing from manifest');
 }
 if (!process.exitCode) console.log('E2E PASS');

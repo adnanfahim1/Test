@@ -23,17 +23,109 @@
 // (format "list"), Soul uses  image_reference: { type: "image_url", image_url: "<url>" } (format "object").
 // Check the model's docs page for its field name and shape.
 
+// Built-in models. These are always available and are updated with each PikGen version.
+// "source" says where each one's settings come from, so you know how sure they are.
 export const DEFAULT_MODELS = [
   {
+    id: 'qwen-image-3-edit',
+    name: 'Qwen Image 3 Edit (edit your pictures)',
+    type: 'image',
+    path: 'alibaba/qwen-image-3/edit',
+    options: { aspect_ratio: ['1:1'], resolution: ['1k'] },
+    fixed: {},
+    price: null,
+    imageField: 'image_urls',
+    imageFormat: 'url_list',
+    requiresImage: true,
+    source: 'Higgsfield docs example',
+  },
+  {
+    id: 'genjutsu-motion',
+    name: 'Genjutsu Motion Transfer (picture + motion video -> video)',
+    type: 'video',
+    path: 'higgsfield/genjutsu/motion-transfer/v1.0',
+    options: {},
+    fixed: {},
+    price: null,
+    imageField: 'image_urls',
+    imageFormat: 'url_list',
+    requiresImage: true,
+    noPrompt: true,
+    videoField: 'video_url',
+    source: 'Higgsfield docs example',
+  },
+  {
+    id: 'dop-turbo-i2v',
+    name: 'DoP Turbo (picture -> video)',
+    type: 'video',
+    path: 'v1/image2video/dop',
+    options: {},
+    fixed: { model: 'dop-turbo' },
+    price: null,
+    imageField: 'input_images',
+    imageFormat: 'list',
+    requiresImage: true,
+    source: 'Higgsfield official SDK example (may be an older endpoint)',
+  },
+  {
     id: 'seedream-v4',
-    name: 'Seedream v4 (from Higgsfield SDK example)',
+    name: 'Seedream v4 (text -> image)',
     type: 'image',
     path: 'bytedance/seedream/v4/text-to-image',
     options: { aspect_ratio: ['16:9'], resolution: ['2K'] },
     fixed: {},
     price: null,
+    source: 'Higgsfield official SDK example',
+  },
+  {
+    id: 'kling-3-std-t2v',
+    name: 'Kling 3.0 Standard (text -> video, unverified)',
+    type: 'video',
+    path: 'kling-video/v3.0/std/text-to-video',
+    options: {},
+    fixed: {},
+    price: null,
+    source: 'Endpoint seen in Higgsfield docs search results only; extra settings unknown',
+  },
+  {
+    id: 'wan-3-prime-t2v',
+    name: 'Wan 3.0 Prime (text -> video, unverified)',
+    type: 'video',
+    path: 'alibaba/wan-3.0-prime/text-to-video',
+    options: {},
+    fixed: {},
+    price: null,
+    source: 'Endpoint seen in Higgsfield docs search results only; extra settings unknown',
+  },
+  {
+    id: 'happy-horse-t2v',
+    name: 'Happy Horse 1.0 (text -> video, unverified)',
+    type: 'video',
+    path: 'alibaba/happy-horse/text-to-video',
+    options: {},
+    fixed: {},
+    price: null,
+    source: 'Endpoint seen in Higgsfield docs search results only; extra settings unknown',
   },
 ];
+
+const BUILT_IN_IDS = new Set(DEFAULT_MODELS.map((m) => m.id));
+export const isBuiltIn = (id) => BUILT_IN_IDS.has(id);
+
+/**
+ * The model list you see: built-in models (minus ones you hid), with your own edits on top,
+ * plus models you added yourself.
+ */
+export function mergeModels(customModels = [], hiddenIds = []) {
+  const custom = new Map(customModels.map((m) => [m.id, m]));
+  const builtIns = DEFAULT_MODELS.filter((m) => !hiddenIds.includes(m.id)).map((m) => ({
+    ...m,
+    ...(custom.get(m.id) || {}),
+    builtIn: true,
+  }));
+  const extra = customModels.filter((m) => !BUILT_IN_IDS.has(m.id));
+  return [...builtIns, ...extra];
+}
 
 /** Check a profile typed in Settings. Returns an error message or "" if it's fine. */
 export function validateModel(model) {
@@ -50,6 +142,7 @@ export function validateModel(model) {
   for (const [key, values] of Object.entries(model.options || {})) {
     if (!Array.isArray(values) || !values.length) return `options.${key} must be a non-empty list.`;
   }
+  if (model.videoField && !/^[a-z0-9_]+$/i.test(model.videoField)) return 'video field: letters, numbers and underscore only.';
   if (model.fixed && (typeof model.fixed !== 'object' || Array.isArray(model.fixed))) return 'fixed must be an object.';
   if (model.price != null && !(Number(model.price) >= 0)) return 'price must be a number (USD per generation) or empty.';
   if (model.imageField && !/^[a-z0-9_]+$/i.test(model.imageField)) return 'image field: letters, numbers and underscore only.';

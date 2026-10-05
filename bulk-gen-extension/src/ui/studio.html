@@ -46,10 +46,12 @@
           </div>
           <p id="noModelHint" class="hint warn" hidden>No models of this type yet. Add one in <a href="#" data-goto="settings">Settings</a>.</p>
 
+          <div id="promptBlock">
           <label>Prompt
             <textarea id="basePrompt" rows="5" placeholder="Paste or type your idea, e.g. A red sneaker on a sand dune at golden hour"></textarea>
           </label>
           <label class="check"><input type="checkbox" id="useLines" /> Use my lines exactly (one prompt per line, Claude is skipped)</label>
+          </div>
 
           <div class="row">
             <label>How many
@@ -83,6 +85,12 @@
               <input id="imageFiles" type="file" accept="image/png,image/jpeg,image/webp" multiple hidden />
             </div>
             <div id="refStrip" class="ref-strip"></div>
+            <p id="refRequired" class="hint warn small" hidden>This model edits or animates YOUR pictures: choose images or a folder.</p>
+            <div id="motionBox" class="row" hidden>
+              <button id="pickMotion" class="btn">Choose motion video</button>
+              <span id="motionName" class="muted small">No video chosen</span>
+              <input id="motionFile" type="file" accept="video/mp4,video/quicktime,video/webm" hidden />
+            </div>
             <p id="refUnsupported" class="hint warn small" hidden>This model has no image setting yet. Open Settings → Higgsfield models → Edit, and fill in "Image field" from the model's docs page.</p>
             <div id="refOptions" class="row wrap" hidden>
               <label>Use the images
@@ -210,6 +218,7 @@
             <b>Price</b> is your estimate in USD per generation (used for the cost estimate).
           </p>
           <div id="modelTable"></div>
+          <button id="restoreModels" class="btn small">Restore built-in models</button>
           <h3>Add / edit model</h3>
           <div class="row wrap">
             <label>ID <input id="mId" type="text" placeholder="kling-3-std" /></label>
@@ -227,6 +236,8 @@
             <label>Image format <select id="mImageFormat"></select></label>
           </div>
           <label class="check"><input type="checkbox" id="mNoPrompt" /> This model takes no text prompt (e.g. motion transfer)</label>
+          <label class="check"><input type="checkbox" id="mRequiresImage" /> This model needs a reference picture</label>
+          <label>Motion video field (optional, e.g. video_url) <input id="mVideoField" type="text" /></label>
           <div class="row">
             <button id="saveModel" class="btn primary">Save model</button>
             <span id="modelError" class="small error-text"></span>

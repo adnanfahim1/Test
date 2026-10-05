@@ -48,6 +48,21 @@ the extension's card in `chrome://extensions` / `opera://extensions`.
 4. On the **Generate** tab, click **Choose output folder** and pick a folder. The browser asks for
    permission. In Chrome, choose "Allow on every visit" if offered, so it remembers.
 
+### Built-in models (nothing to type)
+
+PikGen comes with these models ready to use. You only need to add your API keys.
+
+| Model | What it does | Settings come from |
+|---|---|---|
+| Qwen Image 3 Edit | Edits YOUR pictures following your prompt | Higgsfield docs example |
+| Genjutsu Motion Transfer | Copies the movement from a video onto YOUR picture (no prompt) | Higgsfield docs example |
+| DoP Turbo | Turns YOUR picture into a video | Higgsfield SDK example (may be older) |
+| Seedream v4 | Text → image | Higgsfield SDK example |
+| Kling 3.0 Std / Wan 3.0 Prime / Happy Horse 1.0 | Text → video | **Unverified**: endpoint from docs search results; extra settings unknown |
+
+When you load pictures, PikGen switches to a model that accepts them automatically.
+You can edit or delete any of them in Settings. **Restore built-in models** brings them back.
+
 ### Adding a Higgsfield model
 
 Open the model's page on **docs.higgsfield.ai** and copy:

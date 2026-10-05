@@ -2,7 +2,7 @@
 // It connects the form, Claude (prompt writing), Higgsfield (generation),
 // the queue and your output folder.
 
-import { loadSettings, saveSettings } from '../lib/settings.js';
+import { loadSettings, saveSettings, saveModel, deleteModel, restoreBuiltInModels } from '../lib/settings.js';
 import { kvGet, kvSet, saveBatch, listBatches, deleteBatch } from '../lib/db.js';
 import { CLAUDE_MODELS, expandPrompts, promptsForImage, testClaude } from '../lib/claude.js';
 import { HiggsfieldClient } from '../lib/higgsfield.js';
@@ -22,6 +22,7 @@ const state = {
   prompts: [],
   promptImages: [], // for each prompt: index into images, or null
   images: [], // reference images: { name, file, thumbUrl }
+  motionVideo: null, // File: the movement video for motion-transfer models
   folder: null, // FileSystemDirectoryHandle
   batch: null,
   engine: null,
@@ -252,6 +253,17 @@ function setImages(files) {
     .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }))
     .slice(0, MAX_QUANTITY);
   state.images = list.map((file) => ({ name: file.name, file, thumbUrl: URL.createObjectURL(file) }));
+  // Pictures need a model that accepts them: switch to one automatically if needed.
+  if (state.images.length && !acceptsImage(currentModel())) {
+    const fit = modelsOfKind(state.kind).find(acceptsImage);
+    if (fit) {
+      $('modelSelect').value = fit.id;
+      renderOptions();
+      toast(`Switched to "${fit.name}", which works with your pictures.`);
+    } else {
+      toast(`No ${state.kind} model here takes pictures. Switch Image/Video, or add one in Settings.`, 7000);
+    }
+  }
   if (files.length && !list.length) toast('No PNG, JPG or WEBP images found there.');
   state.prompts = [];
   state.promptImages = [];
@@ -279,6 +291,12 @@ $('pickImageFolder').addEventListener('click', async () => {
   }
 });
 $('clearImages').addEventListener('click', () => setImages([]));
+$('pickMotion').addEventListener('click', () => $('motionFile').click());
+$('motionFile').addEventListener('change', () => {
+  state.motionVideo = $('motionFile').files[0] || null;
+  $('motionFile').value = '';
+  renderImages();
+});
 for (const id of ['refMode', 'perImage', 'oneImage']) {
   $(id).addEventListener('change', () => {
     state.prompts = [];
@@ -304,6 +322,10 @@ function renderImages() {
   $('clearImages').hidden = !has;
   $('refOptions').hidden = !has;
   $('refUnsupported').hidden = !has || !model || acceptsImage(model);
+  $('refRequired').hidden = has || !model?.requiresImage;
+  $('motionBox').hidden = !model?.videoField;
+  $('motionName').textContent = state.motionVideo ? state.motionVideo.name : 'No video chosen';
+  $('promptBlock').hidden = Boolean(model?.noPrompt);
   $('perImageLabel').hidden = mode !== 'each';
   $('oneImageLabel').hidden = mode !== 'one';
   // "How many" is worked out automatically in "each image" mode
@@ -365,6 +387,16 @@ $('previewBtn').addEventListener('click', async () => {
   const images = usingImages();
   const mode = $('refMode').value;
   const claudeSees = images && $('claudeSees').checked;
+  const model = currentModel();
+  if (model?.requiresImage && !images) return toast(`"${model.name}" needs pictures. Choose images or a folder first.`);
+  if (model?.noPrompt) {
+    // This model takes no text: one job per picture, labelled with the picture's name.
+    state.promptImages = state.images.flatMap((_, i) => Array(perImageCount()).fill(i)).slice(0, MAX_QUANTITY);
+    state.prompts = state.promptImages.map((i) => state.images[i].name.replace(/\.[^.]+$/, ''));
+    $('previewStatus').textContent = `${state.prompts.length} jobs ready (this model uses no text prompt).`;
+    renderPrompts();
+    return;
+  }
   if (!base && !claudeSees) return toast('Type or paste a prompt first.');
 
   // Which image goes with each prompt (null = no image)
@@ -555,6 +587,8 @@ $('generateBtn').addEventListener('click', async () => {
   if (!model || !pairs.length) return;
   if (!state.settings.higgsfieldKey) return toast('Add your Higgsfield key in Settings first.');
   const withImages = pairs.some((p) => p.img !== null);
+  if (model.requiresImage && !withImages) return toast(`"${model.name}" needs pictures. Choose images or a folder first.`);
+  if (model.videoField && !state.motionVideo) return toast('Choose the motion video first (the movement to copy).');
   if (withImages && !acceptsImage(model)) {
     return toast(`"${model.name}" has no image setting. Set its "Image field" in Settings, or clear the reference images.`, 8000);
   }
@@ -565,6 +599,7 @@ $('generateBtn').addEventListener('click', async () => {
   try {
     await ensureFolderAccess();
     let imageUrls = new Map();
+    let motionUrl = '';
     if (withImages) {
       const api = new HiggsfieldClient({
         credentials: state.settings.higgsfieldKey,
@@ -573,6 +608,11 @@ $('generateBtn').addEventListener('click', async () => {
       $('generateBtn').disabled = true;
       try {
         imageUrls = await uploadImages(api, [...new Set(pairs.map((p) => p.img))]);
+        if (model.videoField) {
+          $('previewStatus').textContent = 'Uploading motion video...';
+          motionUrl = await api.uploadImage(state.motionVideo);
+          $('previewStatus').textContent = '';
+        }
       } catch (err) {
         if (err.origin) {
           $('uploadPermBtn').dataset.origin = err.origin;
@@ -594,7 +634,7 @@ $('generateBtn').addEventListener('click', async () => {
       modelId: model.id,
       modelName: model.name,
       modelPath: model.path,
-      params: currentParams(),
+      params: { ...currentParams(), ...(model.videoField ? { [model.videoField]: motionUrl } : {}) },
       imageField: withImages ? model.imageField : '',
       imageFormat: withImages ? model.imageFormat : '',
       noPrompt: Boolean(model.noPrompt),
@@ -992,16 +1032,19 @@ function renderModelTable() {
       $('mImageField').value = m.imageField || '';
       $('mImageFormat').value = m.imageFormat || 'url';
       $('mNoPrompt').checked = Boolean(m.noPrompt);
+      $('mVideoField').value = m.videoField || '';
+      $('mRequiresImage').checked = Boolean(m.requiresImage);
+      $('mId').scrollIntoView({ behavior: 'smooth', block: 'center' });
     });
     const del = el('button', { className: 'btn small danger', textContent: 'Delete' });
     del.addEventListener('click', async () => {
-      if (!confirm(`Delete model "${m.name}"?`)) return;
-      state.settings = await saveSettings({ models: models.filter((x) => x.id !== m.id) });
+      if (!confirm(`Delete model "${m.name}"?${m.builtIn ? ' (Built-in: "Restore built-in models" brings it back.)' : ''}`)) return;
+      state.settings = await deleteModel(m.id);
       renderSettings();
       renderGenerateForm();
     });
     return el('tr', {}, [
-      el('td', { textContent: m.name }),
+      el('td', { title: m.source || '' }, [m.name, ...(m.builtIn ? [' ', el('span', { className: 'tag', textContent: 'built-in' })] : [])]),
       el('td', { textContent: m.type }),
       el('td', {}, [el('code', { textContent: m.path })]),
       el('td', { textContent: m.price != null && m.price !== '' ? `$${m.price}` : '-' }),
@@ -1012,6 +1055,14 @@ function renderModelTable() {
   const head = el('tr', {}, ['Name', 'Type', 'Path', 'Price', 'Image', ''].map((h) => el('th', { textContent: h })));
   $('modelTable').replaceChildren(el('table', {}, [el('thead', {}, [head]), el('tbody', {}, rows)]));
 }
+
+$('restoreModels').addEventListener('click', async () => {
+  if (!confirm('Bring back all built-in models and undo your edits to them? Models you added yourself are kept.')) return;
+  state.settings = await restoreBuiltInModels();
+  renderSettings();
+  renderGenerateForm();
+  toast('Built-in models restored.');
+});
 
 $('saveModel').addEventListener('click', async () => {
   $('modelError').textContent = '';
@@ -1036,14 +1087,15 @@ $('saveModel').addEventListener('click', async () => {
     imageField: $('mImageField').value.trim(),
     imageFormat: $('mImageField').value.trim() ? $('mImageFormat').value : '',
     noPrompt: $('mNoPrompt').checked,
+    videoField: $('mVideoField').value.trim(),
+    requiresImage: $('mRequiresImage').checked,
   };
   const problem = validateModel(model);
   if (problem) {
     $('modelError').textContent = problem;
     return;
   }
-  const others = (state.settings.models || []).filter((m) => m.id !== model.id);
-  state.settings = await saveSettings({ models: [...others, model] });
+  state.settings = await saveModel(model);
   renderSettings();
   renderGenerateForm();
   toast(`Model "${model.name}" saved.`);

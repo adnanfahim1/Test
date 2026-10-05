@@ -132,3 +132,23 @@ test('client sends the Idempotency-Key header', async () => {
   await client.submit('alibaba/qwen-image-3/edit', { prompt: 'p' }, { idempotencyKey: 'abc' });
   assert.equal(headers['Idempotency-Key'], 'abc');
 });
+
+test('built-in models: always listed, your edits win, deleted ones stay hidden, your own are kept', async () => {
+  const { mergeModels, DEFAULT_MODELS: D, validateModel: v } = await import('../src/lib/models.js');
+  for (const m of D) assert.equal(v(m), '', m.id);
+  const ids = mergeModels().map((m) => m.id);
+  assert.ok(ids.includes('qwen-image-3-edit') && ids.includes('genjutsu-motion'));
+  const edited = mergeModels([{ id: 'qwen-image-3-edit', price: 0.02 }]);
+  assert.equal(edited.find((m) => m.id === 'qwen-image-3-edit').price, 0.02);
+  assert.equal(edited.find((m) => m.id === 'qwen-image-3-edit').path, 'alibaba/qwen-image-3/edit');
+  const hidden = mergeModels([], ['genjutsu-motion']);
+  assert.ok(!hidden.some((m) => m.id === 'genjutsu-motion'));
+  const mine = mergeModels([{ id: 'my-model', name: 'Mine', type: 'image', path: 'a/b' }]);
+  assert.ok(mine.some((m) => m.id === 'my-model' && !m.builtIn));
+});
+
+test('Qwen edit built-in sends exactly the documented request body', () => {
+  const q = DEFAULT_MODELS.find((m) => m.id === 'qwen-image-3-edit');
+  const body = { ...q.fixed, aspect_ratio: q.options.aspect_ratio[0], resolution: q.options.resolution[0], ...imageParam(q.imageField, q.imageFormat, 'https://example.com/input-image.jpg'), prompt: 'Change the vase to matte blue while keeping the composition.' };
+  assert.deepEqual(body, { prompt: 'Change the vase to matte blue while keeping the composition.', image_urls: ['https://example.com/input-image.jpg'], resolution: '1k', aspect_ratio: '1:1' });
+});
