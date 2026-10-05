@@ -27,6 +27,10 @@
         <button class="tab" data-tab="batches">Batches</button>
         <button class="tab" data-tab="settings">Settings</button>
       </nav>
+      <div class="conn">
+        <span id="connHiggs" class="pill" title="Higgsfield key">Higgsfield</span>
+        <span id="connClaude" class="pill" title="Claude key">Claude</span>
+      </div>
     </header>
 
     <div id="toast" class="toast" hidden></div>
@@ -34,98 +38,112 @@
     <!-- ======================= GENERATE ======================= -->
     <main id="tab-generate" class="panel">
       <div class="grid">
-        <section class="card">
-          <div class="row">
-            <div class="seg" role="radiogroup" aria-label="Type">
-              <button class="seg-btn active" data-kind="image">Image</button>
-              <button class="seg-btn" data-kind="video">Video</button>
-            </div>
-            <label class="grow">Model
-              <select id="modelSelect"></select>
-            </label>
-          </div>
-          <p id="noModelHint" class="hint warn" hidden>No models of this type yet. Add one in <a href="#" data-goto="settings">Settings</a>.</p>
-
-          <div id="promptBlock">
-          <label>Prompt
-            <textarea id="basePrompt" rows="5" placeholder="Paste or type your idea, e.g. A red sneaker on a sand dune at golden hour"></textarea>
-          </label>
-          <label class="check"><input type="checkbox" id="useLines" /> Use my lines exactly (one prompt per line, Claude is skipped)</label>
-          </div>
-
-          <div class="row">
-            <label>How many
-              <input id="quantity" type="number" min="1" max="500" value="100" />
-            </label>
-            <label class="grow">Variation style
-              <select id="variation">
-                <option value="angle_lighting">Same subject - vary angle, lighting, setting</option>
-                <option value="style_locked">Keep style locked - small changes only</option>
-                <option value="wild">Wild variations</option>
-              </select>
-            </label>
-          </div>
-          <label>Rules for Claude (optional)
-            <textarea id="rules" rows="2" placeholder="e.g. brand colours red and white; no text in the image; no people"></textarea>
-          </label>
-
-          <div id="optionsBox" class="row wrap"></div>
-
-          <!-- Reference images: your own pictures as the starting point (image-to-image / image-to-video) -->
-          <div class="ref-box">
-            <div class="row between">
-              <b>Reference images</b>
-              <span id="refCount" class="muted small">optional</span>
-            </div>
-            <p class="muted small">Use your own pictures as the starting point. Pick files or a whole folder (PNG, JPG, WEBP).</p>
+        <section class="card form-card">
+          <!-- STEP 1 -->
+          <div class="step">
+            <h3 class="step-title"><span class="num">1</span> What do you want to make?</h3>
             <div class="row">
-              <button id="pickImages" class="btn">Choose images</button>
-              <button id="pickImageFolder" class="btn">Choose folder</button>
-              <button id="clearImages" class="btn small" hidden>Clear</button>
-              <input id="imageFiles" type="file" accept="image/png,image/jpeg,image/webp" multiple hidden />
-            </div>
-            <div id="refStrip" class="ref-strip"></div>
-            <p id="refRequired" class="hint warn small" hidden>This model edits or animates YOUR pictures: choose images or a folder.</p>
-            <div id="motionBox" class="row" hidden>
-              <button id="pickMotion" class="btn">Choose motion video</button>
-              <span id="motionName" class="muted small">No video chosen</span>
-              <input id="motionFile" type="file" accept="video/mp4,video/quicktime,video/webm" hidden />
-            </div>
-            <p id="refUnsupported" class="hint warn small" hidden>This model has no image setting yet. Open Settings → Higgsfield models → Edit, and fill in "Image field" from the model's docs page.</p>
-            <div id="refOptions" class="row wrap" hidden>
-              <label>Use the images
-                <select id="refMode">
-                  <option value="each">Each image gets its own generation(s)</option>
-                  <option value="one">One image for every prompt</option>
-                </select>
+              <div class="seg" role="radiogroup" aria-label="Type">
+                <button class="seg-btn active" data-kind="image">Image</button>
+                <button class="seg-btn" data-kind="video">Video</button>
+              </div>
+              <label class="grow">Model
+                <select id="modelSelect"></select>
               </label>
-              <label id="perImageLabel">Generations per image
-                <input id="perImage" type="number" min="1" max="20" value="1" />
-              </label>
-              <label id="oneImageLabel" hidden>Which image <select id="oneImage"></select></label>
-              <label class="check"><input type="checkbox" id="claudeSees" checked /> Claude looks at each image to write its prompt</label>
+            </div>
+            <div id="modelInfo" class="model-info"></div>
+            <p id="noModelHint" class="hint warn" hidden>No models of this type yet. Add one in <a href="#" data-goto="settings">Settings</a>.</p>
+            <div id="optionsBox" class="row wrap"></div>
+          </div>
+
+          <!-- STEP 2 -->
+          <div class="step">
+            <h3 class="step-title"><span class="num">2</span> Your pictures <span id="refCount" class="muted small">optional</span></h3>
+            <div class="ref-box">
+              <p class="muted small">Use your own pictures as the starting point (edit them or turn them into videos). PNG, JPG or WEBP.</p>
+              <div class="row">
+                <button id="pickImages" class="btn">Choose images</button>
+                <button id="pickImageFolder" class="btn">Choose folder</button>
+                <button id="clearImages" class="btn small" hidden>Clear</button>
+                <input id="imageFiles" type="file" accept="image/png,image/jpeg,image/webp" multiple hidden />
+              </div>
+              <div id="refStrip" class="ref-strip"></div>
+              <p id="refRequired" class="hint warn small" hidden>This model edits or animates YOUR pictures: choose images or a folder.</p>
+              <div id="motionBox" class="row" hidden>
+                <button id="pickMotion" class="btn">Choose motion video</button>
+                <span id="motionName" class="muted small">No video chosen</span>
+                <input id="motionFile" type="file" accept="video/mp4,video/quicktime,video/webm" hidden />
+              </div>
+              <p id="refUnsupported" class="hint warn small" hidden>This model doesn't take pictures. Pick a model marked "uses your pictures", or click Clear.</p>
+              <div id="refOptions" class="row wrap" hidden>
+                <label>Use the pictures
+                  <select id="refMode">
+                    <option value="each">Each picture gets its own result(s)</option>
+                    <option value="one">One picture for every prompt</option>
+                  </select>
+                </label>
+                <label id="perImageLabel">Results per picture
+                  <input id="perImage" type="number" min="1" max="20" value="1" />
+                </label>
+                <label id="oneImageLabel" hidden>Which picture <select id="oneImage"></select></label>
+                <label id="claudeSeesLabel" class="check"><input type="checkbox" id="claudeSees" checked /> Claude looks at each picture to write its prompt</label>
+              </div>
             </div>
           </div>
 
-          <div class="row">
-            <label class="grow">Batch name
-              <input id="batchName" type="text" placeholder="e.g. summer-shoes" />
-            </label>
+          <!-- STEP 3 -->
+          <div class="step" id="promptStep">
+            <h3 class="step-title"><span class="num">3</span> Describe it</h3>
+            <div id="promptBlock">
+              <label>Prompt
+                <textarea id="basePrompt" rows="4" placeholder="Your idea, e.g. A red sneaker on a sand dune at golden hour"></textarea>
+              </label>
+              <label class="check"><input type="checkbox" id="useLines" /> Use my lines exactly (one prompt per line - Claude is skipped)</label>
+            </div>
+            <div id="claudeBlock">
+              <div class="row">
+                <label>How many
+                  <input id="quantity" type="number" min="1" max="500" value="100" />
+                </label>
+                <label class="grow">Variation style
+                  <select id="variation">
+                    <option value="angle_lighting">Same subject - vary angle, lighting, setting</option>
+                    <option value="style_locked">Keep style locked - small changes only</option>
+                    <option value="wild">Wild variations</option>
+                  </select>
+                </label>
+              </div>
+              <label>Rules for Claude (optional)
+                <textarea id="rules" rows="2" placeholder="e.g. brand colours red and white; no text in the image; no people"></textarea>
+              </label>
+            </div>
+            <p id="noPromptNote" class="hint small" hidden>This model needs no prompt: you get one result per picture.</p>
           </div>
 
-          <div class="row folder-row">
-            <button id="pickFolder" class="btn">Choose output folder</button>
-            <span id="folderName" class="muted">No folder chosen</span>
+          <!-- STEP 4 -->
+          <div class="step">
+            <h3 class="step-title"><span class="num">4</span> Where to save</h3>
+            <div class="row">
+              <label class="grow">Batch name
+                <input id="batchName" type="text" placeholder="e.g. summer-shoes" />
+              </label>
+            </div>
+            <div class="row folder-row">
+              <button id="pickFolder" class="btn">Choose output folder</button>
+              <span id="folderName" class="muted">No folder chosen</span>
+            </div>
           </div>
 
-          <div class="row">
-            <button id="previewBtn" class="btn">Preview prompts</button>
+          <div class="row preview-row">
+            <button id="previewBtn" class="btn primary">Preview prompts</button>
             <button id="stopPreviewBtn" class="btn" hidden>Stop</button>
             <span id="previewStatus" class="muted"></span>
           </div>
         </section>
 
-        <section class="card">
+        <section class="card side-card">
+          <h2>Ready to generate?</h2>
+          <ul id="checklist" class="checklist"></ul>
           <div class="row between">
             <h2>Prompts <span id="promptCount" class="muted"></span></h2>
             <button id="clearPrompts" class="btn small" hidden>Clear</button>
@@ -134,10 +152,10 @@
           <ol id="promptList" class="prompt-list"></ol>
           <div class="cost" id="costBox"></div>
           <div id="uploadPermBox" class="hint warn" hidden>
-            Images could not be uploaded to <b id="uploadPermOrigin"></b>. The extension may need permission for that site.
+            Pictures could not be uploaded to <b id="uploadPermOrigin"></b>. The extension may need permission for that site.
             <button id="uploadPermBtn" class="btn small">Allow uploads to this site</button>
           </div>
-          <button id="generateBtn" class="btn primary big" disabled>Generate</button>
+          <button id="generateBtn" class="btn primary big wide" disabled>Generate</button>
         </section>
       </div>
 
@@ -179,7 +197,7 @@
       <div class="grid">
         <section class="card">
           <h2>API keys</h2>
-          <p class="muted small">Stored only in this browser (chrome.storage.local). Sent only to Anthropic and Higgsfield.</p>
+          <p class="muted small">Paste your keys and press Test connection - they are saved automatically. Stored only in this browser, sent only to Anthropic and Higgsfield.</p>
           <label>Anthropic API key
             <input id="anthropicKey" type="password" autocomplete="off" placeholder="sk-ant-..." />
           </label>
@@ -210,16 +228,13 @@
 
         <section class="card">
           <h2>Higgsfield models</h2>
-          <p class="muted small">
-            Copy these from the model's page on docs.higgsfield.ai.
-            <b>Path</b> is the part after <code>https://api.higgsfield.ai/</code>.
-            <b>Options</b> are the dropdowns shown on the main screen, e.g.
-            <code>{"aspect_ratio": ["16:9","9:16"], "duration": [5,10]}</code>.
-            <b>Price</b> is your estimate in USD per generation (used for the cost estimate).
-          </p>
+          <p class="muted small">Built-in models are ready to use. Hover a model to see where its settings come from.
+            To add one: open <b>Add or edit a model</b> below. <b>Path</b> is the part after <code>https://api.higgsfield.ai/</code>,
+            <b>Options</b> are dropdowns like <code>{"aspect_ratio": ["16:9","9:16"]}</code>, <b>Price</b> is your USD estimate per result.</p>
           <div id="modelTable"></div>
           <button id="restoreModels" class="btn small">Restore built-in models</button>
-          <h3>Add / edit model</h3>
+          <details id="modelForm">
+          <summary><b>Add or edit a model</b> <span class="muted small">(advanced: copy values from docs.higgsfield.ai)</span></summary>
           <div class="row wrap">
             <label>ID <input id="mId" type="text" placeholder="kling-3-std" /></label>
             <label class="grow">Name <input id="mName" type="text" placeholder="Kling 3.0 Standard" /></label>
@@ -242,6 +257,7 @@
             <button id="saveModel" class="btn primary">Save model</button>
             <span id="modelError" class="small error-text"></span>
           </div>
+          </details>
         </section>
       </div>
     </main>

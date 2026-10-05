@@ -120,3 +120,49 @@ input[type=text], input[type=password], input[type=number], select, textarea { b
 input:disabled { opacity: 0.6; }
 
 .tag { font-size: 10px; background: var(--accent-soft); color: var(--accent); border-radius: 4px; padding: 1px 5px; font-weight: 600; }
+
+/* ---- layout polish ---- */
+.topbar { gap: 20px; }
+.conn { margin-left: auto; display: flex; gap: 8px; }
+.pill { font-size: 12px; font-weight: 600; padding: 4px 10px 4px 22px; border-radius: 999px; border: 1px solid var(--border); position: relative; color: var(--muted); background: #fff; }
+.pill::before { content: ""; position: absolute; left: 9px; top: 50%; width: 8px; height: 8px; margin-top: -4px; border-radius: 50%; background: #c3c9d9; }
+.pill.saved::before { background: #f0b429; }
+.pill.good { color: #1e7a3a; border-color: #b7e2c4; }
+.pill.good::before { background: #2f9e44; }
+.pill.bad { color: var(--danger); border-color: #f1c0c0; }
+.pill.bad::before { background: var(--danger); }
+
+.form-card { padding: 6px 22px 18px; }
+.step { padding: 16px 0 6px; border-bottom: 1px solid var(--border); }
+.step:last-of-type { border-bottom: 0; }
+.step-title { display: flex; align-items: center; gap: 10px; margin: 0 0 12px; font-size: 15px; color: var(--text); }
+.step-title .num { width: 24px; height: 24px; border-radius: 50%; background: var(--accent); color: #fff; display: inline-grid; place-items: center; font-size: 13px; flex: none; }
+.step-title .muted { font-weight: 400; margin-left: auto; }
+.ref-box { margin-bottom: 8px; }
+.preview-row { padding-top: 16px; align-items: center; }
+
+.model-info { display: flex; flex-wrap: wrap; gap: 6px; margin: -4px 0 12px; }
+.model-info .tag { font-size: 11px; padding: 2px 8px; }
+.tag.warn-tag { background: var(--warn-bg); color: #8a6100; }
+
+.side-card { position: sticky; top: 76px; }
+.checklist { list-style: none; padding: 0; margin: 0 0 18px; display: grid; gap: 6px; font-size: 13px; }
+.checklist li { display: flex; align-items: center; gap: 8px; }
+.checklist .mark { width: 18px; height: 18px; border-radius: 50%; display: inline-grid; place-items: center; font-size: 11px; font-weight: 700; flex: none; }
+.checklist li.ok .mark { background: #e3f4e8; color: #2f9e44; }
+.checklist li.todo { color: var(--muted); }
+.checklist li.todo .mark { background: var(--accent-soft); color: var(--accent); }
+.checklist a { font-size: 12px; }
+.btn.wide { width: 100%; }
+
+.model-table td { padding: 10px 8px; }
+.model-table .model-name { font-weight: 600; margin-bottom: 2px; }
+.model-table code { display: inline-block; margin-bottom: 4px; color: var(--muted); }
+.model-table .tag { margin-right: 4px; }
+.model-table .actions { white-space: nowrap; text-align: right; }
+.model-table .actions .btn { margin-left: 4px; }
+details#modelForm { margin-top: 18px; border-top: 1px solid var(--border); padding-top: 12px; }
+details#modelForm summary { cursor: pointer; margin-bottom: 12px; }
+#restoreModels { margin-top: 10px; }
+
+#testClaude, #testHiggs { margin-bottom: 16px; }

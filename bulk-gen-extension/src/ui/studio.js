@@ -22,6 +22,7 @@ const state = {
   prompts: [],
   promptImages: [], // for each prompt: index into images, or null
   images: [], // reference images: { name, file, thumbUrl }
+  conn: { claude: null, higgs: null }, // result of the last connection test
   motionVideo: null, // File: the movement video for motion-transfer models
   folder: null, // FileSystemDirectoryHandle
   batch: null,
@@ -184,10 +185,22 @@ function renderGenerateForm() {
   const select = $('modelSelect');
   const models = modelsOfKind(state.kind);
   const previous = select.value;
-  select.replaceChildren(...models.map((m) => el('option', { value: m.id, textContent: m.name })));
+  // Two groups so it's obvious which models use your pictures
+  const option = (m) => el('option', { value: m.id, textContent: m.name });
+  const withPics = models.filter(acceptsImage);
+  const textOnly = models.filter((m) => !acceptsImage(m));
+  const groups = [];
+  if (withPics.length) groups.push(el('optgroup', { label: 'Uses your pictures' }, withPics.map(option)));
+  if (textOnly.length) groups.push(el('optgroup', { label: 'From text only' }, textOnly.map(option)));
+  select.replaceChildren(...groups);
   const preferred = state.kind === 'image' ? state.settings.defaultImageModel : state.settings.defaultVideoModel;
   if (models.some((m) => m.id === previous)) select.value = previous;
   else if (models.some((m) => m.id === preferred)) select.value = preferred;
+  else {
+    // Sensible default: with pictures loaded pick a picture model, otherwise one that works from text alone
+    const fit = state.images.length ? withPics[0] : textOnly[0] || models.find((m) => !m.requiresImage);
+    if (fit) select.value = fit.id;
+  }
   $('noModelHint').hidden = models.length > 0;
   renderOptions();
   renderImages();
@@ -207,7 +220,24 @@ $('modelSelect').addEventListener('change', () => {
 });
 
 /** One dropdown per setting the model profile lists (aspect ratio, resolution, duration...). */
+/** One line under the model menu saying what it needs. */
+function renderModelInfo() {
+  const m = currentModel();
+  const box = $('modelInfo');
+  if (!m) return box.replaceChildren();
+  const tags = [];
+  if (m.requiresImage) tags.push(['needs your pictures', 'tag']);
+  else if (acceptsImage(m)) tags.push(['pictures optional', 'tag']);
+  if (m.videoField) tags.push(['needs a motion video', 'tag']);
+  if (m.noPrompt) tags.push(['no prompt needed', 'tag']);
+  if (/unverified/i.test(`${m.name} ${m.source || ''}`)) tags.push(['settings unverified - test with 1 first', 'tag warn-tag']);
+  if (m.price != null && m.price !== '') tags.push([`~$${m.price} each`, 'tag']);
+  box.replaceChildren(...tags.map(([text, cls]) => el('span', { className: cls, textContent: text })));
+  box.title = m.source ? `Settings from: ${m.source}` : '';
+}
+
 function renderOptions() {
+  renderModelInfo();
   const box = $('optionsBox');
   box.replaceChildren();
   const model = currentModel();
@@ -238,7 +268,11 @@ $('quantity').addEventListener('change', () => {
   const q = Math.round(Number($('quantity').value) || 1);
   $('quantity').value = Math.min(MAX_QUANTITY, Math.max(1, q));
 });
-for (const id of ['batchName', 'useLines']) $(id).addEventListener('input', updateGenerateButton);
+for (const id of ['batchName', 'basePrompt']) $(id).addEventListener('input', updateGenerateButton);
+$('useLines').addEventListener('change', () => {
+  renderImages();
+  updateGenerateButton();
+});
 
 // ------------------------------------------------------------------ reference images
 // Your own pictures, used as the starting point for each generation
@@ -325,7 +359,13 @@ function renderImages() {
   $('refRequired').hidden = has || !model?.requiresImage;
   $('motionBox').hidden = !model?.videoField;
   $('motionName').textContent = state.motionVideo ? state.motionVideo.name : 'No video chosen';
-  $('promptBlock').hidden = Boolean(model?.noPrompt);
+  const noPrompt = Boolean(model?.noPrompt);
+  $('promptBlock').hidden = noPrompt;
+  $('noPromptNote').hidden = !noPrompt;
+  // Variation style / rules / count only matter when Claude writes the prompts
+  $('claudeBlock').hidden = noPrompt || $('useLines').checked;
+  $('claudeSeesLabel').hidden = noPrompt || $('useLines').checked;
+  $('previewBtn').textContent = noPrompt ? 'Prepare jobs' : $('useLines').checked ? 'Use my lines' : 'Preview prompts';
   $('perImageLabel').hidden = mode !== 'each';
   $('oneImageLabel').hidden = mode !== 'one';
   // "How many" is worked out automatically in "each image" mode
@@ -340,6 +380,7 @@ function renderImages() {
   const shown = state.images.slice(0, 40).map((img) => el('img', { src: img.thumbUrl, alt: img.name, title: img.name, loading: 'lazy' }));
   if (state.images.length > 40) shown.push(el('span', { className: 'muted small', textContent: `+${state.images.length - 40} more` }));
   $('refStrip').replaceChildren(...shown);
+  if (state.settings) updateGenerateButton();
 }
 
 /** Shrink a picture to max 1024px and return it as base64 JPEG for Claude to look at. */
@@ -548,8 +589,50 @@ function renderCost() {
 
 function updateGenerateButton() {
   const busy = state.batch && ['running', 'paused', 'stopped'].includes(state.batch.state);
-  $('generateBtn').disabled = !state.prompts.length || !currentModel() || !state.folder || busy;
+  const model = currentModel();
+  const s = state.settings;
+  const usesClaude = !model?.noPrompt && !$('useLines').checked;
+  // Everything Generate needs, shown as a checklist so it's clear what's missing
+  const checks = [
+    [Boolean(s.higgsfieldKey), 'Higgsfield key', 'settings'],
+    ...(usesClaude ? [[Boolean(s.anthropicKey), 'Claude key (writes the prompts)', 'settings']] : []),
+    [Boolean(model), 'Model chosen'],
+    ...(model?.requiresImage ? [[state.images.length > 0, 'Your pictures (step 2)']] : []),
+    ...(model?.videoField ? [[Boolean(state.motionVideo), 'Motion video (step 2)']] : []),
+    [Boolean(state.folder), 'Output folder (step 4)'],
+    [state.prompts.length > 0, model?.noPrompt ? 'Jobs prepared ("Prepare jobs")' : 'Prompts ready ("Preview prompts")'],
+  ];
+  $('checklist').replaceChildren(
+    ...checks.map(([ok, label, goto]) => {
+      const li = el('li', { className: ok ? 'ok' : 'todo' }, [el('span', { className: 'mark', textContent: ok ? '✓' : '•' }), label]);
+      if (!ok && goto) {
+        const a = el('a', { href: '#', textContent: ' - add in Settings' });
+        a.addEventListener('click', (e) => {
+          e.preventDefault();
+          showTab(goto);
+        });
+        li.append(a);
+      }
+      return li;
+    }),
+  );
+  const ready = checks.every(([ok]) => ok) && !busy;
+  $('generateBtn').disabled = !ready;
+  $('generateBtn').textContent = state.prompts.length ? `Generate ${state.prompts.length}` : 'Generate';
   $('generateBtn').title = busy ? 'Finish, cancel or close the current batch first.' : '';
+  renderConnection();
+}
+
+/** The two status pills in the top bar. */
+function renderConnection() {
+  const s = state.settings;
+  const set = (id, hasKey, ok) => {
+    const pill = $(id);
+    pill.className = `pill ${ok === true ? 'good' : ok === false ? 'bad' : hasKey ? 'saved' : 'missing'}`;
+    pill.title = ok === true ? 'Connected' : ok === false ? 'Test failed - check the key in Settings' : hasKey ? 'Key saved (not tested yet)' : 'No key yet - add it in Settings';
+  };
+  set('connHiggs', Boolean(s.higgsfieldKey), state.conn.higgs);
+  set('connClaude', Boolean(s.anthropicKey), state.conn.claude);
 }
 
 // ------------------------------------------------------------------ start a batch
@@ -987,30 +1070,55 @@ $('saveSettings').addEventListener('click', async () => {
   toast('Settings saved.');
 });
 
+// Keys are saved as soon as you paste/type them - no need to press "Save settings".
+async function saveKeys() {
+  state.settings = await saveSettings({
+    anthropicKey: $('anthropicKey').value.trim(),
+    higgsfieldKey: $('higgsfieldKey').value.trim(),
+  });
+  updateGenerateButton();
+}
+$('anthropicKey').addEventListener('change', () => {
+  state.conn.claude = null;
+  saveKeys();
+});
+$('higgsfieldKey').addEventListener('change', () => {
+  state.conn.higgs = null;
+  saveKeys();
+});
+
 $('testClaude').addEventListener('click', async () => {
   const out = $('testClaudeResult');
   out.textContent = 'Testing...';
+  await saveKeys();
   try {
     await testClaude({ apiKey: $('anthropicKey').value.trim(), baseURL: state.settings.anthropicBaseUrl });
-    out.textContent = '✓ Connected to Claude';
+    out.textContent = '✓ Connected to Claude (key saved)';
+    state.conn.claude = true;
   } catch (err) {
     out.textContent = `✗ ${errText(err)}`;
+    state.conn.claude = false;
   }
+  renderConnection();
 });
 
 $('testHiggs').addEventListener('click', async () => {
   const out = $('testHiggsResult');
   out.textContent = 'Testing...';
+  await saveKeys();
   try {
     const client = new HiggsfieldClient({
       credentials: $('higgsfieldKey').value.trim(),
       baseURL: state.settings.higgsfieldBaseUrl || undefined,
     });
     await client.testConnection();
-    out.textContent = '✓ Higgsfield accepted the key (no generation was started)';
+    out.textContent = '✓ Higgsfield accepted the key (key saved, nothing was generated)';
+    state.conn.higgs = true;
   } catch (err) {
     out.textContent = `✗ ${errText(err)}`;
+    state.conn.higgs = false;
   }
+  renderConnection();
 });
 
 function renderModelTable() {
@@ -1034,6 +1142,7 @@ function renderModelTable() {
       $('mNoPrompt').checked = Boolean(m.noPrompt);
       $('mVideoField').value = m.videoField || '';
       $('mRequiresImage').checked = Boolean(m.requiresImage);
+      $('modelForm').open = true;
       $('mId').scrollIntoView({ behavior: 'smooth', block: 'center' });
     });
     const del = el('button', { className: 'btn small danger', textContent: 'Delete' });
@@ -1043,17 +1152,19 @@ function renderModelTable() {
       renderSettings();
       renderGenerateForm();
     });
-    return el('tr', {}, [
-      el('td', { title: m.source || '' }, [m.name, ...(m.builtIn ? [' ', el('span', { className: 'tag', textContent: 'built-in' })] : [])]),
+    const badges = [
+      m.builtIn ? el('span', { className: 'tag', textContent: 'built-in' }) : null,
+      acceptsImage(m) ? el('span', { className: 'tag', textContent: 'pictures' }) : null,
+      m.price != null && m.price !== '' ? el('span', { className: 'tag', textContent: `$${m.price}` }) : null,
+    ].filter(Boolean);
+    return el('tr', { title: m.source ? `Settings from: ${m.source}` : '' }, [
+      el('td', {}, [el('div', { className: 'model-name', textContent: m.name }), el('code', { className: 'small', textContent: m.path }), el('div', {}, badges)]),
       el('td', { textContent: m.type }),
-      el('td', {}, [el('code', { textContent: m.path })]),
-      el('td', { textContent: m.price != null && m.price !== '' ? `$${m.price}` : '-' }),
-      el('td', { textContent: m.imageField ? `${m.imageField} (${m.imageFormat})` : '-' }),
-      el('td', {}, [edit, ' ', del]),
+      el('td', { className: 'actions' }, [edit, del]),
     ]);
   });
-  const head = el('tr', {}, ['Name', 'Type', 'Path', 'Price', 'Image', ''].map((h) => el('th', { textContent: h })));
-  $('modelTable').replaceChildren(el('table', {}, [el('thead', {}, [head]), el('tbody', {}, rows)]));
+  const head = el('tr', {}, ['Model', 'Type', ''].map((h) => el('th', { textContent: h })));
+  $('modelTable').replaceChildren(el('table', { className: 'model-table' }, [el('thead', {}, [head]), el('tbody', {}, rows)]));
 }
 
 $('restoreModels').addEventListener('click', async () => {
