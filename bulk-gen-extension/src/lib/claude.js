@@ -72,12 +72,14 @@ function systemPrompt({ kind, style, rules }) {
 }
 
 /** One Claude call that returns up to `count` prompts. */
-async function requestChunk(client, { model, kind, basePrompt, style, rules, count, existing }) {
+async function requestChunk(client, { model, kind, basePrompt, style, rules, count, existing, image }) {
   const recent = existing.slice(-150).map((p) => `- ${p.slice(0, 140)}`).join('\n');
   const userText = [
     `Base idea:\n${basePrompt}`,
     recent ? `Already written (do not repeat these):\n${recent}` : '',
-    `Write exactly ${count} new prompts.`,
+    image
+      ? `The attached picture is the reference image the generator will start from. Write exactly ${count} new prompt(s) made for THIS picture: describe what should happen with it${kind === 'video' ? ' (motion, camera movement, mood)' : ' (changes, setting, lighting, style)'}, keeping its main subject recognisable.`
+      : `Write exactly ${count} new prompts.`,
   ]
     .filter(Boolean)
     .join('\n\n');
@@ -86,7 +88,14 @@ async function requestChunk(client, { model, kind, basePrompt, style, rules, cou
     model,
     max_tokens: 16000,
     system: systemPrompt({ kind, style, rules }),
-    messages: [{ role: 'user', content: userText }],
+    messages: [
+      {
+        role: 'user',
+        content: image
+          ? [{ type: 'image', source: { type: 'base64', media_type: image.mediaType, data: image.data } }, { type: 'text', text: userText }]
+          : userText,
+      },
+    ],
     output_config: { format: { type: 'json_schema', schema: OUTPUT_SCHEMA } },
   };
   // Haiku 4.5 does not accept the "effort" setting.
@@ -173,4 +182,24 @@ export async function expandPrompts({
     }
   }
   return results;
+}
+
+/**
+ * Claude looks at one reference image and writes `count` prompts for it.
+ * @param {object} opts  same as expandPrompts, plus image: { mediaType, data (base64) }
+ */
+export async function promptsForImage({ apiKey, baseURL, model, kind, basePrompt, style, rules, count = 1, existing = [], image }) {
+  const client = makeClient({ apiKey, baseURL });
+  const prompts = await requestChunk(client, {
+    model,
+    kind,
+    basePrompt: basePrompt?.trim() || '(no extra idea given - base it on the picture)',
+    style,
+    rules,
+    count,
+    existing,
+    image,
+  });
+  if (!prompts.length) throw new Error('Claude returned no prompt for this image.');
+  return prompts.slice(0, count);
 }

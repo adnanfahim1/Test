@@ -4,11 +4,11 @@
 
 import { loadSettings, saveSettings } from '../lib/settings.js';
 import { kvGet, kvSet, saveBatch, listBatches, deleteBatch } from '../lib/db.js';
-import { CLAUDE_MODELS, expandPrompts, testClaude } from '../lib/claude.js';
+import { CLAUDE_MODELS, expandPrompts, promptsForImage, testClaude } from '../lib/claude.js';
 import { HiggsfieldClient } from '../lib/higgsfield.js';
 import { BatchSaver, folderPermission, requestFolderPermission } from '../lib/files.js';
 import { QueueEngine, makeItems, countByStatus } from '../lib/queue.js';
-import { validateModel } from '../lib/models.js';
+import { validateModel, acceptsImage, IMAGE_FORMATS } from '../lib/models.js';
 import { batchFolderName, slugify } from '../lib/util.js';
 
 const $ = (id) => document.getElementById(id);
@@ -20,6 +20,8 @@ const state = {
   settings: null,
   kind: 'image',
   prompts: [],
+  promptImages: [], // for each prompt: index into images, or null
+  images: [], // reference images: { name, file, thumbUrl }
   folder: null, // FileSystemDirectoryHandle
   batch: null,
   engine: null,
@@ -180,6 +182,7 @@ function renderGenerateForm() {
   else if (models.some((m) => m.id === preferred)) select.value = preferred;
   $('noModelHint').hidden = models.length > 0;
   renderOptions();
+  renderImages();
   renderPrompts();
 }
 
@@ -191,6 +194,7 @@ document.querySelectorAll('.seg-btn').forEach((btn) =>
 );
 $('modelSelect').addEventListener('change', () => {
   renderOptions();
+  renderImages();
   renderCost();
 });
 
@@ -228,37 +232,195 @@ $('quantity').addEventListener('change', () => {
 });
 for (const id of ['batchName', 'useLines']) $(id).addEventListener('input', updateGenerateButton);
 
+// ------------------------------------------------------------------ reference images
+// Your own pictures, used as the starting point for each generation
+// (image-to-image or image-to-video). Pick files, or a whole folder.
+
+const IMAGE_RE = /\.(png|jpe?g|webp)$/i;
+
+function setImages(files) {
+  for (const img of state.images) URL.revokeObjectURL(img.thumbUrl);
+  const list = files
+    .filter((f) => IMAGE_RE.test(f.name))
+    .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }))
+    .slice(0, MAX_QUANTITY);
+  state.images = list.map((file) => ({ name: file.name, file, thumbUrl: URL.createObjectURL(file) }));
+  if (files.length && !list.length) toast('No PNG, JPG or WEBP images found there.');
+  state.prompts = [];
+  state.promptImages = [];
+  renderImages();
+  renderPrompts();
+}
+
+$('pickImages').addEventListener('click', () => $('imageFiles').click());
+$('imageFiles').addEventListener('change', () => {
+  setImages([...$('imageFiles').files]);
+  $('imageFiles').value = '';
+});
+$('pickImageFolder').addEventListener('click', async () => {
+  if (!window.showDirectoryPicker) return toast('This browser does not support choosing a folder. Use "Choose images" instead.');
+  try {
+    const dir = await window.showDirectoryPicker({ id: 'bulk-input', mode: 'read' });
+    const files = [];
+    for await (const [name, handle] of dir.entries()) {
+      if (handle.kind === 'file' && IMAGE_RE.test(name)) files.push(await handle.getFile());
+    }
+    setImages(files);
+    if (files.length) toast(`Loaded ${state.images.length} images from "${dir.name}".`);
+  } catch (err) {
+    if (err?.name !== 'AbortError') toast(`Could not read that folder: ${errText(err)}`);
+  }
+});
+$('clearImages').addEventListener('click', () => setImages([]));
+for (const id of ['refMode', 'perImage', 'oneImage']) {
+  $(id).addEventListener('change', () => {
+    state.prompts = [];
+    state.promptImages = [];
+    renderImages();
+    renderPrompts();
+  });
+}
+
+function usingImages() {
+  return state.images.length > 0;
+}
+
+function perImageCount() {
+  return Math.min(20, Math.max(1, Math.round(Number($('perImage').value) || 1)));
+}
+
+function renderImages() {
+  const has = usingImages();
+  const model = currentModel();
+  const mode = $('refMode').value;
+  $('refCount').textContent = has ? `${state.images.length} image${state.images.length === 1 ? '' : 's'}` : 'optional';
+  $('clearImages').hidden = !has;
+  $('refOptions').hidden = !has;
+  $('refUnsupported').hidden = !has || !model || acceptsImage(model);
+  $('perImageLabel').hidden = mode !== 'each';
+  $('oneImageLabel').hidden = mode !== 'one';
+  // "How many" is worked out automatically in "each image" mode
+  const auto = has && mode === 'each';
+  $('quantity').disabled = auto;
+  if (auto) $('quantity').value = Math.min(MAX_QUANTITY, state.images.length * perImageCount());
+
+  const previous = $('oneImage').value;
+  $('oneImage').replaceChildren(...state.images.map((img, i) => el('option', { value: String(i), textContent: img.name })));
+  if (previous && Number(previous) < state.images.length) $('oneImage').value = previous;
+
+  const shown = state.images.slice(0, 40).map((img) => el('img', { src: img.thumbUrl, alt: img.name, title: img.name, loading: 'lazy' }));
+  if (state.images.length > 40) shown.push(el('span', { className: 'muted small', textContent: `+${state.images.length - 40} more` }));
+  $('refStrip').replaceChildren(...shown);
+}
+
+/** Shrink a picture to max 1024px and return it as base64 JPEG for Claude to look at. */
+async function imageForClaude(file) {
+  const bitmap = await createImageBitmap(file);
+  const scale = Math.min(1, 1024 / Math.max(bitmap.width, bitmap.height));
+  const canvas = new OffscreenCanvas(Math.round(bitmap.width * scale), Math.round(bitmap.height * scale));
+  canvas.getContext('2d').drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  bitmap.close();
+  const blob = await canvas.convertToBlob({ type: 'image/jpeg', quality: 0.85 });
+  const bytes = new Uint8Array(await blob.arrayBuffer());
+  let binary = '';
+  for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  return { mediaType: 'image/jpeg', data: btoa(binary) };
+}
+
+function claudeOptions() {
+  return {
+    apiKey: state.settings.anthropicKey,
+    baseURL: state.settings.anthropicBaseUrl,
+    model: state.settings.claudeModel,
+    kind: state.kind,
+    basePrompt: $('basePrompt').value.trim(),
+    style: $('variation').value,
+    rules: $('rules').value.trim(),
+  };
+}
+
+/** Run async jobs a few at a time. */
+async function runPool(items, limit, fn) {
+  let next = 0;
+  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (next < items.length) {
+      const i = next++;
+      await fn(items[i], i);
+    }
+  });
+  await Promise.all(workers);
+}
+
 // ------------------------------------------------------------------ prompt preview
 
 $('previewBtn').addEventListener('click', async () => {
   const base = $('basePrompt').value.trim();
-  if (!base) return toast('Type or paste a prompt first.');
+  const images = usingImages();
+  const mode = $('refMode').value;
+  const claudeSees = images && $('claudeSees').checked;
+  if (!base && !claudeSees) return toast('Type or paste a prompt first.');
+
+  // Which image goes with each prompt (null = no image)
+  let slots;
+  if (images && mode === 'each') {
+    const k = perImageCount();
+    slots = state.images.flatMap((_, i) => Array(k).fill(i)).slice(0, MAX_QUANTITY);
+  } else {
+    const count = Math.min(MAX_QUANTITY, Math.max(1, Number($('quantity').value) || 1));
+    slots = Array(count).fill(images ? Number($('oneImage').value || 0) : null);
+  }
+
   if ($('useLines').checked) {
-    state.prompts = base.split(/\r?\n/).map((l) => l.trim()).filter(Boolean).slice(0, MAX_QUANTITY);
+    const lines = base.split(/\r?\n/).map((l) => l.trim()).filter(Boolean).slice(0, MAX_QUANTITY);
+    if (!images) slots = Array(lines.length).fill(null);
+    // with images: lines are reused in order if there are fewer lines than images
+    state.prompts = slots.map((_, i) => lines[i % lines.length]);
+    state.promptImages = slots;
     renderPrompts();
     return;
   }
-  const count = Math.min(MAX_QUANTITY, Math.max(1, Number($('quantity').value) || 1));
+
   const abort = new AbortController();
   state.previewAbort = abort;
   $('previewBtn').disabled = true;
   $('stopPreviewBtn').hidden = false;
-  $('previewStatus').textContent = `Claude is writing prompts... 0 / ${count}`;
+  const status = (done) => ($('previewStatus').textContent = `Claude is writing prompts... ${done} / ${slots.length}`);
+  status(0);
   try {
-    state.prompts = await expandPrompts({
-      apiKey: state.settings.anthropicKey,
-      baseURL: state.settings.anthropicBaseUrl,
-      model: state.settings.claudeModel,
-      kind: state.kind,
-      basePrompt: base,
-      style: $('variation').value,
-      rules: $('rules').value.trim(),
-      count,
-      signal: abort.signal,
-      onProgress: (done, total) => {
-        $('previewStatus').textContent = `Claude is writing prompts... ${done} / ${total}`;
-      },
-    });
+    if (claudeSees) {
+      // Claude looks at each picture and writes prompts that fit it.
+      const prompts = Array(slots.length).fill('');
+      const groups = new Map(); // image index -> positions that use it
+      slots.forEach((img, pos) => groups.set(img, [...(groups.get(img) || []), pos]));
+      let done = 0;
+      await runPool([...groups.entries()], 3, async ([imgIndex, positions]) => {
+        if (abort.signal.aborted) return;
+        const picture = await imageForClaude(state.images[imgIndex].file);
+        for (let start = 0; start < positions.length; start += 25) {
+          if (abort.signal.aborted) return;
+          const chunk = positions.slice(start, start + 25);
+          const written = await promptsForImage({
+            ...claudeOptions(),
+            count: chunk.length,
+            existing: chunk.length > 1 || start > 0 ? prompts.filter(Boolean).slice(-50) : [],
+            image: picture,
+          });
+          chunk.forEach((pos, j) => (prompts[pos] = written[j] || written[0]));
+          done += chunk.length;
+          status(done);
+        }
+      });
+      if (abort.signal.aborted) throw new Error('Stopped.');
+      state.prompts = prompts;
+    } else {
+      state.prompts = await expandPrompts({
+        ...claudeOptions(),
+        count: slots.length,
+        signal: abort.signal,
+        onProgress: (done) => status(done),
+      });
+    }
+    state.promptImages = slots;
     $('previewStatus').textContent = `${state.prompts.length} prompts ready. Edit anything below.`;
   } catch (err) {
     $('previewStatus').textContent = '';
@@ -274,6 +436,7 @@ $('previewBtn').addEventListener('click', async () => {
 $('stopPreviewBtn').addEventListener('click', () => state.previewAbort?.abort());
 $('clearPrompts').addEventListener('click', () => {
   state.prompts = [];
+  state.promptImages = [];
   renderPrompts();
 });
 
@@ -288,9 +451,13 @@ function renderPrompts() {
       const remove = el('button', { className: 'icon-btn', title: 'Delete this prompt', textContent: '✕' });
       remove.addEventListener('click', () => {
         state.prompts.splice(i, 1);
+        state.promptImages.splice(i, 1);
         renderPrompts();
       });
-      return el('li', {}, [el('div', { className: 'prompt-item' }, [text, regen, remove])]);
+      const parts = [text, regen, remove];
+      const img = state.images[state.promptImages[i]];
+      if (img) parts.unshift(el('img', { className: 'prompt-ref', src: img.thumbUrl, title: img.name, alt: img.name }));
+      return el('li', {}, [el('div', { className: 'prompt-item' }, parts)]);
     }),
   );
   $('promptCount').textContent = state.prompts.length ? `(${state.prompts.length})` : '';
@@ -303,17 +470,18 @@ function renderPrompts() {
 async function regenerateOne(index, button) {
   button.disabled = true;
   try {
-    const [fresh] = await expandPrompts({
-      apiKey: state.settings.anthropicKey,
-      baseURL: state.settings.anthropicBaseUrl,
-      model: state.settings.claudeModel,
-      kind: state.kind,
-      basePrompt: $('basePrompt').value.trim() || state.prompts[index],
-      style: $('variation').value,
-      rules: $('rules').value.trim(),
-      count: 1,
-      existing: state.prompts,
-    });
+    const img = state.images[state.promptImages[index]];
+    let fresh;
+    if (img && $('claudeSees').checked) {
+      [fresh] = await promptsForImage({ ...claudeOptions(), count: 1, existing: state.prompts, image: await imageForClaude(img.file) });
+    } else {
+      [fresh] = await expandPrompts({
+        ...claudeOptions(),
+        basePrompt: $('basePrompt').value.trim() || state.prompts[index],
+        count: 1,
+        existing: state.prompts,
+      });
+    }
     state.prompts[index] = fresh;
     renderPrompts();
   } catch (err) {
@@ -347,16 +515,68 @@ function updateGenerateButton() {
 
 // ------------------------------------------------------------------ start a batch
 
+/** Upload each reference image used by this batch once. Returns name -> public URL. */
+async function uploadImages(api, indexes) {
+  const urls = new Map();
+  let done = 0;
+  $('uploadPermBox').hidden = true;
+  $('previewStatus').textContent = `Uploading reference images... 0 / ${indexes.length}`;
+  await runPool(indexes, 3, async (i) => {
+    const img = state.images[i];
+    urls.set(i, await api.uploadImage(img.file));
+    done += 1;
+    $('previewStatus').textContent = `Uploading reference images... ${done} / ${indexes.length}`;
+  });
+  $('previewStatus').textContent = '';
+  return urls;
+}
+
+$('uploadPermBtn').addEventListener('click', async () => {
+  const origin = $('uploadPermBtn').dataset.origin;
+  if (!origin) return;
+  const granted = await chrome.permissions.request({ origins: [`${origin}/*`] }).catch(() => false);
+  $('uploadPermBox').hidden = granted;
+  toast(granted ? 'Allowed. Press Generate again.' : 'Permission was not granted.');
+});
+
 $('generateBtn').addEventListener('click', async () => {
   const model = currentModel();
-  const prompts = state.prompts.map((p) => p.trim()).filter(Boolean);
-  if (!model || !prompts.length) return;
+  // keep each prompt paired with its image, dropping empty prompts
+  const pairs = state.prompts
+    .map((p, i) => ({ prompt: p.trim(), img: state.promptImages[i] ?? null }))
+    .filter((pair) => pair.prompt);
+  if (!model || !pairs.length) return;
   if (!state.settings.higgsfieldKey) return toast('Add your Higgsfield key in Settings first.');
-  const cost = model.price != null && model.price !== '' ? ` Estimated cost: about ${money(prompts.length * Number(model.price))}.` : '';
-  if (!confirm(`Start ${prompts.length} ${state.kind} generations with "${model.name}"?${cost}`)) return;
+  const withImages = pairs.some((p) => p.img !== null);
+  if (withImages && !acceptsImage(model)) {
+    return toast(`"${model.name}" has no image setting. Set its "Image field" in Settings, or clear the reference images.`, 8000);
+  }
+  const cost = model.price != null && model.price !== '' ? ` Estimated cost: about ${money(pairs.length * Number(model.price))}.` : '';
+  const imgNote = withImages ? ` Uses ${new Set(pairs.map((p) => p.img)).size} reference image(s).` : '';
+  if (!confirm(`Start ${pairs.length} ${state.kind} generations with "${model.name}"?${imgNote}${cost}`)) return;
 
   try {
     await ensureFolderAccess();
+    let imageUrls = new Map();
+    if (withImages) {
+      const api = new HiggsfieldClient({
+        credentials: state.settings.higgsfieldKey,
+        baseURL: state.settings.higgsfieldBaseUrl || undefined,
+      });
+      $('generateBtn').disabled = true;
+      try {
+        imageUrls = await uploadImages(api, [...new Set(pairs.map((p) => p.img))]);
+      } catch (err) {
+        if (err.origin) {
+          $('uploadPermBtn').dataset.origin = err.origin;
+          $('uploadPermOrigin').textContent = err.origin;
+          $('uploadPermBox').hidden = false;
+        }
+        throw err;
+      } finally {
+        updateGenerateButton();
+      }
+    }
     const name = slugify($('batchName').value.trim() || $('basePrompt').value.trim() || 'batch', 30);
     const batch = {
       id: crypto.randomUUID(),
@@ -368,8 +588,13 @@ $('generateBtn').addEventListener('click', async () => {
       modelName: model.name,
       modelPath: model.path,
       params: currentParams(),
+      imageField: withImages ? model.imageField : '',
+      imageFormat: withImages ? model.imageFormat : '',
       basePrompt: $('basePrompt').value.trim(),
-      items: makeItems(prompts),
+      items: makeItems(
+        pairs.map((p) => p.prompt),
+        pairs.map((p) => (p.img === null ? null : { name: state.images[p.img].name, url: imageUrls.get(p.img) })),
+      ),
       createdAt: new Date().toISOString(),
       state: 'idle',
     };
@@ -378,8 +603,10 @@ $('generateBtn').addEventListener('click', async () => {
     state.engine.start();
     await state.engine.writeManifestNow();
     state.prompts = [];
+    state.promptImages = [];
     renderPrompts();
   } catch (err) {
+    $('previewStatus').textContent = '';
     toast(`Could not start: ${errText(err)}`, 8000);
   }
 });
@@ -694,6 +921,7 @@ function renderSettings() {
   fillModelSelect($('defaultImageModel'), 'image', s.defaultImageModel, true);
   fillModelSelect($('defaultVideoModel'), 'video', s.defaultVideoModel, true);
   $('concurrency').value = s.concurrency;
+  $('mImageFormat').replaceChildren(...Object.entries(IMAGE_FORMATS).map(([k, label]) => el('option', { value: k, textContent: label })));
   renderModelTable();
 }
 
@@ -753,6 +981,8 @@ function renderModelTable() {
       $('mOptions').value = JSON.stringify(m.options || {});
       $('mFixed').value = JSON.stringify(m.fixed || {});
       $('mPrice').value = m.price ?? '';
+      $('mImageField').value = m.imageField || '';
+      $('mImageFormat').value = m.imageFormat || 'url';
     });
     const del = el('button', { className: 'btn small danger', textContent: 'Delete' });
     del.addEventListener('click', async () => {
@@ -766,10 +996,11 @@ function renderModelTable() {
       el('td', { textContent: m.type }),
       el('td', {}, [el('code', { textContent: m.path })]),
       el('td', { textContent: m.price != null && m.price !== '' ? `$${m.price}` : '-' }),
+      el('td', { textContent: m.imageField ? `${m.imageField} (${m.imageFormat})` : '-' }),
       el('td', {}, [edit, ' ', del]),
     ]);
   });
-  const head = el('tr', {}, ['Name', 'Type', 'Path', 'Price', ''].map((h) => el('th', { textContent: h })));
+  const head = el('tr', {}, ['Name', 'Type', 'Path', 'Price', 'Image', ''].map((h) => el('th', { textContent: h })));
   $('modelTable').replaceChildren(el('table', {}, [el('thead', {}, [head]), el('tbody', {}, rows)]));
 }
 
@@ -793,6 +1024,8 @@ $('saveModel').addEventListener('click', async () => {
     options,
     fixed,
     price: priceText === '' ? null : Number(priceText),
+    imageField: $('mImageField').value.trim(),
+    imageFormat: $('mImageField').value.trim() ? $('mImageFormat').value : '',
   };
   const problem = validateModel(model);
   if (problem) {

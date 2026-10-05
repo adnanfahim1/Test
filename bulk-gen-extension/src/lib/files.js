@@ -7,7 +7,7 @@
 
 import { pickExtension, resultFileName, toCsv } from './util.js';
 
-export const MANIFEST_HEADER = ['number', 'final_prompt', 'model', 'settings', 'status', 'file_name', 'error', 'time'];
+export const MANIFEST_HEADER = ['number', 'final_prompt', 'model', 'settings', 'status', 'file_name', 'error', 'time', 'reference_image'];
 
 /** Is the folder still allowed? Returns "granted", "prompt" or "denied". */
 export async function folderPermission(handle) {
@@ -115,6 +115,7 @@ export class BatchSaver {
       (item.files || []).join(' | '),
       item.error || '',
       item.finishedAt || item.submittedAt || '',
+      item.imageName || '',
     ]);
     // The "﻿" at the start makes Excel open the file as UTF-8.
     await writeFile(this.batchDir, 'manifest.csv', '﻿' + toCsv(MANIFEST_HEADER, rows));

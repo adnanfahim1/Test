@@ -69,6 +69,36 @@
 
           <div id="optionsBox" class="row wrap"></div>
 
+          <!-- Reference images: your own pictures as the starting point (image-to-image / image-to-video) -->
+          <div class="ref-box">
+            <div class="row between">
+              <b>Reference images</b>
+              <span id="refCount" class="muted small">optional</span>
+            </div>
+            <p class="muted small">Use your own pictures as the starting point. Pick files or a whole folder (PNG, JPG, WEBP).</p>
+            <div class="row">
+              <button id="pickImages" class="btn">Choose images</button>
+              <button id="pickImageFolder" class="btn">Choose folder</button>
+              <button id="clearImages" class="btn small" hidden>Clear</button>
+              <input id="imageFiles" type="file" accept="image/png,image/jpeg,image/webp" multiple hidden />
+            </div>
+            <div id="refStrip" class="ref-strip"></div>
+            <p id="refUnsupported" class="hint warn small" hidden>This model has no image setting yet. Open Settings → Higgsfield models → Edit, and fill in "Image field" from the model's docs page.</p>
+            <div id="refOptions" class="row wrap" hidden>
+              <label>Use the images
+                <select id="refMode">
+                  <option value="each">Each image gets its own generation(s)</option>
+                  <option value="one">One image for every prompt</option>
+                </select>
+              </label>
+              <label id="perImageLabel">Generations per image
+                <input id="perImage" type="number" min="1" max="20" value="1" />
+              </label>
+              <label id="oneImageLabel" hidden>Which image <select id="oneImage"></select></label>
+              <label class="check"><input type="checkbox" id="claudeSees" checked /> Claude looks at each image to write its prompt</label>
+            </div>
+          </div>
+
           <div class="row">
             <label class="grow">Batch name
               <input id="batchName" type="text" placeholder="e.g. summer-shoes" />
@@ -95,6 +125,10 @@
           <p class="muted small" id="promptHint">Press "Preview prompts" to see and edit every prompt before spending credits.</p>
           <ol id="promptList" class="prompt-list"></ol>
           <div class="cost" id="costBox"></div>
+          <div id="uploadPermBox" class="hint warn" hidden>
+            Images could not be uploaded to <b id="uploadPermOrigin"></b>. The extension may need permission for that site.
+            <button id="uploadPermBtn" class="btn small">Allow uploads to this site</button>
+          </div>
           <button id="generateBtn" class="btn primary big" disabled>Generate</button>
         </section>
       </div>
@@ -186,6 +220,12 @@
           <label>Options (JSON) <textarea id="mOptions" rows="2">{}</textarea></label>
           <label>Always send (JSON, optional) <textarea id="mFixed" rows="2">{}</textarea></label>
           <label>Price per generation, USD (optional) <input id="mPrice" type="number" step="0.0001" min="0" /></label>
+          <div class="row wrap">
+            <label class="grow">Image field (optional - only for models that take a reference image)
+              <input id="mImageField" type="text" placeholder="e.g. input_images or image_url" />
+            </label>
+            <label>Image format <select id="mImageFormat"></select></label>
+          </div>
           <div class="row">
             <button id="saveModel" class="btn primary">Save model</button>
             <span id="modelError" class="small error-text"></span>

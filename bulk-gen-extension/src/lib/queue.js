@@ -9,6 +9,7 @@
 import { HiggsfieldError, resultUrls } from './higgsfield.js';
 import { DownloadError } from './files.js';
 import { backoffDelay, jitter } from './util.js';
+import { imageParam } from './models.js';
 
 export const MAX_AUTO_RETRIES = 2; // failed generations are retried twice automatically
 const MAX_TRANSIENT_ERRORS = 8; // per item: network/server/rate-limit errors before giving up
@@ -20,10 +21,12 @@ const ACTIVE = new Set(['submitting', 'running', 'saving']);
 const TERMINAL = new Set(['done', 'failed', 'canceled']);
 
 /** Create the items list for a new batch. */
-export function makeItems(prompts) {
+export function makeItems(prompts, images = []) {
   return prompts.map((prompt, i) => ({
     n: i + 1,
     prompt,
+    imageName: images[i]?.name || '',
+    imageUrl: images[i]?.url || '',
     status: 'queued',
     failures: 0,
     transient: 0,
@@ -249,7 +252,11 @@ export class QueueEngine {
     item.status = 'submitting';
     this.onChange();
     try {
-      const params = { ...(this.batch.params || {}), prompt: item.prompt };
+      const params = {
+        ...(this.batch.params || {}),
+        ...imageParam(this.batch.imageField, this.batch.imageFormat, item.imageUrl),
+        prompt: item.prompt,
+      };
       const res = await this.api.submit(this.batch.modelPath, params);
       Object.assign(item, {
         requestId: res.request_id,

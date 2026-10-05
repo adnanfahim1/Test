@@ -151,6 +151,43 @@ export class HiggsfieldClient {
   }
 
   /**
+   * Upload one reference image (exactly like Higgsfield's official SDK does it):
+   *  1) POST /files/generate-upload-url { content_type } -> { public_url, upload_url, upload_headers }
+   *  2) PUT the file bytes to upload_url (no API key is sent there)
+   * Returns public_url, which is then given to the model.
+   */
+  async uploadImage(blob) {
+    const contentType = blob.type || 'image/jpeg';
+    const data = await this.request('POST', 'files/generate-upload-url', { content_type: contentType });
+    if (!data?.upload_url || !data?.public_url) {
+      throw new HiggsfieldError('Higgsfield did not return an upload link.', { kind: 'server' });
+    }
+    let response;
+    try {
+      response = await this.fetch(data.upload_url, {
+        method: 'PUT',
+        headers: data.upload_headers || { 'Content-Type': contentType },
+        body: blob,
+      });
+    } catch (err) {
+      const error = new HiggsfieldError(`Could not upload the image (${err?.message || 'network error'}).`, { kind: 'server' });
+      try {
+        error.origin = new URL(data.upload_url).origin; // the extension may need permission for this site
+      } catch {
+        /* ignore */
+      }
+      throw error;
+    }
+    if (!response.ok) {
+      throw new HiggsfieldError(`Image upload failed with HTTP ${response.status}.`, {
+        status: response.status,
+        kind: classifyError(response.status),
+      });
+    }
+    return data.public_url;
+  }
+
+  /**
    * "Test connection": asks Higgsfield for an upload link. This proves the key works
    * without starting (or paying for) any generation.
    */

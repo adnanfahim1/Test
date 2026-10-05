@@ -61,6 +61,8 @@ Open the model's page on **docs.higgsfield.ai** and copy:
 | Options (JSON) | settings you want as dropdowns, with the values the docs allow | `{"aspect_ratio": ["16:9","9:16"], "duration": [5, 10]}` |
 | Always send (JSON) | settings sent with every request | `{"resolution": "1080p"}` |
 | Price | your estimate in USD per generation, for the cost estimate | `0.35` |
+| Image field | only for models that take a reference image: the setting's name from the docs | `input_images` |
+| Image format | the shape the docs show for that setting | `list` = `[{"type":"image_url","image_url":"..."}]` |
 
 The example values above are only to show the format. Always copy the real ones from the docs.
 One model ("Seedream v4") is pre-filled from the example in Higgsfield's official SDK readme.
@@ -75,6 +77,13 @@ Check it against the docs before relying on it.
 3. Pick a **variation style** and optional **rules** (brand colours, things to avoid...).
    - Or tick **Use my lines exactly** to paste your own prompts, one per line (Claude is skipped).
 4. Press **Preview prompts**. Edit, delete (✕) or rewrite (↻) any prompt.
+   - **Reference images (optional):** click **Choose images** or **Choose folder** to use your own pictures
+     as the starting point (image-to-image / image-to-video). Then pick:
+     - **Each image gets its own generation(s)**: e.g. a folder of 40 products → 40 generations
+       (or more with "Generations per image").
+     - **One image for every prompt**: the same picture with many different prompts.
+     - **Claude looks at each image** (on by default): Claude sees each picture and writes a prompt that fits it.
+     The model must have an **Image field** set in Settings (see below).
 5. Check the **estimated cost**. It's an estimate based on the price you entered.
 6. Press **Generate**.
 

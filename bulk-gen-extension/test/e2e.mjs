@@ -13,7 +13,8 @@ import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 const { chromium } = require(process.env.PLAYWRIGHT_PATH || 'playwright');
 
-const COUNT = Number(process.argv[2] || 5);
+const IMAGES = Number(process.env.IMAGES || 0); // use N reference images (one generation each)
+const COUNT = IMAGES || Number(process.argv[2] || 5);
 const CONCURRENCY = Number(process.argv[3] || 3);
 const CHAOS = !!process.env.CHAOS;
 const T0 = Date.now();
@@ -47,10 +48,13 @@ const server = http.createServer(async (req, res) => {
   if (url.pathname === '/v1/messages') {
     stats.messages += 1;
     const params = JSON.parse(body);
-    const text = params.messages[0].content;
+    const content = params.messages[0].content;
+    const text = typeof content === 'string' ? content : content.find((b) => b.type === 'text').text;
+    if (Array.isArray(content) && content.some((b) => b.type === 'image' && b.source?.data?.length > 10)) stats.visionCalls = (stats.visionCalls || 0) + 1;
     const k = Number(/Write exactly (\d+)/.exec(text)[1]);
+    const tag = Array.isArray(content) ? 'from-picture ' : '';
     const offset = (text.match(/^- /gm) || []).length;
-    const prompts = Array.from({ length: k }, (_, i) => `Fake prompt ${offset + i + 1}: a red sneaker, angle ${offset + i + 1}`);
+    const prompts = Array.from({ length: k }, (_, i) => `Fake prompt ${tag}${offset + i + 1}: a red sneaker, angle ${offset + i + 1}`);
     return json(200, {
       id: 'msg_1', type: 'message', role: 'assistant', model: params.model,
       content: [{ type: 'text', text: JSON.stringify({ prompts }) }],
@@ -63,7 +67,15 @@ const server = http.createServer(async (req, res) => {
     stats.badAuth += 1;
     return json(401, { detail: 'Invalid credentials' });
   }
-  if (url.pathname === '/files/generate-upload-url') return json(200, { public_url: 'x', upload_url: 'y' });
+  if (url.pathname === '/files/generate-upload-url') {
+    const n = (stats.uploadLinks = (stats.uploadLinks || 0) + 1);
+    return json(200, { public_url: `${base}/public/${n}.png`, upload_url: `${base}/upload/${n}`, upload_headers: { 'Content-Type': JSON.parse(body).content_type } });
+  }
+  if (req.method === 'PUT' && url.pathname.startsWith('/upload/')) {
+    stats.uploadedBytes = (stats.uploadedBytes || 0) + body.length;
+    stats.uploads = (stats.uploads || 0) + 1;
+    return json(200, {});
+  }
   if (req.method === 'POST' && /^\/fake\/model\/text-to-(image|video)$/.test(url.pathname)) {
     // CHAOS: the fake server allows only 3 jobs at a time (429 above that), and every 11th submit gets a server error
     stats.submitAttempts = (stats.submitAttempts || 0) + 1;
@@ -78,7 +90,9 @@ const server = http.createServer(async (req, res) => {
     stats.active += 1;
     stats.maxActive = Math.max(stats.maxActive, stats.active);
     const id = `req-${nextId++}`;
-    jobs.set(id, { polls: 0, params: JSON.parse(body), video: url.pathname.endsWith('video') });
+    const sent = JSON.parse(body);
+    if (sent.input_images?.[0]?.image_url?.includes('/public/')) stats.withImage = (stats.withImage || 0) + 1;
+    jobs.set(id, { polls: 0, params: sent, video: url.pathname.endsWith('video') });
     return json(200, { request_id: id, status: 'queued', status_url: '', cancel_url: '' });
   }
   const m = /^\/requests\/([^/]+)\/status$/.exec(url.pathname);
@@ -151,8 +165,8 @@ await page.evaluate(
         defaultImageModel: 'fake-img',
         defaultVideoModel: 'fake-vid',
         models: [
-          { id: 'fake-vid', name: 'Fake Video', type: 'video', path: 'fake/model/text-to-video', options: { aspect_ratio: ['16:9', '9:16'], duration: [5, 10] }, fixed: {}, price: 0.2 },
-          { id: 'fake-img', name: 'Fake Image', type: 'image', path: 'fake/model/text-to-image', options: { aspect_ratio: ['16:9', '9:16'] }, fixed: { resolution: '2K' }, price: 0.01 },
+          { id: 'fake-vid', name: 'Fake Video', type: 'video', path: 'fake/model/text-to-video', options: { aspect_ratio: ['16:9', '9:16'], duration: [5, 10] }, fixed: {}, price: 0.2, imageField: 'input_images', imageFormat: 'list' },
+          { id: 'fake-img', name: 'Fake Image', type: 'image', path: 'fake/model/text-to-image', options: { aspect_ratio: ['16:9', '9:16'] }, fixed: { resolution: '2K' }, price: 0.01, imageField: 'input_images', imageFormat: 'list' },
         ],
       },
     }),
@@ -176,7 +190,16 @@ await page.click('[data-tab=generate]');
 // Generate tab
 if (VIDEO) await page.click('.seg-btn[data-kind=video]');
 await page.fill('#basePrompt', 'A red sneaker on a sand dune');
-await page.fill('#quantity', String(COUNT));
+if (IMAGES) {
+  // make N small real PNG files and pick them with "Choose images"
+  const files = Array.from({ length: IMAGES }, (_, i) => ({ name: `product-${i + 1}.png`, mimeType: 'image/png', buffer: PNG }));
+  await page.setInputFiles('#imageFiles', files);
+  await page.waitForFunction((n) => document.querySelectorAll('#refStrip img').length === n, IMAGES);
+  console.log('quantity box (auto):', await page.inputValue('#quantity'));
+  if (process.env.SHOT_REF) { await page.setViewportSize({ width: 1280, height: 1100 }); await page.locator('.ref-box').screenshot({ path: process.env.SHOT_REF }); }
+} else {
+  await page.fill('#quantity', String(COUNT));
+}
 await page.selectOption('#optionsBox select', { label: '9:16' });
 await page.fill('#batchName', 'E2E Test');
 await page.click('#previewBtn');
@@ -249,6 +272,12 @@ if (CHAOS ? stats.submits < expected : stats.submits !== expected) fail(`submits
 if (stats.maxActive > CONCURRENCY) fail(`concurrency exceeded: ${stats.maxActive}`);
 if (!result.title.includes('finished')) fail(`title ${result.title}`);
 if (errors.length) fail(`page errors: ${errors.join(' | ')}`);
+if (IMAGES) {
+  if (stats.uploads !== expected) fail(`uploads ${stats.uploads}, expected ${expected} (one per picture actually used)`);
+  if (stats.withImage !== stats.submits) fail(`only ${stats.withImage} of ${stats.submits} requests had the reference image`);
+  if (!stats.visionCalls) fail('Claude never saw the images');
+  if (!csv.includes('product-1.png')) fail('reference image missing from manifest');
+}
 if (!process.exitCode) console.log('E2E PASS');
 
 if (process.env.SHOT) { await page.setViewportSize({width:1280,height:900}); await page.screenshot({path: process.env.SHOT + '/main.png'}); await page.goto('chrome-extension://' + extId + '/ui/studio.html'); await page.screenshot({path: process.env.SHOT + '/gate.png'}); }

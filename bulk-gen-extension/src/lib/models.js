@@ -13,8 +13,15 @@
 //   path: "bytedance/seedream/v4/text-to-image", // the part after https://api.higgsfield.ai/
 //   options: { aspect_ratio: ["16:9"], resolution: ["2K"] }, // dropdowns shown on the main screen
 //   fixed: { },                                 // extra settings always sent as-is
-//   price: 0.00                                 // YOUR estimate in USD per generation (for the cost estimate)
+//   price: 0.00,                                // YOUR estimate in USD per generation (for the cost estimate)
+//   imageField: "input_images",                 // OPTIONAL: name of the setting that takes your reference image
+//   imageFormat: "list"                         // how that setting wants the image (see IMAGE_FORMATS below)
 // }
+//
+// Different Higgsfield models take the image in different shapes. Examples from Higgsfield's
+// official SDK: DoP image-to-video uses  input_images: [{ type: "image_url", image_url: "<url>" }]
+// (format "list"), Soul uses  image_reference: { type: "image_url", image_url: "<url>" } (format "object").
+// Check the model's docs page for its field name and shape.
 
 export const DEFAULT_MODELS = [
   {
@@ -45,5 +52,28 @@ export function validateModel(model) {
   }
   if (model.fixed && (typeof model.fixed !== 'object' || Array.isArray(model.fixed))) return 'fixed must be an object.';
   if (model.price != null && !(Number(model.price) >= 0)) return 'price must be a number (USD per generation) or empty.';
+  if (model.imageField && !/^[a-z0-9_]+$/i.test(model.imageField)) return 'image field: letters, numbers and underscore only.';
+  if (model.imageField && !(model.imageFormat in IMAGE_FORMATS)) return 'image format must be one of: ' + Object.keys(IMAGE_FORMATS).join(', ');
   return '';
+}
+
+/** The shapes a model can want the reference image in. */
+export const IMAGE_FORMATS = {
+  url: 'plain link:  "image": "https://..."',
+  object: 'object:  "image": { "type": "image_url", "image_url": "https://..." }',
+  list: 'list of objects:  "image": [{ "type": "image_url", "image_url": "https://..." }]',
+  url_list: 'list of links:  "image": ["https://..."]',
+};
+
+/** Does this model accept a reference image? */
+export function acceptsImage(model) {
+  return Boolean(model?.imageField);
+}
+
+/** Build the image setting for one request, e.g. { input_images: [{ type: "image_url", image_url }] }. */
+export function imageParam(field, format, url) {
+  if (!field || !url) return {};
+  const obj = { type: 'image_url', image_url: url };
+  const value = { url, object: obj, list: [obj], url_list: [url] }[format || 'url'] ?? url;
+  return { [field]: value };
 }
