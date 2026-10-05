@@ -146,6 +146,7 @@ export class QueueEngine {
         item.status = 'queued';
         item.failures = 0;
         item.requestId = null;
+        item.idemKey = null;
       }
       item.downloadFailed = false;
     }
@@ -160,7 +161,7 @@ export class QueueEngine {
     item.error = '';
     item.transient = 0;
     if (item.downloadFailed && item.resultUrls?.length) item.status = 'saving';
-    else Object.assign(item, { status: 'queued', failures: 0, requestId: null });
+    else Object.assign(item, { status: 'queued', failures: 0, requestId: null, idemKey: null });
     item.downloadFailed = false;
     if (this.batch.state !== 'running') this.start();
     else this.changed(true);
@@ -258,7 +259,9 @@ export class QueueEngine {
         // some models (e.g. Genjutsu motion transfer) take no text prompt
         ...(this.batch.noPrompt ? {} : { prompt: item.prompt }),
       };
-      const res = await this.api.submit(this.batch.modelPath, params);
+      // Same key for every retry of this attempt (timeouts, rate limits), a new key after a failed generation.
+      item.idemKey = item.idemKey || globalThis.crypto.randomUUID();
+      const res = await this.api.submit(this.batch.modelPath, params, { idempotencyKey: item.idemKey });
       Object.assign(item, {
         requestId: res.request_id,
         hfStatus: res.status || 'queued',
@@ -376,6 +379,7 @@ export class QueueEngine {
   generationFailed(item, reason) {
     item.failures = (item.failures || 0) + 1;
     item.requestId = null;
+    item.idemKey = null; // a genuinely new attempt
     item.resultUrls = null;
     if (item.failures <= MAX_AUTO_RETRIES && this.batch.state !== 'canceled') {
       item.status = 'queued';

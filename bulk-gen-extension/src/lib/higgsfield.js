@@ -92,7 +92,7 @@ export class HiggsfieldClient {
     this.fetch = fetchImpl || globalThis.fetch.bind(globalThis);
   }
 
-  async request(method, path, body) {
+  async request(method, path, body, extraHeaders = {}) {
     const url = `${this.baseURL}/${String(path).replace(/^\/+/, '')}`;
     let response;
     try {
@@ -102,6 +102,7 @@ export class HiggsfieldClient {
           Authorization: `Key ${this.credentials}`,
           'Content-Type': 'application/json',
           Accept: 'application/json',
+          ...extraHeaders,
         },
         body: body === undefined ? undefined : JSON.stringify(body),
       });
@@ -131,9 +132,15 @@ export class HiggsfieldClient {
     return data;
   }
 
-  /** Start one generation. Returns { request_id, status, ... }. */
-  async submit(modelPath, params) {
-    const data = await this.request('POST', modelPath, params);
+  /**
+   * Start one generation. Returns { request_id, status, ... }.
+   * idempotencyKey (shown in Higgsfield's docs examples): if the same request is sent twice
+   * with the same key - e.g. a retry after a timeout - Higgsfield treats it as one job, so you
+   * don't pay twice.
+   */
+  async submit(modelPath, params, { idempotencyKey } = {}) {
+    const headers = idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : {};
+    const data = await this.request('POST', modelPath, params, headers);
     if (!data || !data.request_id) {
       throw new HiggsfieldError('Higgsfield did not return a request id.', { kind: 'server' });
     }

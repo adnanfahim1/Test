@@ -98,3 +98,37 @@ test('"no text prompt" models are sent without a prompt (Genjutsu motion transfe
   assert.deepEqual(sent[0].params, { video_url: 'https://example.com/input.mp4', image_urls: ['https://example.com/input.jpg'] });
   assert.equal(batch.state, 'finished');
 });
+
+test('retries after a timeout reuse the same Idempotency-Key; a failed generation gets a new one', async () => {
+  const keys = [];
+  let calls = 0;
+  const { HiggsfieldError } = await import('../src/lib/higgsfield.js');
+  const api = {
+    async submit(path, params, opts) {
+      keys.push(opts.idempotencyKey);
+      calls += 1;
+      if (calls === 1) throw new HiggsfieldError('timeout', { kind: 'server' });
+      return { request_id: `r${calls}`, status: 'queued' };
+    },
+    async status(id) { return id === 'r2' ? { status: 'failed' } : { status: 'completed', images: [{ url: 'u' }] }; },
+    async cancel() {},
+  };
+  const saver = { async saveResult(item) { return { name: 'f.png', blob: null }; }, async writeManifest() {} };
+  const batch = { kind: 'image', modelPath: 'm', params: {}, items: makeItems(['a']) };
+  let t = 0;
+  const engine = new QueueEngine({ batch, api, saver, concurrency: 1, now: () => t });
+  engine.start();
+  for (let i = 0; i < 60 && batch.state !== 'finished'; i += 1) { engine.tick(); await engine.settle(); t += 10000; }
+  assert.equal(batch.state, 'finished');
+  assert.equal(keys.length, 3);
+  assert.ok(keys[0]);
+  assert.equal(keys[0], keys[1]); // retry after timeout: same key
+  assert.notEqual(keys[1], keys[2]); // after a failed generation: new key
+});
+
+test('client sends the Idempotency-Key header', async () => {
+  let headers;
+  const client = new HiggsfieldClient({ credentials: 'K:S', baseURL: 'https://h.test', fetchImpl: async (u, init) => { headers = init.headers; return new Response(JSON.stringify({ request_id: 'x' })); } });
+  await client.submit('alibaba/qwen-image-3/edit', { prompt: 'p' }, { idempotencyKey: 'abc' });
+  assert.equal(headers['Idempotency-Key'], 'abc');
+});
