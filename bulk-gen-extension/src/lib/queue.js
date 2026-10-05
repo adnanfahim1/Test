@@ -255,7 +255,8 @@ export class QueueEngine {
       const params = {
         ...(this.batch.params || {}),
         ...imageParam(this.batch.imageField, this.batch.imageFormat, item.imageUrl),
-        prompt: item.prompt,
+        // some models (e.g. Genjutsu motion transfer) take no text prompt
+        ...(this.batch.noPrompt ? {} : { prompt: item.prompt }),
       };
       const res = await this.api.submit(this.batch.modelPath, params);
       Object.assign(item, {

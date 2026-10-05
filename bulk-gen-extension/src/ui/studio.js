@@ -597,6 +597,7 @@ $('generateBtn').addEventListener('click', async () => {
       params: currentParams(),
       imageField: withImages ? model.imageField : '',
       imageFormat: withImages ? model.imageFormat : '',
+      noPrompt: Boolean(model.noPrompt),
       basePrompt: $('basePrompt').value.trim(),
       items: makeItems(
         pairs.map((p) => p.prompt),
@@ -990,6 +991,7 @@ function renderModelTable() {
       $('mPrice').value = m.price ?? '';
       $('mImageField').value = m.imageField || '';
       $('mImageFormat').value = m.imageFormat || 'url';
+      $('mNoPrompt').checked = Boolean(m.noPrompt);
     });
     const del = el('button', { className: 'btn small danger', textContent: 'Delete' });
     del.addEventListener('click', async () => {
@@ -1033,6 +1035,7 @@ $('saveModel').addEventListener('click', async () => {
     price: priceText === '' ? null : Number(priceText),
     imageField: $('mImageField').value.trim(),
     imageFormat: $('mImageField').value.trim() ? $('mImageFormat').value : '',
+    noPrompt: $('mNoPrompt').checked,
   };
   const problem = validateModel(model);
   if (problem) {

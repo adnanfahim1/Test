@@ -76,3 +76,25 @@ test('queue sends each item with its own reference image', async () => {
   assert.equal(sent[2].input_images, undefined);
   assert.equal(batch.items[0].imageName, 'one.png');
 });
+
+test('"no text prompt" models are sent without a prompt (Genjutsu motion transfer shape)', async () => {
+  const sent = [];
+  const api = {
+    async submit(path, params) { sent.push({ path, params }); return { request_id: 'r1', status: 'queued' }; },
+    async status() { return { status: 'completed', video: { url: 'https://cdn.test/v.mp4' } }; },
+    async cancel() {},
+  };
+  const saver = { async saveResult(item) { return { name: `f${item.n}.mp4`, blob: null }; }, async writeManifest() {} };
+  const batch = {
+    kind: 'video', modelPath: 'higgsfield/genjutsu/motion-transfer/v1.0', noPrompt: true,
+    params: { video_url: 'https://example.com/input.mp4' }, imageField: 'image_urls', imageFormat: 'url_list',
+    items: makeItems(['label only'], [{ name: 'me.jpg', url: 'https://example.com/input.jpg' }]),
+  };
+  let t = 0;
+  const engine = new QueueEngine({ batch, api, saver, concurrency: 1, now: () => t });
+  engine.start();
+  for (let i = 0; i < 20 && batch.state !== 'finished'; i += 1) { engine.tick(); await engine.settle(); t += 10000; }
+  // exactly the body from Higgsfield's docs example
+  assert.deepEqual(sent[0].params, { video_url: 'https://example.com/input.mp4', image_urls: ['https://example.com/input.jpg'] });
+  assert.equal(batch.state, 'finished');
+});
