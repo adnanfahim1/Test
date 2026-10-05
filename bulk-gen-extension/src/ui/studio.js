@@ -423,7 +423,7 @@ function openBatch(batch) {
     persist,
     onChange: scheduleRender,
     onResult: (item, blob, index) => {
-      if (index === 0 && blob && !state.thumbs.has(item.n)) state.thumbs.set(item.n, URL.createObjectURL(blob));
+      if (index === 0 && !state.thumbs.has(item.n)) setThumb(item.n, blob, saver, item.files[0]);
     },
   });
   $('batchView').hidden = false;
@@ -440,12 +440,41 @@ async function loadSavedThumbs(saver) {
     if (state.batch !== batch) return; // a different batch was opened
     if (item.status !== 'done' || !item.files?.[0] || state.thumbs.has(item.n)) continue;
     try {
-      const file = await saver.readResult(item.files[0]);
-      state.thumbs.set(item.n, URL.createObjectURL(file));
-      scheduleRender();
+      await setThumb(item.n, null, saver, item.files[0]);
     } catch {
       // file moved or deleted - just no thumbnail
     }
+  }
+}
+
+// Thumbnails are kept SMALL so a 500-item batch doesn't eat gigabytes of memory:
+//  - images: shrunk to a ~280px JPEG (a few KB each)
+//  - videos: shown straight from the saved file on disk (not held in memory)
+const THUMB_PX = 280;
+
+async function makeImageThumb(blob) {
+  try {
+    const bitmap = await createImageBitmap(blob, { resizeWidth: THUMB_PX, resizeQuality: 'medium' });
+    const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
+    canvas.getContext('2d').drawImage(bitmap, 0, 0);
+    bitmap.close();
+    return await canvas.convertToBlob({ type: 'image/jpeg', quality: 0.8 });
+  } catch {
+    return blob; // unusual format: fall back to the original
+  }
+}
+
+async function setThumb(n, blob, saver, fileName) {
+  const batch = state.batch;
+  try {
+    let source = blob;
+    if (!source || batch.kind === 'video') source = await saver.readResult(fileName); // disk-backed, not in RAM
+    const thumb = batch.kind === 'video' ? source : await makeImageThumb(source);
+    if (state.batch !== batch || state.thumbs.has(n)) return;
+    state.thumbs.set(n, URL.createObjectURL(thumb));
+    scheduleRender();
+  } catch {
+    // file moved or unreadable - just no thumbnail
   }
 }
 

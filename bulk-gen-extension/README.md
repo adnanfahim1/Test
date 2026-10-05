@@ -155,3 +155,6 @@ test/           unit tests + an end-to-end browser test with fake APIs
 - `npm test` runs the unit tests.
 - `node test/e2e.mjs 5 3` loads the extension in Chromium and runs a 5-item batch (concurrency 3)
   against fake Claude/Higgsfield servers.
+  Options: `VIDEO=1` (video mode), `RELOAD=1` (reload mid-batch, then Resume),
+  `CHAOS=1` (fake server limits jobs, fails some generations, returns server errors).
+  Example: `CHAOS=1 node test/e2e.mjs 30 4`

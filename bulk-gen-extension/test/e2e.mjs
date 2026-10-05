@@ -15,6 +15,9 @@ const { chromium } = require(process.env.PLAYWRIGHT_PATH || 'playwright');
 
 const COUNT = Number(process.argv[2] || 5);
 const CONCURRENCY = Number(process.argv[3] || 3);
+const CHAOS = !!process.env.CHAOS;
+const T0 = Date.now();
+const VIDEO = !!process.env.VIDEO; // run in Video mode instead of Image mode
 
 // ---------- fake servers ----------
 const PNG = Buffer.from(
@@ -61,17 +64,27 @@ const server = http.createServer(async (req, res) => {
     return json(401, { detail: 'Invalid credentials' });
   }
   if (url.pathname === '/files/generate-upload-url') return json(200, { public_url: 'x', upload_url: 'y' });
-  if (req.method === 'POST' && url.pathname === '/fake/model/text-to-image') {
+  if (req.method === 'POST' && /^\/fake\/model\/text-to-(image|video)$/.test(url.pathname)) {
+    // CHAOS: the fake server allows only 3 jobs at a time (429 above that), and every 11th submit gets a server error
+    stats.submitAttempts = (stats.submitAttempts || 0) + 1;
+    if (process.env.TRACE) console.log('submit', ((Date.now() - T0) / 1000).toFixed(1));
+    if (CHAOS && stats.active >= 3) {
+      stats.rateLimited = (stats.rateLimited || 0) + 1;
+      res.writeHead(429, { 'content-type': 'application/json', 'retry-after': '2' });
+      return res.end(JSON.stringify({ detail: 'Too many requests' }));
+    }
+    if (CHAOS && stats.submitAttempts % 11 === 0) return json(503, { detail: 'temporarily unavailable' });
     stats.submits += 1;
     stats.active += 1;
     stats.maxActive = Math.max(stats.maxActive, stats.active);
     const id = `req-${nextId++}`;
-    jobs.set(id, { polls: 0, params: JSON.parse(body) });
+    jobs.set(id, { polls: 0, params: JSON.parse(body), video: url.pathname.endsWith('video') });
     return json(200, { request_id: id, status: 'queued', status_url: '', cancel_url: '' });
   }
   const m = /^\/requests\/([^/]+)\/status$/.exec(url.pathname);
   if (m) {
     stats.polls += 1;
+    if (process.env.TRACE) console.log('poll', m[1], ((Date.now() - T0) / 1000).toFixed(1));
     const job = jobs.get(m[1]);
     job.polls += 1;
     if (job.polls < 2) return json(200, { status: 'in_progress', request_id: m[1] });
@@ -79,9 +92,19 @@ const server = http.createServer(async (req, res) => {
       job.done = true;
       stats.active -= 1;
     }
+    // CHAOS: every 5th job fails once at Higgsfield (should be retried automatically)
+    if (CHAOS && Number(m[1].split('-')[1]) % 5 === 0) {
+      stats.genFailed = (stats.genFailed || 0) + 1;
+      return json(200, { status: 'failed', request_id: m[1] });
+    }
+    if (job.video) return json(200, { status: 'completed', request_id: m[1], video: { url: `http://127.0.0.1:${port}/cdn/${m[1]}.mp4` } });
     return json(200, { status: 'completed', request_id: m[1], images: [{ url: `http://127.0.0.1:${port}/cdn/${m[1]}.png` }] });
   }
   if (url.pathname.startsWith('/cdn/')) {
+    if (url.pathname.endsWith('.mp4')) {
+      res.writeHead(200, { 'content-type': 'video/mp4' });
+      return res.end(Buffer.alloc(2048, 1)); // not a playable video, just bytes to save
+    }
     res.writeHead(200, { 'content-type': 'image/png' }); // no CORS header on purpose
     return res.end(PNG);
   }
@@ -110,7 +133,8 @@ const extId = new URL(worker.url()).host;
 const page = await context.newPage();
 const errors = [];
 page.on('pageerror', (e) => errors.push(e.message));
-page.on('console', (msg) => msg.type() === 'error' && errors.push(msg.text()));
+// The browser logs every non-200 response; injected 429/503s are expected, not code errors.
+page.on('console', (msg) => msg.type() === 'error' && !msg.text().startsWith('Failed to load resource') && errors.push(msg.text()));
 page.on('dialog', (d) => d.accept());
 await page.goto(`chrome-extension://${extId}/ui/studio.html?test=1`);
 
@@ -125,7 +149,9 @@ await page.evaluate(
         higgsfieldBaseUrl: base,
         concurrency,
         defaultImageModel: 'fake-img',
+        defaultVideoModel: 'fake-vid',
         models: [
+          { id: 'fake-vid', name: 'Fake Video', type: 'video', path: 'fake/model/text-to-video', options: { aspect_ratio: ['16:9', '9:16'], duration: [5, 10] }, fixed: {}, price: 0.2 },
           { id: 'fake-img', name: 'Fake Image', type: 'image', path: 'fake/model/text-to-image', options: { aspect_ratio: ['16:9', '9:16'] }, fixed: { resolution: '2K' }, price: 0.01 },
         ],
       },
@@ -148,6 +174,7 @@ console.log('connection tests:', tests);
 await page.click('[data-tab=generate]');
 
 // Generate tab
+if (VIDEO) await page.click('.seg-btn[data-kind=video]');
 await page.fill('#basePrompt', 'A red sneaker on a sand dune');
 await page.fill('#quantity', String(COUNT));
 await page.selectOption('#optionsBox select', { label: '9:16' });
@@ -177,7 +204,7 @@ if (process.env.RELOAD) {
 }
 await page.waitForFunction(
   (n) => {
-    const done = [...document.querySelectorAll('.thumb')].filter((t) => t.querySelector('img')).length;
+    const done = [...document.querySelectorAll('.thumb')].filter((t) => t.querySelector('img, video')).length;
     return done === n;
   },
   expected,
@@ -186,19 +213,19 @@ await page.waitForFunction(
 // let the manifest debounce finish
 await page.waitForTimeout(2500);
 
-const result = await page.evaluate(async () => {
+const result = await page.evaluate(async (VIDEO) => {
   const root = await navigator.storage.getDirectory();
   const out = {};
   for await (const [name, handle] of root.entries()) {
     if (handle.kind !== 'directory') continue;
-    const images = await handle.getDirectoryHandle('images');
+    const images = await handle.getDirectoryHandle(VIDEO ? 'videos' : 'images');
     const files = [];
     for await (const [f] of images.entries()) files.push(f);
     const manifest = await (await (await handle.getFileHandle('manifest.csv')).getFile()).text();
     out[name] = { files: files.sort(), manifest };
   }
   return { out, title: document.querySelector('#batchTitle').textContent };
-});
+}, VIDEO);
 
 console.log(JSON.stringify({ seconds: Math.round((Date.now() - t0) / 1000), stats, title: result.title }, null, 1));
 const [folder] = Object.keys(result.out);
@@ -214,11 +241,11 @@ const fail = (msg) => {
 if (!tests[0].includes('Connected') || !tests[1].includes('accepted')) fail('connection tests');
 if (files.length !== expected) fail(`expected ${expected} files, got ${files.length}`);
 if (!/^e2e-test_\d{4}-\d{2}-\d{2}$/.test(folder)) fail(`folder name ${folder}`);
-if (!files[0].startsWith('e2e-test_001_edited-first-prompt')) fail(`file name ${files[0]}`);
+if (!files[0].startsWith('e2e-test_001_edited-first-prompt') || !files[0].endsWith(VIDEO ? '.mp4' : '.png')) fail(`file name ${files[0]}`);
 if (!csv.includes('number,final_prompt,model,settings,status,file_name,error,time')) fail('manifest header');
 if ((csv.match(/,done,/g) || []).length !== expected) fail('manifest done rows');
-if (!csv.includes('9:16') || !csv.includes('2K')) fail('settings in manifest');
-if (stats.submits !== expected) fail(`submits ${stats.submits}`);
+if (!csv.includes('9:16') || !csv.includes(VIDEO ? 'duration' : '2K')) fail('settings in manifest');
+if (CHAOS ? stats.submits < expected : stats.submits !== expected) fail(`submits ${stats.submits}`);
 if (stats.maxActive > CONCURRENCY) fail(`concurrency exceeded: ${stats.maxActive}`);
 if (!result.title.includes('finished')) fail(`title ${result.title}`);
 if (errors.length) fail(`page errors: ${errors.join(' | ')}`);

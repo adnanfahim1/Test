@@ -18,7 +18,7 @@ await build({
   bundle: true,
   format: 'esm',
   target: 'chrome110',
-  minify: false, // keep it readable
-  legalComments: 'inline',
+  minify: true, // smaller, faster to load (the readable code is in src/)
+  legalComments: 'linked',
 });
 console.log('Built ./extension - load this folder in chrome://extensions or opera://extensions');

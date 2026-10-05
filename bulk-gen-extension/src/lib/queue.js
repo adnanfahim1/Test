@@ -14,6 +14,7 @@ export const MAX_AUTO_RETRIES = 2; // failed generations are retried twice autom
 const MAX_TRANSIENT_ERRORS = 8; // per item: network/server/rate-limit errors before giving up
 const MAX_RUN_MS = 60 * 60 * 1000; // a single generation taking over 1 hour is treated as failed
 const POLL_MS = { image: 4000, video: 10000 };
+const RECOVER_MS = 30000; // after a rate limit, add back one parallel job every 30s
 
 const ACTIVE = new Set(['submitting', 'running', 'saving']);
 const TERMINAL = new Set(['done', 'failed', 'canceled']);
@@ -68,7 +69,6 @@ export class QueueEngine {
     this.pending = new Set(); // promises of operations in progress (used by tests)
     this.backoffUntil = 0;
     this.backoffCount = 0;
-    this.successStreak = 0;
     this.ticking = false;
     this.manifestTimer = null;
 
@@ -189,7 +189,13 @@ export class QueueEngine {
         }
       }
 
-      // 2) start new jobs if there is a free slot
+      // 2) after slowing down for a rate limit, speed back up by one job every 30s without a new limit
+      if (this.concurrency < this.maxConcurrency && now - Math.max(this.lastSlowdown ?? 0, this.lastSpeedup ?? 0) > RECOVER_MS) {
+        this.concurrency += 1;
+        this.lastSpeedup = now;
+      }
+
+      // 3) start new jobs if there is a free slot
       if (this.batch.state === 'running' && now >= this.backoffUntil) {
         let active = items.filter((it) => ACTIVE.has(it.status)).length;
         for (const item of items) {
@@ -202,7 +208,7 @@ export class QueueEngine {
         }
       }
 
-      // 3) finished?
+      // 4) finished?
       const allDone = items.every((it) => TERMINAL.has(it.status)) && this.busy.size === 0;
       if (allDone && ['running', 'paused'].includes(this.batch.state)) {
         this.batch.state = 'finished';
@@ -256,12 +262,6 @@ export class QueueEngine {
       });
       this.backoffCount = 0;
       this.batch.notice = '';
-      // After 10 smooth submits in a row, allow one more parallel job (up to your setting).
-      this.successStreak += 1;
-      if (this.successStreak >= 10 && this.concurrency < this.maxConcurrency) {
-        this.concurrency += 1;
-        this.successStreak = 0;
-      }
       this.changed(true); // save immediately so the request id survives a crash
     } catch (err) {
       this.handleSubmitError(item, err);
@@ -284,8 +284,11 @@ export class QueueEngine {
       item.status = 'queued';
       item.transient = (item.transient || 0) + 1;
       if (kind === 'busy') {
-        this.concurrency = Math.max(1, this.concurrency - 1);
-        this.successStreak = 0;
+        // Several jobs often hit the same limit at once: only slow down once per 10 seconds.
+        if (this.now() - (this.lastSlowdown ?? -Infinity) > 10000) {
+          this.concurrency = Math.max(1, this.concurrency - 1);
+          this.lastSlowdown = this.now();
+        }
       }
       const delay = err.retryAfterMs || backoffDelay(this.backoffCount);
       this.backoffCount += 1;
