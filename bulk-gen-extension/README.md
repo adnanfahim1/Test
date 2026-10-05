@@ -21,13 +21,13 @@ You do **not** need to install Node or build anything. The ready-to-load extensi
 ### Chrome
 1. Go to `chrome://extensions`
 2. Turn on **Developer mode** (top right).
-3. Click **Load unpacked** and choose the `extension` folder (inside `bulk-gen-extension`).
+3. Click **Load unpacked** and choose the `bulk-gen-extension` folder (choosing the `extension` folder inside it also works).
 4. Pin it: puzzle-piece icon in the toolbar → pin **PikGen**.
 
 ### Opera
 1. Go to `opera://extensions`
 2. Turn on **Developer mode** (top right).
-3. Click **Load unpacked** and choose the same `extension` folder.
+3. Click **Load unpacked** and choose the same `bulk-gen-extension` folder.
 
 **Updating later:** replace the folder with the new version, then click the ↻ (reload) button on
 the extension's card in `chrome://extensions` / `opera://extensions`.

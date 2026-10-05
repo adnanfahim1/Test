@@ -2,7 +2,9 @@
 // PikGen tab (or switches to it if it's already open).
 // All the real work happens in the Studio tab, and only after you press Start.
 
-const STUDIO_URL = chrome.runtime.getURL('ui/studio.html');
+// Works whether you loaded the "extension" folder or the outer "bulk-gen-extension" folder:
+// the Studio page always sits next to this file.
+const STUDIO_URL = new URL('ui/studio.html', self.location.href).href;
 
 chrome.action.onClicked.addListener(async () => {
   // runtime.getContexts finds our own open Studio tab without needing the "tabs" permission.

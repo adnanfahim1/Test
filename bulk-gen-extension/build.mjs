@@ -21,4 +21,12 @@ await build({
   minify: true, // smaller, faster to load (the readable code is in src/)
   legalComments: 'linked',
 });
+// A second manifest in the outer folder, so loading EITHER folder in the browser works.
+import { readFileSync, writeFileSync } from 'node:fs';
+const m = JSON.parse(readFileSync('src/manifest.json', 'utf8'));
+const pre = (o) => Object.fromEntries(Object.entries(o).map(([k, v]) => [k, `extension/${v}`]));
+m.action.default_icon = pre(m.action.default_icon);
+m.icons = pre(m.icons);
+m.background.service_worker = 'extension/background.js';
+writeFileSync('manifest.json', JSON.stringify(m, null, 2) + '\n');
 console.log('Built ./extension - load this folder in chrome://extensions or opera://extensions');
