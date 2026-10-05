@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Bulk Studio</title>
+  <link rel="stylesheet" href="studio.css" />
+</head>
+<body>
+  <!-- START GATE: nothing runs (no API calls, no resuming) until you press Start. -->
+  <section id="gate" class="gate">
+    <div class="gate-card">
+      <h1>Bulk Studio</h1>
+      <p>Claude writes the prompts. Higgsfield makes the images and videos. Files go into your folder.</p>
+      <button id="startBtn" class="btn primary big">Start</button>
+      <p class="muted small">Nothing is sent anywhere until you press Start.</p>
+    </div>
+  </section>
+
+  <div id="app" class="app" hidden>
+    <header class="topbar">
+      <strong>Bulk Studio</strong>
+      <nav class="tabs">
+        <button class="tab active" data-tab="generate">Generate</button>
+        <button class="tab" data-tab="batches">Batches</button>
+        <button class="tab" data-tab="settings">Settings</button>
+      </nav>
+    </header>
+
+    <div id="toast" class="toast" hidden></div>
+
+    <!-- ======================= GENERATE ======================= -->
+    <main id="tab-generate" class="panel">
+      <div class="grid">
+        <section class="card">
+          <div class="row">
+            <div class="seg" role="radiogroup" aria-label="Type">
+              <button class="seg-btn active" data-kind="image">Image</button>
+              <button class="seg-btn" data-kind="video">Video</button>
+            </div>
+            <label class="grow">Model
+              <select id="modelSelect"></select>
+            </label>
+          </div>
+          <p id="noModelHint" class="hint warn" hidden>No models of this type yet. Add one in <a href="#" data-goto="settings">Settings</a>.</p>
+
+          <label>Prompt
+            <textarea id="basePrompt" rows="5" placeholder="Paste or type your idea, e.g. A red sneaker on a sand dune at golden hour"></textarea>
+          </label>
+          <label class="check"><input type="checkbox" id="useLines" /> Use my lines exactly (one prompt per line, Claude is skipped)</label>
+
+          <div class="row">
+            <label>How many
+              <input id="quantity" type="number" min="1" max="500" value="100" />
+            </label>
+            <label class="grow">Variation style
+              <select id="variation">
+                <option value="angle_lighting">Same subject - vary angle, lighting, setting</option>
+                <option value="style_locked">Keep style locked - small changes only</option>
+                <option value="wild">Wild variations</option>
+              </select>
+            </label>
+          </div>
+          <label>Rules for Claude (optional)
+            <textarea id="rules" rows="2" placeholder="e.g. brand colours red and white; no text in the image; no people"></textarea>
+          </label>
+
+          <div id="optionsBox" class="row wrap"></div>
+
+          <div class="row">
+            <label class="grow">Batch name
+              <input id="batchName" type="text" placeholder="e.g. summer-shoes" />
+            </label>
+          </div>
+
+          <div class="row folder-row">
+            <button id="pickFolder" class="btn">Choose output folder</button>
+            <span id="folderName" class="muted">No folder chosen</span>
+          </div>
+
+          <div class="row">
+            <button id="previewBtn" class="btn">Preview prompts</button>
+            <button id="stopPreviewBtn" class="btn" hidden>Stop</button>
+            <span id="previewStatus" class="muted"></span>
+          </div>
+        </section>
+
+        <section class="card">
+          <div class="row between">
+            <h2>Prompts <span id="promptCount" class="muted"></span></h2>
+            <button id="clearPrompts" class="btn small" hidden>Clear</button>
+          </div>
+          <p class="muted small" id="promptHint">Press "Preview prompts" to see and edit every prompt before spending credits.</p>
+          <ol id="promptList" class="prompt-list"></ol>
+          <div class="cost" id="costBox"></div>
+          <button id="generateBtn" class="btn primary big" disabled>Generate</button>
+        </section>
+      </div>
+
+      <!-- current batch -->
+      <section id="batchView" class="card" hidden>
+        <div class="row between">
+          <h2 id="batchTitle"></h2>
+          <div class="row">
+            <button id="pauseBtn" class="btn">Pause</button>
+            <button id="resumeBtn" class="btn primary">Resume</button>
+            <button id="retryBtn" class="btn">Retry failed</button>
+            <button id="cancelBtn" class="btn danger">Cancel</button>
+            <button id="closeBatchBtn" class="btn">Close</button>
+          </div>
+        </div>
+        <div class="progress"><div id="progressBar"></div></div>
+        <div id="counts" class="counts"></div>
+        <div id="batchNotice" class="hint" hidden></div>
+        <div id="batchError" class="hint error" hidden></div>
+        <div id="permBox" class="hint warn" hidden>
+          Files could not be downloaded from <b id="permOrigin"></b>. The extension may need permission to download from it.
+          <button id="permBtn" class="btn small">Allow downloads from this site</button>
+        </div>
+        <p class="muted small">Keep this tab open while a batch runs. If you close it, press Start then Resume to continue.</p>
+        <div id="thumbs" class="thumbs"></div>
+      </section>
+    </main>
+
+    <!-- ======================= BATCHES ======================= -->
+    <main id="tab-batches" class="panel" hidden>
+      <section class="card">
+        <h2>Batches</h2>
+        <div id="batchList"></div>
+      </section>
+    </main>
+
+    <!-- ======================= SETTINGS ======================= -->
+    <main id="tab-settings" class="panel" hidden>
+      <div class="grid">
+        <section class="card">
+          <h2>API keys</h2>
+          <p class="muted small">Stored only in this browser (chrome.storage.local). Sent only to Anthropic and Higgsfield.</p>
+          <label>Anthropic API key
+            <input id="anthropicKey" type="password" autocomplete="off" placeholder="sk-ant-..." />
+          </label>
+          <div class="row">
+            <button id="testClaude" class="btn small">Test connection</button>
+            <span id="testClaudeResult" class="muted small"></span>
+          </div>
+          <label>Higgsfield API key (KEY_ID:KEY_SECRET)
+            <input id="higgsfieldKey" type="password" autocomplete="off" placeholder="key-id:key-secret" />
+          </label>
+          <div class="row">
+            <button id="testHiggs" class="btn small">Test connection</button>
+            <span id="testHiggsResult" class="muted small"></span>
+          </div>
+
+          <h2>Defaults</h2>
+          <label>Claude model (writes the prompts)
+            <select id="claudeModel"></select>
+          </label>
+          <label>Default image model <select id="defaultImageModel"></select></label>
+          <label>Default video model <select id="defaultVideoModel"></select></label>
+          <label>Generations at the same time (1-10)
+            <input id="concurrency" type="number" min="1" max="10" />
+          </label>
+          <p class="muted small">Higgsfield's exact limit was not confirmed. Start with 2. The extension slows down automatically if Higgsfield says it is busy.</p>
+          <button id="saveSettings" class="btn primary">Save settings</button>
+        </section>
+
+        <section class="card">
+          <h2>Higgsfield models</h2>
+          <p class="muted small">
+            Copy these from the model's page on docs.higgsfield.ai.
+            <b>Path</b> is the part after <code>https://api.higgsfield.ai/</code>.
+            <b>Options</b> are the dropdowns shown on the main screen, e.g.
+            <code>{"aspect_ratio": ["16:9","9:16"], "duration": [5,10]}</code>.
+            <b>Price</b> is your estimate in USD per generation (used for the cost estimate).
+          </p>
+          <div id="modelTable"></div>
+          <h3>Add / edit model</h3>
+          <div class="row wrap">
+            <label>ID <input id="mId" type="text" placeholder="kling-3-std" /></label>
+            <label class="grow">Name <input id="mName" type="text" placeholder="Kling 3.0 Standard" /></label>
+            <label>Type <select id="mType"><option value="image">image</option><option value="video">video</option></select></label>
+          </div>
+          <label>Path <input id="mPath" type="text" placeholder="vendor/model/text-to-video" /></label>
+          <label>Options (JSON) <textarea id="mOptions" rows="2">{}</textarea></label>
+          <label>Always send (JSON, optional) <textarea id="mFixed" rows="2">{}</textarea></label>
+          <label>Price per generation, USD (optional) <input id="mPrice" type="number" step="0.0001" min="0" /></label>
+          <div class="row">
+            <button id="saveModel" class="btn primary">Save model</button>
+            <span id="modelError" class="small error-text"></span>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <script type="module" src="studio.js"></script>
+</body>
+</html>

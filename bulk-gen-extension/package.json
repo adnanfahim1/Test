@@ -1,0 +1,15 @@
+{
+  "name": "bulk-gen-extension",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Chrome/Opera extension: Claude expands one prompt into many, Higgsfield generates them, files are saved to a folder on your PC.",
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "test": "node --test test/*.test.mjs"
+  },
+  "devDependencies": {
+    "@anthropic-ai/sdk": "^0.131.0",
+    "esbuild": "^0.25.0"
+  }
+}
