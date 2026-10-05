@@ -1,0 +1,41 @@
+{
+  "manifest_version": "0.3",
+  "name": "pikgen",
+  "display_name": "PikGen",
+  "version": "1.0.0",
+  "description": "Bulk-generate images and videos with Higgsfield and save them to a folder on your PC.",
+  "long_description": "PikGen lets Claude Desktop run bulk generations: Claude writes the prompts, Higgsfield's connector generates them with your Higgsfield plan credits, and PikGen reads your picture folders, uploads reference pictures and saves every result with a manifest.csv. PikGen can only use the folders you allow below. Needs the Higgsfield connector enabled in Claude.",
+  "author": { "name": "PikGen" },
+  "icon": "icon.png",
+  "server": {
+    "type": "node",
+    "entry_point": "server/index.js",
+    "mcp_config": {
+      "command": "node",
+      "args": ["${__dirname}/server/index.js", "${user_config.allowed_folders}"]
+    }
+  },
+  "tools": [
+    { "name": "pikgen_list_images", "description": "List pictures in a folder" },
+    { "name": "pikgen_upload_files", "description": "Upload pictures to Higgsfield upload links" },
+    { "name": "pikgen_start_batch", "description": "Create the batch folder and manifest" },
+    { "name": "pikgen_record_jobs", "description": "Remember Higgsfield job ids" },
+    { "name": "pikgen_save_results", "description": "Download results into the batch folder" },
+    { "name": "pikgen_batch_status", "description": "Show progress, resume or retry" },
+    { "name": "pikgen_list_batches", "description": "List batches in an output folder" }
+  ],
+  "user_config": {
+    "allowed_folders": {
+      "type": "directory",
+      "title": "Folders PikGen may use",
+      "description": "Pick the folders with your pictures and where results should be saved (sub-folders are included).",
+      "multiple": true,
+      "required": true
+    }
+  },
+  "compatibility": {
+    "platforms": ["win32", "darwin"],
+    "runtimes": { "node": ">=18.0.0" }
+  },
+  "license": "MIT"
+}

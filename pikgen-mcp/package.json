@@ -1,0 +1,19 @@
+{
+  "name": "pikgen-mcp",
+  "version": "1.0.0",
+  "private": true,
+  "description": "PikGen for Claude Desktop: lets Claude read your picture folders, upload pictures to Higgsfield, and save generated images/videos with a manifest.",
+  "type": "module",
+  "main": "server/index.js",
+  "scripts": {
+    "test": "node --test test/*.test.mjs",
+    "pack": "mcpb pack . pikgen.mcpb"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.0",
+    "zod": "^3.25.0"
+  },
+  "devDependencies": {
+    "@anthropic-ai/mcpb": "^2.1.2"
+  }
+}
