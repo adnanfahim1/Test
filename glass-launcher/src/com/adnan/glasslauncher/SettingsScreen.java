@@ -415,6 +415,16 @@ final class SettingsScreen extends SidebarScreen {
         nav(out, "Launcher", null, "Glass Launcher " + a.versionName(), null);
         nav(out, "Layout scale", "The 1280×720 design fitted to this screen", String.format(java.util.Locale.US, "%.2f×", Ui.scale), null);
         label(out, "Diagnostics");
+        toggle(out, "Compatibility mode", "Simpler drawing without animations, for head units whose graphics drivers have problems. "
+                + "Turned on automatically if a start fails.", a.liteMode(), new Widgets.Toggle.OnChange() {
+            @Override
+            public void changed(boolean on) { a.setLiteMode(on); }
+        });
+        nav(out, "Help & problem report", "Opens Glass Launcher Help: restart modes, reset and a shareable report", null,
+                new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) { a.startSafe(new android.content.Intent(a, HelpActivity.class), null); }
+                });
         final String err = a.prefs().lastError();
         nav(out, "Last problem", err == null ? "None recorded" : "Recorded and recovered from automatically",
                 err == null ? "None" : "Show", err == null ? null : new View.OnClickListener() {

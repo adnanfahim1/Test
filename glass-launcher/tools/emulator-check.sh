@@ -55,6 +55,13 @@ adb shell monkey -p $PKG --pct-syskeys 0 --throttle 150 -s 42 -v 800 > "$OUT/mon
 tail -5 "$OUT/monkey-$LABEL.txt"
 
 adb shell am start -n $ACT --es screen home >/dev/null; shot after-monkey 5
+
+echo "== Compatibility mode and Help screen"
+adb shell am start -n $ACT --ez compat_mode true >/dev/null; sleep 4
+adb shell am start -n $ACT --es screen home >/dev/null; shot home-compat-mode 6
+adb shell am start -n $ACT --ez compat_mode false >/dev/null; sleep 4
+adb shell am start -n $PKG/.HelpActivity >/dev/null; shot help-screen 4
+adb shell am start -n $ACT --es screen home >/dev/null; sleep 3
 adb logcat -d > "$OUT/logcat-$LABEL.txt" || true
 
 FAIL=0

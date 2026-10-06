@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.adnan.glasslauncher"
-    android:versionCode="5"
-    android:versionName="1.2.1">
+    android:versionCode="6"
+    android:versionName="1.3.0">
 
     <!-- Android 5.0 (API 21) to Android 15+ (API 35). Newer APIs are isolated in NewApi.java. -->
     <uses-sdk android:minSdkVersion="21" android:targetSdkVersion="35" />
@@ -63,6 +63,21 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.HOME" />
                 <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- Separate process + plain system theme: opens even if the launcher itself can't. -->
+        <activity
+            android:name=".HelpActivity"
+            android:exported="true"
+            android:label="@string/help_name"
+            android:process=":help"
+            android:taskAffinity="com.adnan.glasslauncher.help"
+            android:theme="@android:style/Theme.DeviceDefault.NoActionBar"
+            android:configChanges="keyboard|keyboardHidden|navigation|orientation|screenSize|smallestScreenSize|screenLayout|uiMode">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>

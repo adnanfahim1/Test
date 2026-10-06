@@ -71,6 +71,8 @@ final class Ui {
     static float scale = 1f;
     static float fontScale = 1f;
     static boolean reduceMotion = false;
+    /** Compatibility mode: software drawing, no animations, no glow effects. */
+    static boolean lite = false;
 
     static void init(Context c) {
         DisplayMetrics dm = c.getResources().getDisplayMetrics();
@@ -82,7 +84,7 @@ final class Ui {
             animScale = Settings.Global.getFloat(c.getContentResolver(), Settings.Global.ANIMATOR_DURATION_SCALE, 1f);
         } catch (Exception ignored) {
         }
-        reduceMotion = animScale == 0f;
+        reduceMotion = animScale == 0f || lite;
     }
 
     /**
@@ -312,7 +314,7 @@ final class Ui {
 
         /** A soft coloured halo drawn as a few expanding translucent strokes (cheap box-shadow). */
         GlassDrawable glow(int color) {
-            glowColor = color;
+            glowColor = lite ? 0 : color;
             invalidateSelf();
             return this;
         }

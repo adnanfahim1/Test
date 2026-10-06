@@ -163,19 +163,35 @@ public class SmokeTest {
     }
 
     @Test
-    public void safeModeAfterRepeatedCrashes() {
+    public void failedStartsFallBackToLiteThenSafeMode() {
         Context c = RuntimeEnvironment.getApplication();
+        // A start that never became stable (native crash / firmware closed it).
         c.getSharedPreferences(Prefs.FILE, Context.MODE_PRIVATE).edit()
-                .putInt("crash_count", 2).putLong("crash_time", System.currentTimeMillis())
-                .putString("last_error", "java.lang.RuntimeException: test").commit();
+                .putBoolean(CrashGuard.K_BOOT_PENDING, true).putString(CrashGuard.K_STAGE, "create:home screen").commit();
         ActivityController<MainActivity> ctl = Robolectric.buildActivity(MainActivity.class).setup();
         MainActivity a = ctl.get();
+        idle();
+        assertTrue("lite after 1 failed start", a.liteMode());
+        assertFalse(a.inSafeMode());
+        ctl.pause().stop().destroy();
+        Ui.lite = false;
+
+        // Second failed start in a row -> safe mode.
+        c.getSharedPreferences(Prefs.FILE, Context.MODE_PRIVATE).edit().putBoolean(CrashGuard.K_BOOT_PENDING, true).commit();
+        ctl = Robolectric.buildActivity(MainActivity.class).setup();
+        a = ctl.get();
         idle();
         assertTrue(a.inSafeMode());
         a.leaveSafeMode(false);
         idle();
         assertFalse(a.inSafeMode());
         ctl.pause().stop().destroy();
+        Ui.lite = false;
+
+        // The Help screen (separate process on a device) builds and shows the report.
+        HelpActivity h = Robolectric.buildActivity(HelpActivity.class).setup().get();
+        idle();
+        assertTrue(h.getWindow().getDecorView() != null);
     }
 
     static Screen getScreen(MainActivity a, int i) {

@@ -71,6 +71,9 @@ public class MainActivity extends Activity implements MediaHub.Listener {
     private int current = HOME;
     private boolean started;
     private boolean safeMode;
+    private boolean lite;
+    private long startedAt;
+    private boolean touched;
     private int laidOutW, laidOutH;
 
     private String phoneName;
@@ -88,6 +91,8 @@ public class MainActivity extends Activity implements MediaHub.Listener {
     protected void onCreate(Bundle state) {
         super.onCreate(state);
         CrashGuard.install(this);
+        int boot = CrashGuard.beginBoot(this);
+        CrashGuard.stage(this, "create");
         requestWindowFeature(Window.FEATURE_NO_TITLE);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
         getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_NOTHING);
@@ -105,7 +110,10 @@ public class MainActivity extends Activity implements MediaHub.Listener {
         });
         weather = Weather.Data.fromJson(prefs.weatherCache());
         if (weather != null) weatherState = W_OK;
-        safeMode = CrashGuard.shouldUseSafeMode(this);
+        safeMode = boot >= 2;
+        lite = boot >= 1;
+        if (lite) Ui.lite = true;
+        if (Ui.lite) Ui.reduceMotion = true;
 
         root = new FrameLayout(this);
         background = new Widgets.Background(this);
@@ -116,11 +124,22 @@ public class MainActivity extends Activity implements MediaHub.Listener {
         root.addView(loader, new FrameLayout.LayoutParams(Ui.MATCH, Ui.MATCH));
         buildToast(root);
         watchInsetsAndSize();
+        // Compatibility mode: draw in software (avoids GPU-driver crashes on some head units).
+        if (Ui.lite) root.setLayerType(View.LAYER_TYPE_SOFTWARE, null);
+        CrashGuard.stage(this, "create:window");
         setContentView(root);
         hideSystemBars();
+        CrashGuard.stage(this, safeMode ? "create:safe-mode" : "create:home screen");
         if (safeMode) showSafeMode();
         else show(HOME, false);
         applyIntent(getIntent());
+        CrashGuard.stage(this, "created");
+        if (Ui.lite && !safeMode) {
+            main.postDelayed(new Runnable() {
+                @Override
+                public void run() { toast("Compatibility mode is on · Settings › About to turn it off"); }
+            }, 1500);
+        }
     }
 
     private void hideSystemBars() {
@@ -175,6 +194,29 @@ public class MainActivity extends Activity implements MediaHub.Listener {
     }
 
     @Override
+    public void onUserInteraction() {
+        super.onUserInteraction();
+        touched = true;
+    }
+
+    /** Settings › About: turn compatibility (software drawing, no animations) on or off. */
+    void setLiteMode(boolean on) {
+        CrashGuard.sp(this).edit().putBoolean(CrashGuard.K_LITE, on).putBoolean(CrashGuard.K_LITE_AUTO, false).commit();
+        toast(on ? "Compatibility mode on · restarting" : "Compatibility mode off · restarting");
+        main.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                Intent i = new Intent(MainActivity.this, MainActivity.class)
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                startActivity(i);
+                android.os.Process.killProcess(android.os.Process.myPid());
+            }
+        }, 900);
+    }
+
+    boolean liteMode() { return lite; }
+
+    @Override
     public void onWindowFocusChanged(boolean hasFocus) {
         super.onWindowFocusChanged(hasFocus);
         if (hasFocus) hideSystemBars();
@@ -184,6 +226,9 @@ public class MainActivity extends Activity implements MediaHub.Listener {
     protected void onStart() {
         super.onStart();
         started = true;
+        startedAt = System.currentTimeMillis();
+        touched = false;
+        CrashGuard.stage(this, "start");
         try {
             registerReceivers();
             phone.start();
@@ -196,7 +241,7 @@ public class MainActivity extends Activity implements MediaHub.Listener {
         main.removeCallbacks(tick);
         main.post(tick);
         main.removeCallbacks(stable);
-        main.postDelayed(stable, 30000);
+        main.postDelayed(stable, 8000);
         refreshWeather(false);
     }
 
@@ -204,6 +249,17 @@ public class MainActivity extends Activity implements MediaHub.Listener {
     protected void onStop() {
         super.onStop();
         started = false;
+        long shown = System.currentTimeMillis() - startedAt;
+        if (!touched && shown < 4000 && !isFinishing()) {
+            // Moved away within seconds without a touch: usually the firmware forcing its own
+            // launcher back. Recorded for the Help screen report.
+            android.content.SharedPreferences sp = CrashGuard.sp(this);
+            sp.edit().putInt("quick_exits", sp.getInt("quick_exits", 0) + 1)
+                    .putString("last_error", "The launcher was sent to the background " + shown + " ms after opening, "
+                            + "without any touch (stage \"" + sp.getString(CrashGuard.K_STAGE, "?") + "\"). "
+                            + "The head unit firmware is probably bringing back its own launcher.").commit();
+        }
+        CrashGuard.endBootCleanly(this);
         main.removeCallbacks(tick);
         main.removeCallbacks(stable);
         try { unregisterReceiver(receiver); } catch (Throwable ignored) {}
@@ -294,6 +350,10 @@ public class MainActivity extends Activity implements MediaHub.Listener {
                 boolean on = i.getBooleanExtra("match_shade", true);
                 prefs.setMatchShade(on);
                 if (on) SystemTheme.applyShade(this, Ui.themeIndex); else SystemTheme.restoreShade(this);
+            }
+            if (i.hasExtra("compat_mode")) {
+                boolean on = i.getBooleanExtra("compat_mode", false);
+                if (on != lite) { setLiteMode(on); return true; }
             }
             if (i.getBooleanExtra("reset_safe_mode", false)) {
                 CrashGuard.markStable(this);
