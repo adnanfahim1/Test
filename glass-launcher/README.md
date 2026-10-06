@@ -1,9 +1,9 @@
-# Glass Launcher (NAM5240T)
+# Glass Launcher for Nakamichi Android head units
 
-An Android home-screen launcher for the Nakamichi NAM5240T car head unit, built from the
-"NAM5240T Glass Launcher" design handoff (`design-source/`).
+An Android home-screen launcher for Nakamichi Android car players, built from the "NAM5240T
+Glass Launcher" design handoff (`design-source/`).
 
-**Download:** [`dist/GlassLauncher.apk`](dist/GlassLauncher.apk) (about 3 MB).
+**Download:** [`dist/GlassLauncher.apk`](dist/GlassLauncher.apk) (about 3 MB, version 1.1.0).
 
 ![Dashboard](screenshots/01-home-dashboard.png)
 
@@ -15,88 +15,140 @@ An Android home-screen launcher for the Nakamichi NAM5240T car head unit, built 
 |---|---|---|---|
 | ![](screenshots/14-music-playing.png) | ![](screenshots/06-apps.png) | ![](screenshots/07-settings-home.png) | ![](screenshots/09-car.png) |
 
-The screenshots were rendered from the real app code with Robolectric (Android framework on
-the JVM) at 1280×720. They have not been taken on the head unit itself.
+## Which head units it supports
 
-## Install on the head unit
+It runs on **Android 5.0 (API 21) through Android 15 (API 35)**, at any landscape screen size.
 
-1. Copy `GlassLauncher.apk` to a USB stick, plug it into the head unit and open it with the
-   file manager, or run `adb install GlassLauncher.apk` with USB debugging on.
-2. Press **Home** and choose **Glass Launcher**, then **Always**.
-3. **To go back to the stock launcher:** Settings › Storage & apps › *Default home app*
-   (or Android Settings › Apps › Default apps › Home app). The launcher also keeps a normal
-   app icon.
+Public spec pages list these Nakamichi Android players and system versions. Nakamichi's own
+site couldn't be opened from the build environment, so this list comes from search results and
+retailer pages. It may be incomplete or out of date, so check your unit.
 
-First-run permissions, each asked only when you use the feature:
+| Model | System (as marketed) | Screen |
+|---|---|---|
+| NAM5010 | "NK 9.0" | 9" / 10.1", 1280×720 |
+| NAM5730 | Android 9.0 | 9" / 10.1", 1280×720 |
+| NAM5210 | "NK 11.0" (a 7" Android 9 version is also listed) | 10.1" 1280×720 / 7" |
+| NAM5230 | "NK 11.0" | 9" / 10.1", 1024×600 or 1280×720 |
+| NAM5630 | Android 11 | 9" / 10", 1280×720 |
+| NAM5240 / NAM5240T | "NK 13.0" | 9" / 10.1", 1280×720 |
 
-- **Notification access:** shows the track, artist and artwork of whatever app is playing.
-  Tap the music bar and turn on "Glass Launcher". Play/pause/next/previous work without it.
-- **Location:** for local weather. You can instead set a city in Settings › Weather.
+"NK" numbers are Nakamichi's names and don't always equal the real Android version, which is
+why the app supports everything from 5.0 up. The setup script prints the real version
+(`API` level) of your unit. The NA3600, NA3605 and NAM1610 are CarPlay / mirror-link receivers,
+not Android head units, so they can't install apps.
 
-## What's in it
+How compatibility is enforced and checked:
 
-| Screen | Status |
-|---|---|
-| Right-hand rail (Maps, Music, Apps, Car, Settings, Home) | Real |
-| Home: Dashboard, Car showcase (72-frame 360° spin, tap to pause), Minimal, Drive focus | Real; choice saved across reboots |
-| Header: greeting, phone chip (connected Bluetooth device), date, 12-hour clock | Real |
-| Music bar and Now Playing: title, artist, artwork, progress, seek, ±10 s, volume pop-out | Real, from the active media session of any app |
-| Queue list | Shown when the music app shares its queue; otherwise a note |
-| Music apps list | Real (apps that declare music playback) |
-| Weather | Real, from Open-Meteo; needs internet (phone hotspot/tethering) |
-| Navigation card | Opens your chosen maps app. It **cannot** show turn-by-turn directions; Android doesn't let a launcher read them |
-| App drawer: sections, search, 2-row horizontal grid, scrollbar, ‹ › | Real apps; long-press an app to move it to another section, see App info or uninstall |
-| Settings: home layout, theme (Violet/Ocean/Emerald/Rose), font size, car name, volume, weather, network, Bluetooth, storage, about | Real or shortcuts to the system screens |
-| Car settings (EQ, camera, steering keys, lights, radio region, factory reset) | **Shortcuts only.** These are controlled by the head unit vendor and have no public Android API. You pick the vendor's settings app once and each row opens it. The launcher never resets anything itself |
-| Motion: press feedback, staggered entrance, wheel loader, toggles, tab indicators, spinning record and tonearm, EQ bars, toasts | Real; off when Android's animation scale is 0 |
+- **Old-API guard.** Every call to an Android API newer than 5.0 lives in
+  `src/.../NewApi.java`, behind a version check. `build.sh` compiles all other code against the
+  real Android 5.0 framework, so a newer call anywhere else stops the build instead of crashing
+  an old unit.
+- **Two signatures.** The APK carries a v1 signature (Android 5–6) and a v2 signature
+  (Android 7+). Both are verified on every build. Uncompressed files are 4-byte aligned, as
+  Android 11+ requires.
+- **Tested on every version.** `tests/` runs the real app on all 15 versions, Android 5.0 to
+  15 (Robolectric). It opens every screen and settings section, switches themes and font sizes,
+  sends steering-wheel keys and setup-script commands, loads corrupted settings and checks safe
+  mode. All 45 runs pass.
+- **Real emulators.** `.github/workflows/glass-launcher-emulator.yml` runs the APK on Android
+  emulators (API 21, 26, 30 and 34) on GitHub. It runs the setup script, opens every screen,
+  stress-taps with Android's monkey tool and fails on any crash. Screenshots are saved as run
+  artifacts.
 
-Changes from the prototypes:
+## Fits any screen
 
-- **No background blur.** Glass panels use the translucent fill only. The handoff allows this, and
-  it keeps scrolling smooth on head-unit hardware.
-- **Shuffle and repeat are replaced by −10 s / +10 s.** Android's framework media controls
-  have no shuffle or repeat.
-- **Lyrics is hidden.** There's no lyrics source.
-- **The music bar stays visible when nothing is playing** ("Nothing playing"), so the Dashboard
-  layout doesn't jump.
+The design is drawn in 1280×720 units and scaled to the usable area of the screen. It updates
+whenever the area changes (navigation bar shown or hidden, density change, split screen). On
+small 7" screens the text is enlarged up to 30% so it stays readable. These sizes were rendered:
 
-## Technical notes
+| 800×480 | 1024×600 | 1920×720 |
+|---|---|---|
+| ![](screenshots/res-800x480-dashboard.png) | ![](screenshots/res-1024x600-car.png) | ![](screenshots/res-1920x720-dashboard.png) |
 
-- **Java on the plain Android framework. No AndroidX, Compose or Gradle.** The handoff
-  suggested Kotlin + Jetpack Compose, but the environment this was built in could not reach
-  Google's Maven repository. Everything is custom-drawn Views, and the APK has no
-  dependencies.
-- **SDK levels.** `minSdkVersion 24` (Android 7.0), `targetSdkVersion 29`. Targeting 29 keeps
-  Bluetooth and package-visibility permissions simple for a sideloaded launcher. It installs
-  and runs on newer Android versions too.
-- **Screen sizes.** Every size is written in the prototype's 1280×720 units and scaled to the
-  real screen, so it also fits the 9" model's 1360×800.
-- **Signing.** The APK is signed with APK Signature Scheme v2. **The signing key was created in a
-  temporary build environment and isn't saved.** If you rebuild, a new key is made, and Android
-  will only install that build after you uninstall this one, which resets the launcher's settings.
-  Keep `signing/release.p12` from your first own build to avoid this.
+## Install
 
-## Build it yourself (Linux x86-64)
+**Easiest:** copy `GlassLauncher.apk` to a USB stick, open it on the head unit, then press
+**Home** › **Glass Launcher** › **Always**.
 
-Needs a JDK 17+, `curl`, `zip` and `unzip`. No Android Studio or SDK.
+**With a computer (applies the theme as well):** turn on USB debugging on the unit, then run:
 
 ```sh
-./build.sh          # writes dist/GlassLauncher.apk
+tools/setup-headunit.sh --theme Violet --layout dashboard     # Linux / macOS
+tools\setup-headunit.bat                                      # Windows (double-click)
 ```
 
-`tools/fetch-tools.sh` downloads the toolchain from Maven Central:
+The script checks what your unit's Android version and firmware allow. What it can change, it
+changes; everything else it leaves as it is and lists:
 
-- aapt2 and the framework resources, from apktool
-- the Android 14 API classes, from Robolectric's `android-all`
-- the `dx` dexer
-- `apksig`
+| Step | When it's applied |
+|---|---|
+| Install or update the APK | always |
+| Location and "Nearby devices" permissions | Android 6+ (granted at install on 5.x) |
+| Now-playing access (notification listener) | when the firmware allows it |
+| Battery optimisation off for the launcher | Android 6+ |
+| Make it the default home app | Android 7+ (otherwise press Home › Always) |
+| Launcher theme, home layout, matching system wallpaper | always |
+| System dark mode | Android 10+, when the firmware allows it |
+| Other apps' colours, icons and fonts; boot logo, steering-key learning, EQ | never changed: needs root or the vendor app |
 
-If you'd rather use Android Studio, the sources in `src/`, `res/` and `assets/` and
-`AndroidManifest.xml` drop into a standard app module.
+**Back to the stock launcher at any time:** Android Settings › Apps › Default apps › Home app.
+
+## Controls
+
+- **Steering-wheel and media keys:** play/pause, next, previous, fast-forward and rewind act on
+  whatever app is playing. The Music key opens Music, Call opens the Bluetooth phone app,
+  Settings opens Settings, Camera opens the reverse camera / DVR app, and Search opens the
+  app drawer. Volume keys update the on-screen volume.
+- **Rotary knob / D-pad:** every button, tile, slider and switch can take focus and shows an
+  accent ring. Sliders move with left and right.
+- **Head unit apps:** Radio, Bluetooth phone, CarPlay/Android Auto (ZLink etc.), reverse camera
+  / DVR, EQ, AV-in, the vendor car-settings app, and music, video, files and browser are found
+  by name. Use them from **Car settings › Quick launch**. To change any of them, go to
+  **Settings › Connections**. If a chosen app disappears after a firmware update, the launcher
+  goes back to auto-detecting it.
+
+## Built not to break
+
+- **Crash guard and safe mode.** Every crash is recorded. Two crashes within two minutes start
+  the launcher in **safe mode**: a plain list of all your apps, plus buttons to retry, reset the
+  launcher's settings, pick another home app or open Android settings. You can never get locked
+  out of the head unit.
+- **Per-screen recovery.** If one screen can't open, a recovery panel appears instead of a
+  crash, and the rest keeps working. Settings › About device › Diagnostics shows the last
+  problem.
+- **Update-proof settings.** Settings carry a schema version and are migrated when it changes.
+  Any value that is missing, out of range or of the wrong type falls back to a safe default.
+- **Fallbacks for every feature.** Phone status uses three detection methods. Mute works on
+  Android 5.x too. Media keys work without notification access. Wallpaper and dark-mode
+  changes report what they couldn't do.
+- **Updates keep your settings.** An update keeps your settings only if it's signed with the
+  same key. Keep the `release.p12` key you were sent privately, and build with:
+  `KEYSTORE=/path/release.p12 KEYSTORE_PASS=... ./build.sh`.
+  The key is **not** in this repository because the repository is public.
+
+## Real vs. not possible
+
+| Feature | Status |
+|---|---|
+| Home layouts, rail, clock, theme, font size, app drawer, settings | Real |
+| Music bar and Now Playing for any app (title, artist, artwork, seek, volume) | Real; track info needs notification access once |
+| Weather (Open-Meteo, device location or city) | Real; needs internet |
+| Navigation card | Opens your maps app. Android doesn't let a launcher read turn-by-turn directions |
+| EQ, camera format, steering-key learning, lights, radio region, factory reset | Opens the head unit's own settings app (no public Android API). The launcher never resets anything itself |
+| Background blur | Not used; glass panels use a translucent fill so it stays smooth on head-unit hardware |
+
+## Build and test
+
+Linux x86-64, JDK 17+, python3, curl, zip and unzip. No Android Studio or SDK needed.
+
+```sh
+./build.sh                 # -> dist/GlassLauncher.apk (fetches the toolchain from Maven Central)
+tests/run-tests.sh         # Android 5.0-15 checks + screenshots (needs Maven)
+```
 
 ## Credits
 
-- Car 3D model "Toyota Noah" by Nieve5677 (Sketchfab), licensed CC BY. Also credited in
-  Settings › About device.
+- Car 3D model "Toyota Noah" by Nieve5677 (Sketchfab), CC BY. Also credited in Settings ›
+  About device.
 - Fonts: Barlow Semi Condensed and Manrope, SIL Open Font License.
-- Weather data: Open-Meteo.com, CC BY 4.0. Check their terms before any commercial use.
+- Weather: Open-Meteo.com, CC BY 4.0. Check their terms before any commercial use.
