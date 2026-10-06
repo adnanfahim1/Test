@@ -63,9 +63,9 @@ data="42"
 :Sending Trackball (ACTION_MOVE): 0:(-4.0,-3.0)
 :Sending Touch (ACTION_DOWN): 0:(583.0,673.0)
 :Sending Touch (ACTION_UP): 0:(578.01697,662.46387)
-    //[calendar_time:2026-10-06 11:09:28.960  system_uptime:121430]
+    //[calendar_time:2026-10-06 14:05:50.166  system_uptime:145403]
     // Sending event #100
-    //[calendar_time:2026-10-06 11:09:29.115  system_uptime:121582]
+    //[calendar_time:2026-10-06 14:05:50.320  system_uptime:145553]
     // Sending event #100
 :Sending Touch (ACTION_DOWN): 0:(710.0,493.0)
 :Sending Touch (ACTION_UP): 0:(710.8976,487.48795)
@@ -79,12 +79,15 @@ data="42"
     // Allowing start of Intent { act=android.intent.action.MAIN cat=[android.intent.category.LAUNCHER] cmp=com.adnan.glasslauncher/.MainActivity } in package com.adnan.glasslauncher
 :Sending Touch (ACTION_DOWN): 0:(1258.0,139.0)
 :Sending Touch (ACTION_UP): 0:(1254.5878,139.32738)
+    // Rejecting start of Intent { act=android.intent.action.MAIN cat=[android.intent.category.LAUNCHER] cmp=com.google.android.apps.maps/com.google.android.maps.MapsActivity } in package com.google.android.apps.maps
+    // Rejecting start of Intent { act=android.settings.BLUETOOTH_SETTINGS cmp=com.android.settings/.Settings$ConnectedDeviceDashboardActivity } in package com.android.settings
+    // Rejecting start of Intent { act=android.settings.BLUETOOTH_SETTINGS cmp=com.android.settings/.Settings$ConnectedDeviceDashboardActivity } in package com.android.settings
 :Sending Trackball (ACTION_MOVE): 0:(-2.0,-1.0)
 :Sending Trackball (ACTION_MOVE): 0:(2.0,-2.0)
 :Sending Touch (ACTION_DOWN): 0:(576.0,684.0)
 :Sending Touch (ACTION_UP): 0:(618.1666,629.98096)
 :Sending Touch (ACTION_DOWN): 0:(242.0,527.0)
-    //[calendar_time:2026-10-06 11:09:34.174  system_uptime:126641]
+    //[calendar_time:2026-10-06 14:05:55.403  system_uptime:150637]
     // Sending event #200
 :Sending Touch (ACTION_UP): 0:(256.28848,551.2756)
 :Sending Touch (ACTION_DOWN): 0:(627.0,623.0)
@@ -112,7 +115,7 @@ data="42"
 :Sending Touch (ACTION_DOWN): 0:(1213.0,2.0)
 :Sending Touch (ACTION_UP): 0:(1190.8182,0.0)
 :Sending Touch (ACTION_DOWN): 0:(445.0,455.0)
-    //[calendar_time:2026-10-06 11:09:37.714  system_uptime:130180]
+    //[calendar_time:2026-10-06 14:05:59.228  system_uptime:154462]
     // Sending event #300
 :Sending Touch (ACTION_UP): 0:(507.69513,385.3596)
 :Sending Trackball (ACTION_MOVE): 0:(-4.0,2.0)
@@ -132,7 +135,7 @@ data="42"
 :Sending Touch (ACTION_UP): 0:(298.27316,405.94788)
 :Sending Trackball (ACTION_MOVE): 0:(-5.0,2.0)
 :Sending Trackball (ACTION_MOVE): 0:(-5.0,-4.0)
-    //[calendar_time:2026-10-06 11:09:40.804  system_uptime:133271]
+    //[calendar_time:2026-10-06 14:06:02.048  system_uptime:157282]
     // Sending event #400
 :Sending Touch (ACTION_DOWN): 0:(441.0,28.0)
 :Sending Touch (ACTION_UP): 0:(456.4128,42.739956)
@@ -159,7 +162,7 @@ data="42"
 :Sending Touch (ACTION_DOWN): 0:(4.0,68.0)
 :Sending Touch (ACTION_UP): 0:(11.141901,72.56054)
 :Sending Trackball (ACTION_MOVE): 0:(2.0,-3.0)
-    //[calendar_time:2026-10-06 11:09:44.383  system_uptime:136849]
+    //[calendar_time:2026-10-06 14:06:05.250  system_uptime:160484]
     // Sending event #500
 :Sending Trackball (ACTION_MOVE): 0:(2.0,-1.0)
 :Sending Trackball (ACTION_MOVE): 0:(-1.0,-4.0)
@@ -171,7 +174,7 @@ data="42"
 :Sending Touch (ACTION_UP): 0:(431.9242,324.08878)
 :Sending Trackball (ACTION_MOVE): 0:(2.0,-4.0)
 :Sending Trackball (ACTION_MOVE): 0:(-2.0,0.0)
-    //[calendar_time:2026-10-06 11:09:46.315  system_uptime:138781]
+    //[calendar_time:2026-10-06 14:06:07.157  system_uptime:162391]
     // Sending event #600
 :Sending Trackball (ACTION_MOVE): 0:(-4.0,-4.0)
 :Sending Touch (ACTION_DOWN): 0:(1246.0,156.0)
@@ -181,6 +184,7 @@ data="42"
 :Sending Trackball (ACTION_MOVE): 0:(-5.0,-1.0)
 :Sending Touch (ACTION_DOWN): 0:(1168.0,79.0)
 :Sending Touch (ACTION_UP): 0:(1165.9655,75.195274)
+    // Rejecting start of Intent { act=android.intent.action.MAIN cat=[android.intent.category.LAUNCHER] cmp=com.google.android.apps.maps/com.google.android.maps.MapsActivity } in package com.google.android.apps.maps
 :Sending Trackball (ACTION_MOVE): 0:(-5.0,0.0)
 :Switch: #Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;launchFlags=0x10200000;component=com.adnan.glasslauncher/.MainActivity;end
     // Allowing start of Intent { act=android.intent.action.MAIN cat=[android.intent.category.LAUNCHER] cmp=com.adnan.glasslauncher/.MainActivity } in package com.adnan.glasslauncher
@@ -195,9 +199,9 @@ data="42"
     // Injection Failed
 :Sending Touch (ACTION_UP): 0:(217.94987,491.42538)
     // Injection Failed
-    //[calendar_time:2026-10-06 11:09:50.966  system_uptime:143435]
+    //[calendar_time:2026-10-06 14:06:10.939  system_uptime:166173]
     // Sending event #700
-    //[calendar_time:2026-10-06 11:09:51.118  system_uptime:143585]
+    //[calendar_time:2026-10-06 14:06:11.092  system_uptime:166326]
     // Sending event #700
 :Sending Trackball (ACTION_MOVE): 0:(-3.0,-4.0)
 :Sending Trackball (ACTION_UP): 0:(0.0,0.0)
@@ -232,5 +236,5 @@ data="42"
 Events injected: 800
 :Sending rotation degree=0, persist=false
 :Dropped: keys=0 pointers=12 trackballs=0 flips=0 rotations=0
-## Network stats: elapsed time=28690ms (0ms mobile, 0ms wifi, 28690ms not connected)
+## Network stats: elapsed time=27207ms (0ms mobile, 0ms wifi, 27207ms not connected)
 // Monkey finished
