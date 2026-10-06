@@ -269,7 +269,12 @@ public class MainActivity extends Activity implements MediaHub.Listener {
             String theme = i.getStringExtra("theme");
             if (theme != null) {
                 for (int k = 0; k < Ui.THEME_NAMES.length; k++) {
-                    if (Ui.THEME_NAMES[k].equalsIgnoreCase(theme.trim())) { prefs.setTheme(k); Ui.themeIndex = k; changed = true; }
+                    if (Ui.THEME_NAMES[k].equalsIgnoreCase(theme.trim())) {
+                        prefs.setTheme(k);
+                        Ui.themeIndex = k;
+                        changed = true;
+                        if (prefs.matchShade()) SystemTheme.applyShade(this, k); // pull-down panel follows
+                    }
                 }
             }
             if (i.hasExtra("home_layout")) { prefs.setHomeLayout(i.getIntExtra("home_layout", 0)); screens[HOME] = null; changed = true; }
