@@ -78,6 +78,7 @@ final class Vendor {
         if (CAR_SETTINGS.equals(role)) return "com.android.settings".equals(pkg) || hay.contains("launcher");
         if (PHONE.equals(role)) return hay.contains("settings") && !hay.contains("phone");
         if (MUSIC.equals(role)) return hay.contains("video");
+        if (VIDEO.equals(role)) return hay.contains("music");
         return false;
     }
 
