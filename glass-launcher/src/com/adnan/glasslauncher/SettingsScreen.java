@@ -15,11 +15,13 @@ import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import java.util.List;
+
 /** Android settings, as shortcuts to the system screens plus the launcher's own options. */
 final class SettingsScreen extends SidebarScreen {
     static final int HOME = 0, DISPLAY = 1, SOUND = 2, WEATHER = 3, CONNECTIONS = 4, NETWORK = 5, BLUETOOTH = 6, APPS = 7, ABOUT = 8;
     private static final String[] LABELS = {"Home screen", "Display", "Sound & music", "Weather", "Connections",
-            "Network & internet", "Bluetooth", "Storage & apps", "About device"};
+            "Wi-Fi & internet", "Bluetooth", "Storage & apps", "About device"};
     private static final Icons.Glyph[] GLYPHS = {Icons.GRID, Icons.SUN, Icons.VOLUME, Icons.CLOUD, Icons.OPEN,
             Icons.WIFI, Icons.BLUETOOTH, Icons.STORAGE, Icons.INFO};
 
@@ -276,8 +278,10 @@ final class SettingsScreen extends SidebarScreen {
 
     // ---- Weather --------------------------------------------------------------------------
     private void weather(LinearLayout out) {
-        heading(out, "Weather", "Live local weather over the head unit's internet (usually your phone's hotspot or Bluetooth tethering).");
+        heading(out, "Weather", "With the Glass Link app on your phone, weather comes from the phone's location and internet. "
+                + "Without it, the head unit uses its own internet (your phone's hotspot or Bluetooth tethering).");
         final Prefs p = a.prefs();
+        phoneLinkRow(out);
         toggle(out, "Use head unit location", p.useCity() ? "Off: using the city below" : "Needs location permission and a GPS or network fix",
                 !p.useCity(), new Widgets.Toggle.OnChange() {
                     @Override
@@ -313,6 +317,21 @@ final class SettingsScreen extends SidebarScreen {
             public void onClick(View v) { a.refreshWeather(true); a.toast("Fetching weather…"); }
         });
         para(out, "Weather data by Open-Meteo.com (CC BY 4.0). Check their terms before any commercial use.");
+    }
+
+    private void phoneLinkRow(LinearLayout out) {
+        PhoneBridge b = a.bridge();
+        boolean on = b != null && b.connected();
+        String name = on ? b.phoneName() : null;
+        nav(out, "Phone link (Glass Link)", on ? "Weather and turn-by-turn come from your phone over " + b.via()
+                        : "Install Glass Link on your phone and open it once. It connects over Bluetooth or the phone's hotspot.",
+                on ? (name != null ? name : "Connected") : "Not connected", null);
+        if (!on && a.phoneLink().needsPermission()) {
+            nav(out, "Allow “Nearby devices”", "Needed for the phone link over Bluetooth (Android 12+)", null, new View.OnClickListener() {
+                @Override
+                public void onClick(View v) { a.requestBluetoothPermission(); }
+            });
+        }
     }
 
     private void askCity() {
@@ -367,13 +386,97 @@ final class SettingsScreen extends SidebarScreen {
 
     // ---- Network / Bluetooth / Apps -------------------------------------------------------
     private void network(LinearLayout out) {
-        heading(out, "Network & internet", null);
-        nav(out, "Status", null, a.networkLabel(), null);
-        nav(out, "Wi-Fi", "Join your phone's hotspot or another network", null,
-                open(Settings.ACTION_WIFI_SETTINGS, "Wi-Fi settings aren't available"));
+        heading(out, "Wi-Fi & internet", "Join your phone's hotspot or any Wi-Fi network. The head unit reconnects to it automatically after that.");
+        final Wifi w = a.wifi();
+        if (!w.available()) {
+            nav(out, "Status", null, a.networkLabel(), null);
+            para(out, "This head unit has no Wi-Fi.");
+            nav(out, "More network settings", "Mobile data (SIM), tethering, VPN", null,
+                    open(Settings.ACTION_WIRELESS_SETTINGS, "Network settings aren't available"));
+            return;
+        }
+        final boolean on = w.enabled();
+        toggle(out, "Wi-Fi", Wifi.canControl() ? (on ? "On" : "Off") : "Android 10+ shows the system Wi-Fi panel for this", on,
+                new Widgets.Toggle.OnChange() {
+                    @Override
+                    public void changed(boolean want) {
+                        if (Wifi.canControl() && w.setEnabled(want)) {
+                            a.toast(want ? "Turning Wi-Fi on…" : "Wi-Fi off");
+                            if (want) w.scan();
+                        } else {
+                            a.openWifiPanel();
+                        }
+                        a.main().postDelayed(new Runnable() { @Override public void run() { refresh(); } }, 1500);
+                    }
+                });
+        String ssid = on ? w.connectedSsid() : null;
+        nav(out, "Connected to", ssid != null ? "Signal " + Wifi.signalLabel(w.connectedLevel()).toLowerCase(java.util.Locale.US) : null,
+                ssid != null ? ssid : on ? "Not connected" : "Wi-Fi is off", null);
+        nav(out, "Internet", null, a.networkLabel(), null);
+        if (on) {
+            label(out, "Nearby networks");
+            if (!a.hasLocationPermission()) {
+                nav(out, "Allow location to list networks", "Android needs location access to show nearby Wi-Fi", null, new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) { a.requestLocationForWifi(); }
+                });
+            } else {
+                List<Wifi.Network> nets = w.nearby();
+                int n = 0;
+                for (final Wifi.Network net : nets) {
+                    if (n >= 12) break;
+                    boolean current = net.ssid.equals(ssid);
+                    String sub = (net.secured ? "Secured" : "Open") + " · " + Wifi.signalLabel(net.level)
+                            + (!current && w.isSaved(net.ssid) ? " · Saved" : "");
+                    nav(out, net.ssid, sub, current ? "Connected" : "Connect", current ? null : new View.OnClickListener() {
+                        @Override
+                        public void onClick(View v) { joinWifi(w, net); }
+                    });
+                    n++;
+                }
+                if (n == 0) para(out, "No networks found yet. Turn on your phone's hotspot, then tap Scan again.");
+                button(out, "Scan again", false, new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        a.toast(w.scan() ? "Scanning…" : "Android limits how often apps can scan; try again in a minute");
+                        a.main().postDelayed(new Runnable() { @Override public void run() { refresh(); } }, 3000);
+                    }
+                });
+            }
+        }
+        label(out, "More");
+        nav(out, "Wi-Fi settings", "Saved networks, advanced options", null, new View.OnClickListener() {
+            @Override
+            public void onClick(View v) { a.startSafe(new Intent(Settings.ACTION_WIFI_SETTINGS), "Wi-Fi settings aren't available"); }
+        });
         nav(out, "More network settings", "Mobile data (SIM), tethering, VPN", null,
                 open(Settings.ACTION_WIRELESS_SETTINGS, "Network settings aren't available"));
-        para(out, "Tip: turn on the hotspot on your phone once and join it here. The head unit reconnects to it automatically after that.");
+    }
+
+    private void joinWifi(final Wifi w, final Wifi.Network net) {
+        if (!Wifi.canControl()) {
+            // Android 10+: only the system may join networks.
+            a.openWifiPanel();
+            return;
+        }
+        if (!net.secured || w.isSaved(net.ssid)) {
+            a.toast(w.connect(net, null) ? "Connecting to " + net.ssid + "…" : "Couldn't connect to " + net.ssid);
+            a.main().postDelayed(new Runnable() { @Override public void run() { refresh(); } }, 4000);
+            return;
+        }
+        a.askText(net.ssid, "", true, "Connect", new MainActivity.TextCallback() {
+            @Override
+            public void done(String pw) {
+                if (pw.length() == 0) return;
+                a.toast(w.connect(net, pw) ? "Connecting to " + net.ssid + "…" : "Couldn't connect to " + net.ssid);
+                a.main().postDelayed(new Runnable() { @Override public void run() { refresh(); } }, 5000);
+            }
+        });
+    }
+
+    /** Wi-Fi state or scan results changed while this page is open. */
+    void wifiChanged() {
+        if (current == NETWORK) refresh();
     }
 
     private void bluetooth(LinearLayout out) {
@@ -387,6 +490,7 @@ final class SettingsScreen extends SidebarScreen {
         }
         nav(out, "Bluetooth", null, a.bluetoothOn() ? "On" : "Off", null);
         nav(out, "Connected phone", null, name != null ? name : "None", null);
+        phoneLinkRow(out);
         nav(out, "Pair or manage devices", "Opens the system Bluetooth settings", null, new View.OnClickListener() {
             @Override
             public void onClick(View v) { a.openBluetoothSettings(); }

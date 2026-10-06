@@ -35,6 +35,30 @@ for l in 1 2 3; do
 done
 adb shell am start -n $ACT --es theme Emerald --ei home_layout 0 --es screen home >/dev/null; shot home-emerald 4
 
+echo "== New in 1.4: songs on the head unit, swipe to apps, Wi-Fi page"
+python3 - "$OUT/Glass Test Tone.wav" <<'PY'
+import math, struct, sys, wave
+w = wave.open(sys.argv[1], "wb"); w.setnchannels(1); w.setsampwidth(2); w.setframerate(22050)
+w.writeframes(b"".join(struct.pack("<h", int(9000 * math.sin(2 * math.pi * 440 * i / 22050))) for i in range(22050 * 6)))
+w.close()
+PY
+adb shell mkdir -p /sdcard/Music >/dev/null 2>&1
+adb push "$OUT/Glass Test Tone.wav" "/sdcard/Music/Glass Test Tone.wav" >/dev/null
+adb shell pm grant $PKG android.permission.READ_MEDIA_AUDIO >/dev/null 2>&1 || true
+adb shell pm grant $PKG android.permission.READ_EXTERNAL_STORAGE >/dev/null 2>&1 || true
+adb shell am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d "file:///sdcard/Music/Glass%20Test%20Tone.wav" >/dev/null 2>&1 || true
+adb shell content call --uri content://media --method scan_volume --arg external_primary >/dev/null 2>&1 || true
+sleep 3
+adb shell am force-stop $PKG; sleep 1
+adb shell am start -n $ACT --es screen music >/dev/null; shot music-songs 7
+adb shell input tap 350 208; shot music-song-playing 4
+adb shell am start -n $ACT --es screen home >/dev/null; shot home-song-playing 4
+adb shell dumpsys media_session 2>/dev/null | grep -i -A3 "GlassLauncherPlayer" | head -8
+adb shell input keyevent KEYCODE_MEDIA_PLAY_PAUSE; sleep 1
+adb shell input swipe 1000 360 450 370 250; shot swipe-to-apps 3
+adb shell am start -n $ACT --es screen settings --ei settings_section 5 >/dev/null; shot settings-wifi 4
+adb shell am start -n $ACT --es screen settings --ei settings_section 3 >/dev/null; shot settings-weather 4
+
 echo "== Pull-down panel"
 adb shell settings get secure theme_customization_overlay_packages
 adb shell cmd statusbar expand-settings >/dev/null 2>&1 || adb shell service call statusbar 2 >/dev/null 2>&1
@@ -62,10 +86,28 @@ adb shell am start -n $ACT --es screen home >/dev/null; shot home-compat-mode 6
 adb shell am start -n $ACT --ez compat_mode false >/dev/null; sleep 4
 adb shell am start -n $PKG/.HelpActivity >/dev/null; shot help-screen 4
 adb shell am start -n $ACT --es screen home >/dev/null; sleep 3
+
+echo "== Glass Link phone app (Android 6+)"
+API=$(adb shell getprop ro.build.version.sdk | tr -d '\r')
+if [ -f dist/GlassLink.apk ] && [ "${API:-0}" -ge 23 ]; then
+  adb install -r -g dist/GlassLink.apk 2>&1 | tail -1
+  adb shell am start -n com.adnan.glasslink/.MainActivity >/dev/null; shot glass-link 4
+  # Press Start (scroll down, find the button with uiautomator) and let the link service run.
+  for i in 1 2 3; do adb shell input swipe 640 600 640 150 200; done; sleep 1
+  adb shell uiautomator dump /sdcard/ui.xml >/dev/null 2>&1
+  XY=$(adb shell cat /sdcard/ui.xml 2>/dev/null | python3 -c '
+import re, sys
+m = re.search(r"text=\"Start\"[^>]*bounds=\"\[(\d+),(\d+)\]\[(\d+),(\d+)\]", sys.stdin.read())
+print("%d %d" % ((int(m.group(1)) + int(m.group(3))) // 2, (int(m.group(2)) + int(m.group(4))) // 2) if m else "")')
+  if [ -n "$XY" ]; then adb shell input tap $XY; sleep 6; shot glass-link-started 1; else echo "Start button not found"; fi
+  adb shell dumpsys activity services com.adnan.glasslink 2>/dev/null | grep -E "ServiceRecord|isForeground" | head -4
+  adb shell input keyevent KEYCODE_BACK; sleep 1
+fi
+adb shell am start -n $ACT --es screen home >/dev/null; sleep 3
 adb logcat -d > "$OUT/logcat-$LABEL.txt" || true
 
 FAIL=0
-if grep -q -E "FATAL EXCEPTION|AndroidRuntime.*$PKG" "$OUT/logcat-$LABEL.txt" && grep -A3 "FATAL EXCEPTION" "$OUT/logcat-$LABEL.txt" | grep -q "$PKG"; then
+if grep -q -E "FATAL EXCEPTION" "$OUT/logcat-$LABEL.txt" && grep -A3 "FATAL EXCEPTION" "$OUT/logcat-$LABEL.txt" | grep -q -E "$PKG|com.adnan.glasslink"; then
   echo "CRASH found in logcat:"; grep -A25 "FATAL EXCEPTION" "$OUT/logcat-$LABEL.txt" | head -60; FAIL=1
 fi
 if grep -q -E "CRASH: $PKG|// CRASH" "$OUT/monkey-$LABEL.txt"; then echo "Monkey reported a crash"; FAIL=1; fi

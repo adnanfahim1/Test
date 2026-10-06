@@ -9,6 +9,7 @@ on:
   push:
     paths: ['glass-launcher/src/**', 'glass-launcher/res/**', 'glass-launcher/assets/**',
             'glass-launcher/AndroidManifest.xml', 'glass-launcher/build.sh', 'glass-launcher/tools/**',
+            'glass-launcher/glass-link/**',
             '.github/workflows/glass-launcher-emulator.yml']
   workflow_dispatch:
 
@@ -28,9 +29,9 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Build APK
+      - name: Build APKs (launcher + Glass Link phone app)
         working-directory: glass-launcher
-        run: ./build.sh
+        run: ./build.sh && ./glass-link/build.sh
 
       - name: Enable KVM
         run: |

@@ -33,8 +33,9 @@ final class MediaHub implements MediaSessionManager.OnActiveSessionsChangedListe
     private MediaSessionManager msm;
     private MediaController controller;
     private Listener listener;
-    private boolean registered;
+    private boolean registered, running;
     private int savedVolume;
+    private long otherPlayingAt;
 
     private final MediaController.Callback cb = new MediaController.Callback() {
         @Override public void onPlaybackStateChanged(PlaybackState state) { notifyChanged(); }
@@ -56,9 +57,41 @@ final class MediaHub implements MediaSessionManager.OnActiveSessionsChangedListe
         return flat != null && flat.contains(listenerComponent.flattenToString());
     }
 
+    /** The built-in player calls this when it starts, pauses or changes track. */
+    void localChanged() {
+        if (!running) return;
+        if (registered) refresh();
+        else onActiveSessionsChanged(null);
+    }
+
+    private final Runnable localHook = new Runnable() {
+        @Override
+        public void run() { localChanged(); }
+    };
+
+    /** The built-in player, connected to this hub. */
+    LocalPlayer player() {
+        LocalPlayer lp = LocalPlayer.get(ctx);
+        lp.setOnActive(localHook);
+        return lp;
+    }
+
+    private MediaController local() {
+        LocalPlayer lp = LocalPlayer.peek();
+        return lp != null && lp.hasTrack() ? lp.controller() : null;
+    }
+
+    boolean isLocal() {
+        LocalPlayer lp = LocalPlayer.peek();
+        return controller != null && lp != null && controller.getSessionToken().equals(lp.token());
+    }
+
     void start() {
+        running = true;
+        LocalPlayer lp = LocalPlayer.peek();
+        if (lp != null) lp.setOnActive(localHook);
         if (registered) { refresh(); return; }
-        if (!hasAccess()) { notifyChanged(); return; }
+        if (!hasAccess()) { onActiveSessionsChanged(null); return; }
         try {
             msm = (MediaSessionManager) ctx.getSystemService(Context.MEDIA_SESSION_SERVICE);
             msm.addOnActiveSessionsChangedListener(this, listenerComponent, handler);
@@ -66,11 +99,12 @@ final class MediaHub implements MediaSessionManager.OnActiveSessionsChangedListe
             refresh();
         } catch (SecurityException e) {
             registered = false;
-            notifyChanged();
+            onActiveSessionsChanged(null);
         }
     }
 
     void stop() {
+        running = false;
         if (registered && msm != null) {
             try { msm.removeOnActiveSessionsChangedListener(this); } catch (Exception ignored) {}
         }
@@ -90,14 +124,30 @@ final class MediaHub implements MediaSessionManager.OnActiveSessionsChangedListe
 
     @Override
     public void onActiveSessionsChanged(List<MediaController> list) {
+        // Prefer whatever is playing; the built-in player wins while it plays or when it was
+        // the last thing that played. Otherwise the most recent other session.
+        MediaController loc = local();
+        LocalPlayer lp = LocalPlayer.peek();
         MediaController best = null;
-        if (list != null) {
+        if (loc != null && lp.isPlaying()) best = loc;
+        if (best == null && list != null) {
             for (MediaController mc : list) {
+                if (loc != null && mc.getSessionToken().equals(loc.getSessionToken())) continue;
                 PlaybackState st = mc.getPlaybackState();
-                if (st != null && st.getState() == PlaybackState.STATE_PLAYING) { best = mc; break; }
+                if (st != null && st.getState() == PlaybackState.STATE_PLAYING) {
+                    best = mc;
+                    otherPlayingAt = SystemClock.elapsedRealtime();
+                    break;
+                }
             }
-            if (best == null && !list.isEmpty()) best = list.get(0);
         }
+        if (best == null && loc != null && lp.lastPlayingAt >= otherPlayingAt) best = loc;
+        if (best == null && list != null) {
+            for (MediaController mc : list) {
+                if (loc == null || !mc.getSessionToken().equals(loc.getSessionToken())) { best = mc; break; }
+            }
+        }
+        if (best == null) best = loc;
         pick(best);
     }
 
@@ -117,13 +167,22 @@ final class MediaHub implements MediaSessionManager.OnActiveSessionsChangedListe
     }
 
     // ---- State ---------------------------------------------------------------------------
-    boolean hasSession() { return controller != null && controller.getMetadata() != null; }
+    /** The built-in player when it is the one shown; read directly (no round trip through Android). */
+    private LocalPlayer lp() { return isLocal() ? LocalPlayer.peek() : null; }
+
+    boolean hasSession() {
+        LocalPlayer lp = lp();
+        if (lp != null) return lp.hasTrack();
+        return controller != null && controller.getMetadata() != null;
+    }
 
     String packageName() { return controller != null ? controller.getPackageName() : null; }
 
     private MediaMetadata meta() { return controller != null ? controller.getMetadata() : null; }
 
     String title() {
+        LocalPlayer lp = lp();
+        if (lp != null) return lp.current() != null ? lp.current().title : null;
         MediaMetadata m = meta();
         if (m == null) return null;
         CharSequence t = m.getText(MediaMetadata.METADATA_KEY_TITLE);
@@ -132,6 +191,8 @@ final class MediaHub implements MediaSessionManager.OnActiveSessionsChangedListe
     }
 
     String artist() {
+        LocalPlayer lp = lp();
+        if (lp != null) return lp.current() != null ? lp.current().artist : null;
         MediaMetadata m = meta();
         if (m == null) return null;
         CharSequence t = m.getText(MediaMetadata.METADATA_KEY_ARTIST);
@@ -141,6 +202,8 @@ final class MediaHub implements MediaSessionManager.OnActiveSessionsChangedListe
     }
 
     Bitmap art() {
+        LocalPlayer lp = lp();
+        if (lp != null) return lp.art();
         MediaMetadata m = meta();
         if (m == null) return null;
         Bitmap b = m.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART);
@@ -150,11 +213,15 @@ final class MediaHub implements MediaSessionManager.OnActiveSessionsChangedListe
     }
 
     long duration() {
+        LocalPlayer lp = lp();
+        if (lp != null) return lp.duration();
         MediaMetadata m = meta();
         return m != null ? m.getLong(MediaMetadata.METADATA_KEY_DURATION) : 0;
     }
 
     long position() {
+        LocalPlayer lp = lp();
+        if (lp != null) return lp.position();
         PlaybackState st = controller != null ? controller.getPlaybackState() : null;
         if (st == null) return 0;
         long pos = st.getPosition();
@@ -167,6 +234,8 @@ final class MediaHub implements MediaSessionManager.OnActiveSessionsChangedListe
     }
 
     boolean isPlaying() {
+        LocalPlayer lp = lp();
+        if (lp != null) return lp.isPlaying();
         PlaybackState st = controller != null ? controller.getPlaybackState() : null;
         if (st != null) {
             int s = st.getState();
@@ -176,17 +245,23 @@ final class MediaHub implements MediaSessionManager.OnActiveSessionsChangedListe
     }
 
     List<MediaSession.QueueItem> queue() {
+        LocalPlayer lp = lp();
+        if (lp != null) return lp.queueWindow();
         List<MediaSession.QueueItem> q = controller != null ? controller.getQueue() : null;
         return q != null ? q : Collections.<MediaSession.QueueItem>emptyList();
     }
 
     long activeQueueId() {
+        LocalPlayer lp = lp();
+        if (lp != null) return lp.queuePosition();
         PlaybackState st = controller != null ? controller.getPlaybackState() : null;
         return st != null ? st.getActiveQueueItemId() : MediaSession.QueueItem.UNKNOWN_ID;
     }
 
     // ---- Controls ------------------------------------------------------------------------
     void togglePlay() {
+        LocalPlayer lp = lp();
+        if (lp != null) { lp.toggle(); return; }
         if (controller != null) {
             if (isPlaying()) controller.getTransportControls().pause();
             else controller.getTransportControls().play();
@@ -196,20 +271,28 @@ final class MediaHub implements MediaSessionManager.OnActiveSessionsChangedListe
     }
 
     void next() {
+        LocalPlayer lp = lp();
+        if (lp != null) { lp.next(); return; }
         if (controller != null) controller.getTransportControls().skipToNext();
         else key(KeyEvent.KEYCODE_MEDIA_NEXT);
     }
 
     void prev() {
+        LocalPlayer lp = lp();
+        if (lp != null) { lp.prev(); return; }
         if (controller != null) controller.getTransportControls().skipToPrevious();
         else key(KeyEvent.KEYCODE_MEDIA_PREVIOUS);
     }
 
     void seekTo(long ms) {
+        LocalPlayer lp = lp();
+        if (lp != null) { lp.seekTo(ms); return; }
         if (controller != null) controller.getTransportControls().seekTo(Math.max(0, ms));
     }
 
     void skipToQueueItem(long id) {
+        LocalPlayer lp = lp();
+        if (lp != null) { lp.jumpTo((int) id); return; }
         if (controller != null) controller.getTransportControls().skipToQueueItem(id);
     }
 

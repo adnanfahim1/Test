@@ -28,12 +28,14 @@ final class Weather {
         double visibilityKm = -1;
         String place;
         long fetchedAt;
+        String source; // phone name when the data came from Glass Link, null for the internet
 
         String toJson() {
             try {
                 JSONObject o = new JSONObject();
                 o.put("t", tempC).put("c", code).put("d", day).put("r", rainPct).put("v", visibilityKm)
                         .put("p", place == null ? "" : place).put("at", fetchedAt);
+                if (source != null) o.put("src", source);
                 return o.toString();
             } catch (Exception e) {
                 return null;
@@ -52,6 +54,7 @@ final class Weather {
                 d.visibilityKm = o.optDouble("v", -1);
                 d.place = o.optString("p", "");
                 d.fetchedAt = o.optLong("at", 0);
+                d.source = o.has("src") ? o.optString("src", null) : null;
                 return d;
             } catch (Exception e) {
                 return null;
@@ -122,6 +125,18 @@ final class Weather {
                 });
             }
         }, "geocode").start();
+    }
+
+    /** A raw Open-Meteo forecast answer (as fetched by the Glass Link phone app). */
+    static Data fromOpenMeteo(String raw, String place) {
+        try {
+            Data d = parse(new JSONObject(raw));
+            d.place = place;
+            d.fetchedAt = System.currentTimeMillis();
+            return d;
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     private static Data parse(JSONObject o) throws Exception {

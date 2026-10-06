@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.adnan.glasslauncher"
-    android:versionCode="6"
-    android:versionName="1.3.0">
+    android:versionCode="7"
+    android:versionName="1.4.0">
 
     <!-- Android 5.0 (API 21) to Android 15+ (API 35). Newer APIs are isolated in NewApi.java. -->
     <uses-sdk android:minSdkVersion="21" android:targetSdkVersion="35" />
@@ -14,6 +14,16 @@
     <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
     <uses-permission android:name="android.permission.SET_WALLPAPER" />
+    <!-- Wi-Fi page in Settings (switching and joining networks directly works up to Android 9). -->
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
+    <!-- Songs on internal memory, SD card and USB drives. -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
+    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
+    <!-- Keeps on-device music playing while other apps are in front. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
     <!-- Only granted over USB by the setup script; lets the theme colour the pull-down panel (Android 12+). -->
     <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS" />
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
@@ -91,5 +101,10 @@
                 <action android:name="android.service.notification.NotificationListenerService" />
             </intent-filter>
         </service>
+
+        <service
+            android:name=".PlaybackService"
+            android:exported="false"
+            android:foregroundServiceType="mediaPlayback" />
     </application>
 </manifest>

@@ -53,7 +53,7 @@ import java.util.Locale;
 public class MainActivity extends Activity implements MediaHub.Listener {
     static final int HOME = 0, MUSIC = 1, APPS = 2, SETTINGS = 3, CAR = 4;
     static final int W_LOADING = 0, W_OK = 1, W_NEED_PERMISSION = 2, W_NO_LOCATION = 3, W_OFFLINE = 4, W_ERROR = 5;
-    private static final int REQ_LOCATION = 7, REQ_BLUETOOTH = 8;
+    private static final int REQ_LOCATION = 7, REQ_BLUETOOTH = 8, REQ_MUSIC = 9, REQ_WIFI = 10;
     private static final long WEATHER_EVERY_MS = 30 * 60 * 1000L;
     static final String NOTIFICATION_LISTENER_SETTINGS = "android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS";
 
@@ -79,6 +79,8 @@ public class MainActivity extends Activity implements MediaHub.Listener {
     private String phoneName;
     private boolean online;
     private Weather.Data weather;
+    private PhoneBridge bridge;
+    private PhoneBridge.Nav nav;
     private int weatherState = W_LOADING;
     private long lastWeatherTry;
     private LocationListener pendingLocation;
@@ -107,6 +109,28 @@ public class MainActivity extends Activity implements MediaHub.Listener {
         phone.setOnChange(new Runnable() {
             @Override
             public void run() { updatePhone(); }
+        });
+        bridge = new PhoneBridge(this);
+        bridge.setListener(new PhoneBridge.Listener() {
+            @Override
+            public void onPhoneWeather(Weather.Data d) {
+                weather = d;
+                prefs.setWeatherCache(d.toJson());
+                setWeatherState(W_OK);
+            }
+
+            @Override
+            public void onPhoneNav(PhoneBridge.Nav n) {
+                nav = n;
+                navChanged();
+            }
+
+            @Override
+            public void onPhoneLink() {
+                if (bridge.connected()) refreshWeather(true);
+                updatePhone();
+                weatherChanged();
+            }
         });
         weather = Weather.Data.fromJson(prefs.weatherCache());
         if (weather != null) weatherState = W_OK;
@@ -193,6 +217,42 @@ public class MainActivity extends Activity implements MediaHub.Listener {
         root.requestLayout();
     }
 
+    // ---- Swipe left on Home opens the app drawer -----------------------------------------
+    private float swipeX, swipeY;
+    private boolean swipeTracking, swipeTaken;
+
+    @Override
+    public boolean dispatchTouchEvent(android.view.MotionEvent e) {
+        try {
+            int act = e.getActionMasked();
+            if (act == android.view.MotionEvent.ACTION_DOWN) {
+                swipeX = e.getRawX();
+                swipeY = e.getRawY();
+                swipeTaken = false;
+                swipeTracking = current == HOME && !safeMode;
+            } else if (swipeTaken) {
+                return true;
+            } else if (swipeTracking && act == android.view.MotionEvent.ACTION_MOVE) {
+                float dx = e.getRawX() - swipeX, dy = e.getRawY() - swipeY;
+                if (Widgets.Slider.anyDragging || e.getPointerCount() > 1 || Math.abs(dy) > Ui.u(80)) {
+                    swipeTracking = false;
+                } else if (dx < -Ui.u(110) && Math.abs(dx) > 2 * Math.abs(dy)) {
+                    swipeTracking = false;
+                    swipeTaken = true;
+                    android.view.MotionEvent cancel = android.view.MotionEvent.obtain(e);
+                    cancel.setAction(android.view.MotionEvent.ACTION_CANCEL);
+                    super.dispatchTouchEvent(cancel);
+                    cancel.recycle();
+                    show(APPS);
+                    return true;
+                }
+            }
+        } catch (RuntimeException ignored) {
+            swipeTracking = swipeTaken = false;
+        }
+        return super.dispatchTouchEvent(e);
+    }
+
     @Override
     public void onUserInteraction() {
         super.onUserInteraction();
@@ -231,6 +291,7 @@ public class MainActivity extends Activity implements MediaHub.Listener {
         CrashGuard.stage(this, "start");
         try {
             registerReceivers();
+            if (!safeMode) bridge.start();
             phone.start();
             updatePhone();
             media.start();
@@ -243,6 +304,12 @@ public class MainActivity extends Activity implements MediaHub.Listener {
         main.removeCallbacks(stable);
         main.postDelayed(stable, 8000);
         refreshWeather(false);
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        try { bridge.stop(); } catch (Throwable ignored) {}
     }
 
     @Override
@@ -263,6 +330,7 @@ public class MainActivity extends Activity implements MediaHub.Listener {
         main.removeCallbacks(tick);
         main.removeCallbacks(stable);
         try { unregisterReceiver(receiver); } catch (Throwable ignored) {}
+        try { unregisterReceiver(storageReceiver); } catch (Throwable ignored) {}
         try {
             media.stop();
             phone.stop();
@@ -369,7 +437,9 @@ public class MainActivity extends Activity implements MediaHub.Listener {
             String sc = screen.trim().toLowerCase(Locale.US);
             int target = "music".equals(sc) ? MUSIC : "apps".equals(sc) ? APPS : "settings".equals(sc) ? SETTINGS
                     : "car".equals(sc) ? CAR : HOME;
-            show(target, false);
+            int section = i.getIntExtra("settings_section", -1);
+            if (target == SETTINGS && section >= 0 && section <= SettingsScreen.ABOUT) openSettingsSection(section);
+            else show(target, false);
             return true;
         }
         return changed;
@@ -561,6 +631,20 @@ public class MainActivity extends Activity implements MediaHub.Listener {
     Widgets.Background background() { return background; }
     Prefs prefs() { return prefs; }
     MediaHub media() { return media; }
+    Handler main() { return main; }
+
+    private Wifi wifi;
+    private long wifiRefreshedAt;
+
+    Wifi wifi() {
+        if (wifi == null) wifi = new Wifi(this);
+        return wifi;
+    }
+
+    /** Android 10+: the system Wi-Fi panel (falls back to Wi-Fi settings). */
+    void openWifiPanel() {
+        if (!NewApi.openWifiPanel(this)) startSafe(new Intent(Settings.ACTION_WIFI_SETTINGS), "Wi-Fi settings aren't available");
+    }
     PhoneLink phoneLink() { return phone; }
     boolean inSafeMode() { return safeMode; }
 
@@ -813,10 +897,17 @@ public class MainActivity extends Activity implements MediaHub.Listener {
     }
 
     void askText(String title, String initial, final TextCallback cb) {
+        askText(title, initial, false, "Save", cb);
+    }
+
+    /** Text dialog; {@code secret} hides the text (Wi-Fi passwords). */
+    void askText(String title, String initial, boolean secret, String okLabel, final TextCallback cb) {
         final EditText e = new EditText(this);
         e.setText(initial);
         e.setSingleLine(true);
-        e.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_CAP_WORDS);
+        e.setInputType(secret ? InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD
+                : InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_CAP_WORDS);
+        if (secret) e.setHint("Password");
         e.setSelection(e.getText().length());
         FrameLayout box = new FrameLayout(this);
         box.setPadding(Ui.u(24), Ui.u(8), Ui.u(24), 0);
@@ -826,9 +917,9 @@ public class MainActivity extends Activity implements MediaHub.Listener {
                     .setTitle(title)
                     .setView(box)
                     .setNegativeButton("Cancel", null)
-                    .setPositiveButton("Save", new DialogInterface.OnClickListener() {
+                    .setPositiveButton(okLabel, new DialogInterface.OnClickListener() {
                         @Override
-                        public void onClick(DialogInterface d, int w) { cb.done(e.getText().toString().trim()); }
+                        public void onClick(DialogInterface d, int w) { cb.done(secret ? e.getText().toString() : e.getText().toString().trim()); }
                     })
                     .show();
         } catch (Throwable t) {
@@ -902,6 +993,16 @@ public class MainActivity extends Activity implements MediaHub.Listener {
                 updatePhone();
                 if (!wasOnline && online) refreshWeather(true);
                 if (AudioManager.ACTION_AUDIO_BECOMING_NOISY.equals(a)) refreshMediaSoon();
+                if (a != null && a.startsWith("android.net.wifi.") && current == SETTINGS && screens[SETTINGS] != null
+                        && System.currentTimeMillis() - wifiRefreshedAt > 4000) {
+                    wifiRefreshedAt = System.currentTimeMillis();
+                    ((SettingsScreen) screens[SETTINGS]).wifiChanged();
+                }
+                if (Intent.ACTION_MEDIA_MOUNTED.equals(a) || Intent.ACTION_MEDIA_UNMOUNTED.equals(a)
+                        || Intent.ACTION_MEDIA_REMOVED.equals(a) || Intent.ACTION_MEDIA_EJECT.equals(a)
+                        || Intent.ACTION_MEDIA_SCANNER_FINISHED.equals(a)) {
+                    musicLibraryChanged();
+                }
             } catch (Throwable t) {
                 CrashGuard.report(MainActivity.this, "receiver", t);
             }
@@ -915,8 +1016,27 @@ public class MainActivity extends Activity implements MediaHub.Listener {
         f.addAction(BluetoothAdapter.ACTION_STATE_CHANGED);
         f.addAction(ConnectivityManager.CONNECTIVITY_ACTION);
         f.addAction(AudioManager.ACTION_AUDIO_BECOMING_NOISY);
+        f.addAction(android.net.wifi.WifiManager.WIFI_STATE_CHANGED_ACTION);
+        f.addAction(android.net.wifi.WifiManager.NETWORK_STATE_CHANGED_ACTION);
+        f.addAction(android.net.wifi.WifiManager.SCAN_RESULTS_AVAILABLE_ACTION);
         NewApi.registerReceiver(this, receiver, f);
+        // Memory card / USB drive inserted or removed: refresh the song list.
+        IntentFilter m = new IntentFilter();
+        m.addAction(Intent.ACTION_MEDIA_MOUNTED);
+        m.addAction(Intent.ACTION_MEDIA_UNMOUNTED);
+        m.addAction(Intent.ACTION_MEDIA_REMOVED);
+        m.addAction(Intent.ACTION_MEDIA_EJECT);
+        m.addAction(Intent.ACTION_MEDIA_SCANNER_FINISHED);
+        m.addDataScheme("file");
+        try { NewApi.registerReceiver(this, storageReceiver, m); } catch (Throwable ignored) {}
     }
+
+    private final BroadcastReceiver storageReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context c, Intent i) {
+            try { receiver.onReceive(c, i); } catch (Throwable ignored) {}
+        }
+    };
 
     private void updatePhone() {
         try {
@@ -953,6 +1073,7 @@ public class MainActivity extends Activity implements MediaHub.Listener {
             NetworkInfo ni = cm != null ? cm.getActiveNetworkInfo() : null;
             if (ni == null || !ni.isConnected()) return "Offline";
             String type = ni.getTypeName();
+            if (type == null) return "Online";
             if ("WIFI".equalsIgnoreCase(type)) return "Online · Wi-Fi";
             if ("MOBILE".equalsIgnoreCase(type)) return "Online · Mobile data";
             if ("BLUETOOTH".equalsIgnoreCase(type)) return "Online · Bluetooth tethering";
@@ -972,8 +1093,38 @@ public class MainActivity extends Activity implements MediaHub.Listener {
         NewApi.request(this, new String[]{Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.ACCESS_FINE_LOCATION}, REQ_LOCATION);
     }
 
+    /** Location for listing Wi-Fi networks (doesn't change the weather setting). */
+    void requestLocationForWifi() {
+        NewApi.request(this, new String[]{Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.ACCESS_FINE_LOCATION}, REQ_WIFI);
+    }
+
+    void requestMusicPermission() {
+        NewApi.request(this, new String[]{LocalMusic.permission()}, REQ_MUSIC);
+    }
+
+    /** Storage permission changed or a memory card / USB drive was inserted or removed. */
+    private void musicLibraryChanged() {
+        LocalMusic.invalidate();
+        if (safeMode || screens[MUSIC] == null) return;
+        try {
+            ((MusicScreen) screens[MUSIC]).libraryChanged();
+        } catch (Throwable t) {
+            CrashGuard.report(this, "library", t);
+        }
+    }
+
     // Activity.onRequestPermissionsResult exists from API 23; on 21-22 permissions are granted at install.
     public void onRequestPermissionsResult(int code, String[] perms, int[] results) {
+        if (code == REQ_WIFI) {
+            wifi().scan();
+            if (screens[SETTINGS] != null) ((SettingsScreen) screens[SETTINGS]).wifiChanged();
+            return;
+        }
+        if (code == REQ_MUSIC) {
+            if (!LocalMusic.hasPermission(this)) toast("Without access to music files, songs on the head unit can't be played");
+            musicLibraryChanged();
+            return;
+        }
         if (code == REQ_BLUETOOTH) {
             phone.start();
             updatePhone();
@@ -986,6 +1137,26 @@ public class MainActivity extends Activity implements MediaHub.Listener {
             refreshWeather(true);
         } else {
             toast("Without location, set a city in Settings › Weather");
+        }
+    }
+
+    // ---- Phone link (Glass Link app) --------------------------------------------------------
+    PhoneBridge bridge() { return bridge; }
+
+    /** Turn-by-turn from the phone, or null when no route is active. */
+    PhoneBridge.Nav nav() {
+        PhoneBridge.Nav n = nav;
+        if (n == null || !n.active || System.currentTimeMillis() - n.at > 3 * 60 * 1000L) return null;
+        return n;
+    }
+
+    private void navChanged() {
+        if (safeMode) return;
+        Screen s = screens[current];
+        try {
+            if (s != null) s.onNav();
+        } catch (Throwable t) {
+            CrashGuard.report(this, "nav", t);
         }
     }
 
@@ -1028,6 +1199,25 @@ public class MainActivity extends Activity implements MediaHub.Listener {
             return;
         }
         lastWeatherTry = System.currentTimeMillis();
+        if (bridge != null && bridge.connected()) {
+            // The phone fetches it with its own location and internet. If it doesn't answer,
+            // fall back to the head unit's own internet.
+            final long asked = System.currentTimeMillis();
+            boolean city = prefs.useCity() && prefs.cityName() != null;
+            bridge.requestWeather(city ? prefs.cityName() : null, prefs.cityLat(), prefs.cityLon());
+            if (weather == null) setWeatherState(W_LOADING);
+            main.postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    if (weather == null || weather.fetchedAt < asked - 5 * 60 * 1000L) refreshWeatherFromInternet();
+                }
+            }, 20000);
+            return;
+        }
+        refreshWeatherFromInternet();
+    }
+
+    private void refreshWeatherFromInternet() {
         online = isOnline();
         if (!online) {
             setWeatherState(W_OFFLINE);

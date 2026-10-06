@@ -58,11 +58,71 @@ final class NewApi {
         }
     }
 
+    /** PendingIntent flags with FLAG_IMMUTABLE added where Android knows it (required on 12+). */
+    static int immutable(int flags) {
+        return SDK >= 23 ? flags | android.app.PendingIntent.FLAG_IMMUTABLE : flags;
+    }
+
+    // ---- API 24 (Android 7.0) -------------------------------------------------------------
+    /** "SD card", "USB drive" etc. for the storage volume holding {@code f}, or null. */
+    static String volumeDescription(Context c, java.io.File f) {
+        if (SDK < 24) return null;
+        try {
+            android.os.storage.StorageManager sm = (android.os.storage.StorageManager) c.getSystemService(Context.STORAGE_SERVICE);
+            android.os.storage.StorageVolume v = sm != null ? sm.getStorageVolume(f) : null;
+            return v != null ? v.getDescription(c) : null;
+        } catch (Throwable t) {
+            return null;
+        }
+    }
+
     // ---- API 26 (Android 8.0) -------------------------------------------------------------
+    static void startForegroundService(Context c, android.content.Intent i) {
+        if (SDK >= 26) c.startForegroundService(i);
+        else c.startService(i);
+    }
+
+    /** Notification builder with a low-importance channel on Android 8+. */
+    static android.app.Notification.Builder notificationBuilder(Context c, String channel, String channelName) {
+        if (SDK < 26) return new android.app.Notification.Builder(c);
+        try {
+            android.app.NotificationManager nm = (android.app.NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE);
+            if (nm != null && nm.getNotificationChannel(channel) == null) {
+                android.app.NotificationChannel ch = new android.app.NotificationChannel(channel, channelName,
+                        android.app.NotificationManager.IMPORTANCE_LOW);
+                ch.setShowBadge(false);
+                nm.createNotificationChannel(ch);
+            }
+        } catch (Throwable ignored) {}
+        return new android.app.Notification.Builder(c, channel);
+    }
+
     /** ApplicationInfo.category, or -1 when unknown. */
     static int appCategory(ApplicationInfo ai) {
         if (SDK < 26 || ai == null) return -1;
         try { return ai.category; } catch (Throwable t) { return -1; }
+    }
+
+    // ---- API 29 (Android 10) --------------------------------------------------------------
+    /** Media-store volume names (internal + every SD card / USB drive), or null before 10. */
+    static java.util.List<String> audioVolumes(Context c) {
+        if (SDK < 29) return null;
+        try {
+            return new java.util.ArrayList<String>(android.provider.MediaStore.getExternalVolumeNames(c));
+        } catch (Throwable t) {
+            return null;
+        }
+    }
+
+    /** Android 10+ no longer lets apps switch Wi-Fi or join networks directly: show the system panel. */
+    static boolean openWifiPanel(Activity a) {
+        if (SDK < 29) return false;
+        try {
+            a.startActivity(new android.content.Intent(android.provider.Settings.Panel.ACTION_WIFI));
+            return true;
+        } catch (Throwable t) {
+            return false;
+        }
     }
 
     // ---- API 30 (Android 11) --------------------------------------------------------------

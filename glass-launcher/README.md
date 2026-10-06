@@ -3,7 +3,27 @@
 An Android home-screen launcher for Nakamichi Android car players, built from the "NAM5240T
 Glass Launcher" design handoff (`design-source/`).
 
-**Download:** [`dist/GlassLauncher.apk`](dist/GlassLauncher.apk) (about 3 MB, version 1.3.0).
+**Download:** [`dist/GlassLauncher.apk`](dist/GlassLauncher.apk) (about 3 MB, version 1.4.0) for the head unit, and
+[`dist/GlassLink.apk`](dist/GlassLink.apk) (optional, about 70 KB) for your Android phone.
+
+## New in 1.4
+
+- **Bigger side menu.** The rail on the right is wider, with larger icons and labels, so it's easier to
+  hit while driving. **Swipe left** anywhere on the home screen to open the app drawer.
+- **Songs on the head unit.** Music › **My songs** lists the songs on the internal memory, SD card and
+  USB drives, with filters per storage, search, **Shuffle all** and **Scan storage** (finds songs the
+  head unit hasn't indexed). The built-in player keeps playing while other apps are open, works with
+  the steering-wheel keys, pauses for calls and navigation prompts, and shows in the pull-down panel.
+- **Weather and turn-by-turn from your phone.** Install **Glass Link** on your phone. It sends the
+  phone's weather (its own location and internet) and the next turn from Google Maps, Waze and other
+  maps apps to the head unit, over Bluetooth or the phone's hotspot. Without it, weather uses the head
+  unit's internet as before.
+- **Wi-Fi page** in Settings › Wi-Fi & internet: on/off, current network and signal, nearby networks,
+  join with a password.
+
+| My songs | Phone link (weather + next turn) | Wi-Fi |
+|---|---|---|
+| ![](screenshots/18-music-songs-playing.png) | ![](screenshots/20-home-phone-link.png) | ![](screenshots/23-settings-wifi.png) |
 
 ![Dashboard](screenshots/01-home-dashboard.png)
 
@@ -49,9 +69,10 @@ How compatibility is enforced and checked:
 - **Tested on every version.** `tests/` runs the real app on all 15 versions, Android 5.0 to
   15 (Robolectric). It opens every screen and settings section, switches themes and font sizes,
   sends steering-wheel keys and setup-script commands, loads corrupted settings and checks safe
-  mode. All 45 runs pass.
+  mode. All 45 runs pass. `FeaturesTest` covers the swipe, songs and built-in player, the phone link
+  messages and the Wi-Fi page.
 - **Real emulators.** `.github/workflows/glass-launcher-emulator.yml` runs the APK on Android
-  emulators (API 21, 26, 30 and 34) on GitHub. It runs the setup script, opens every screen,
+  emulators (API 21, 26, 27, 28, 30 and 34) on GitHub. It runs the setup script, opens every screen,
   stress-taps with Android's monkey tool and fails on any crash. Screenshots are saved as run
   artifacts.
 
@@ -108,6 +129,28 @@ changes; everything else it leaves as it is and lists:
   **Settings › Connections**. If a chosen app disappears after a firmware update, the launcher
   goes back to auto-detecting it.
 
+## Glass Link (phone app)
+
+Optional. It's how the head unit gets weather and turn-by-turn **from your phone**, because a head unit
+can't read anything like that from a phone over normal Bluetooth (calls and music only).
+
+1. Install `GlassLink.apk` on your Android phone (6.0 or newer). iPhones aren't supported.
+2. Open it and tap **Allow** (location, nearby devices, notifications), then **Allow navigation
+   access**. It only reads maps apps' navigation notifications; other notifications are ignored and never
+   leave the phone.
+3. Make sure the phone is paired with the head unit, then tap **Start**. Optionally pick your head unit
+   under **Choose head unit**.
+4. On the head unit, allow **Nearby devices** (Settings › Bluetooth) on Android 12+.
+
+The status shows in **Settings › Weather › Phone link**. Weather shows a **From phone** label; the next turn
+appears on the Navigation card while the phone is navigating. If the head unit uses your phone's hotspot,
+you can turn on **Also connect over this phone's hotspot** in Glass Link (only for the car's hotspot: while
+on, any device on the same Wi-Fi network as the phone could connect).
+
+Known limits: on some head units the Bluetooth used for calls is a separate module from Android's
+Bluetooth, so the phone link may need the hotspot option. Navigation text depends on each maps app's
+notification and can change when that app updates.
+
 ## Built not to break
 
 - **Crash guard and safe mode.** Every crash is recorded. Two crashes within two minutes start
@@ -133,8 +176,10 @@ changes; everything else it leaves as it is and lists:
 |---|---|
 | Home layouts, rail, clock, theme, font size, app drawer, settings | Real |
 | Music bar and Now Playing for any app (title, artist, artwork, seek, volume) | Real; track info needs notification access once |
-| Weather (Open-Meteo, device location or city) | Real; needs internet |
-| Navigation card | Opens your maps app. Android doesn't let a launcher read turn-by-turn directions |
+| Songs on internal memory, SD card, USB | Real; asks for access to music files once |
+| Weather (Open-Meteo, location or city) | Real; from the phone with Glass Link, otherwise over the head unit's internet |
+| Navigation card | Opens your maps app. With Glass Link, shows the next turn of Google Maps / Waze on the phone (read from its navigation notification, so the wording is whatever the maps app shows) |
+| Wi-Fi | Android 5–9: switch and join networks in the launcher. Android 10+: Android only allows this from the system, so the launcher opens the system Wi-Fi panel on top |
 | EQ, camera format, steering-key learning, lights, radio region, factory reset | Opens the head unit's own settings app (no public Android API). The launcher never resets anything itself |
 | Background blur | Not used; glass panels use a translucent fill so it stays smooth on head-unit hardware |
 
@@ -144,6 +189,7 @@ Linux x86-64, JDK 17+, python3, curl, zip and unzip. No Android Studio or SDK ne
 
 ```sh
 ./build.sh                 # -> dist/GlassLauncher.apk (fetches the toolchain from Maven Central)
+./glass-link/build.sh      # -> dist/GlassLink.apk (phone app, same key)
 tests/run-tests.sh         # Android 5.0-15 checks + screenshots (needs Maven)
 ```
 

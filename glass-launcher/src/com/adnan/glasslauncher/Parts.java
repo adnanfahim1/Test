@@ -138,11 +138,14 @@ final class Parts {
 
     // =====================================================================================
     /** Side rail on the RIGHT edge (88 wide): Maps, Music, Apps, Car, Settings, Home pinned at bottom. */
+    /** Rail size in design units: big targets that are easy to hit while driving. */
+    static final int RAIL_WIDTH = 112, RAIL_ITEM = 96;
+
     static LinearLayout rail(final MainActivity a) {
         LinearLayout r = Ui.col(a);
         r.setGravity(Gravity.CENTER_HORIZONTAL);
-        r.setPadding(0, Ui.u(16), 0, Ui.u(16));
-        r.setBackground(Ui.glass(28));
+        r.setPadding(0, Ui.u(10), 0, Ui.u(10));
+        r.setBackground(Ui.glass(30));
         String[][] items = {
                 {"maps", "Maps"}, {"music", "Music"}, {"apps", "Apps"}, {"car", "Car"}, {"settings", "Settings"}};
         for (int i = 0; i < items.length; i++) {
@@ -158,7 +161,7 @@ final class Parts {
                     else a.show(MainActivity.SETTINGS);
                 }
             });
-            r.addView(item, Ui.margins(Ui.lp(Ui.u(72), Ui.u(72)), 0, i == 0 ? 0 : 10, 0, 0));
+            r.addView(item, Ui.margins(Ui.lp(Ui.u(RAIL_ITEM), Ui.u(RAIL_ITEM)), 0, i == 0 ? 0 : 8, 0, 0));
         }
         r.addView(Ui.space(a), Ui.lpw(1, 0, 1));
         View home = railItem(a, "home", "Home", true);
@@ -166,7 +169,7 @@ final class Parts {
             @Override
             public void onClick(View v) { a.show(MainActivity.HOME); }
         });
-        r.addView(home, Ui.lp(Ui.u(72), Ui.u(72)));
+        r.addView(home, Ui.lp(Ui.u(RAIL_ITEM), Ui.u(RAIL_ITEM)));
         return r;
     }
 
@@ -174,11 +177,12 @@ final class Parts {
         LinearLayout it = Ui.col(c);
         it.setGravity(Gravity.CENTER);
         Icons.GlassView icon = new Icons.GlassView(c, key);
-        it.addView(icon, Ui.lp(Ui.u(38), Ui.u(38)));
-        TextView t = Ui.text(c, label, 11, current ? 0xFFFFFFFF : Ui.TEXT_2, Ui.body(current ? 600 : 400));
+        it.addView(icon, Ui.lp(Ui.u(54), Ui.u(54)));
+        TextView t = Ui.text(c, label, 14, current ? 0xFFFFFFFF : Ui.TEXT_2, Ui.body(current ? 600 : 400));
         t.setGravity(Gravity.CENTER);
-        it.addView(t, Ui.margins(Ui.lp(Ui.WRAP, Ui.WRAP), 0, 5, 0, 0));
-        if (current) it.setBackground(Ui.fill(Ui.white(0.14f), Ui.white(0.22f), 18).glow(Ui.accentGlow()));
+        t.setSingleLine(true);
+        it.addView(t, Ui.margins(Ui.lp(Ui.WRAP, Ui.WRAP), 0, 4, 0, 0));
+        if (current) it.setBackground(Ui.fill(Ui.white(0.14f), Ui.white(0.22f), 22).glow(Ui.accentGlow()));
         it.setContentDescription(label);
         Ui.pressable(it);
         return it;
@@ -206,8 +210,7 @@ final class Parts {
             OnClickListener openMusic = new OnClickListener() {
                 @Override
                 public void onClick(View v) {
-                    if (!a.media().hasAccess()) a.askNotificationAccess();
-                    else a.show(MainActivity.MUSIC);
+                    a.show(MainActivity.MUSIC);
                 }
             };
             disc = new Widgets.Disc(a, 0.4545f, false);
@@ -294,10 +297,10 @@ final class Parts {
             MediaHub m = a.media();
             boolean access = m.hasAccess();
             boolean playing = m.isPlaying();
-            if (!access) {
-                kicker.setText("MUSIC · TAP TO SET UP");
-                title.setText("Show what's playing");
-                artist.setText("Allow notification access once to see any music app here");
+            if (!access && !m.hasSession()) {
+                kicker.setText("MUSIC · TAP TO OPEN");
+                title.setText("Play your songs");
+                artist.setText("From this head unit's memory, SD card or USB, or any music app");
                 disc.setArt(null);
                 progress.set(0);
             } else if (!m.hasSession()) {
@@ -311,7 +314,7 @@ final class Parts {
                 String t = m.title();
                 title.setText(t != null ? t : "Unknown track");
                 String ar = m.artist();
-                artist.setText(ar != null ? ar : a.appLabel(m.packageName()));
+                artist.setText(ar != null ? ar : m.isLocal() ? "On this head unit" : a.appLabel(m.packageName()));
                 Bitmap art = m.art();
                 disc.setArt(art);
                 long d = m.duration();
@@ -369,7 +372,7 @@ final class Parts {
         void update() {
             int st = a.weatherState();
             Weather.Data d = a.weather();
-            long at = d != null ? d.fetchedAt : 0;
+            long at = d != null ? d.fetchedAt + (d.source != null ? 1 : 0) : 0;
             if (st == shownState && at == shownAt) return;
             shownState = st;
             shownAt = at;
@@ -386,7 +389,9 @@ final class Parts {
                 LinearLayout placeRow = Ui.row(c);
                 String place = d.place != null && d.place.length() > 0 ? d.place : "Your location";
                 placeRow.addView(Ui.text(c, place, 17, Ui.TEXT_2, Ui.body(400)), Ui.lp(Ui.WRAP, Ui.WRAP));
-                if (st == MainActivity.W_OFFLINE) {
+                if (d.source != null) {
+                    placeRow.addView(badge(c, "From phone"), Ui.margins(Ui.lp(Ui.WRAP, Ui.WRAP), 8, 0, 0, 0));
+                } else if (st == MainActivity.W_OFFLINE) {
                     placeRow.addView(badge(c, "Offline"), Ui.margins(Ui.lp(Ui.WRAP, Ui.WRAP), 8, 0, 0, 0));
                 }
                 col.addView(placeRow, Ui.margins(Ui.lp(Ui.WRAP, Ui.WRAP), 0, 8, 0, 0));
@@ -418,8 +423,8 @@ final class Parts {
                 btn = "Set city";
                 l = new OnClickListener() { @Override public void onClick(View v) { a.openSettingsSection(SettingsScreen.WEATHER); } };
             } else if (st == MainActivity.W_OFFLINE) {
-                title = "Connect to the internet for weather";
-                msg = "Turn on your phone's hotspot or Bluetooth tethering.";
+                title = "Connect your phone for weather";
+                msg = "Open Glass Link on your phone, or turn on its hotspot.";
                 btn = "Try again";
                 l = new OnClickListener() { @Override public void onClick(View v) { a.refreshWeather(true); } };
             } else {
@@ -473,10 +478,17 @@ final class Parts {
     }
 
     // =====================================================================================
-    /** Navigation card: decorative map and an "Open navigation" button. */
+    /**
+     * Navigation card: decorative map and an "Open navigation" button. While Google Maps or
+     * Waze navigates on the phone (with Glass Link), it shows the next turn instead.
+     */
     static final class MapCard extends FrameLayout {
         private final MainActivity a;
-        private final TextView appName;
+        private final TextView appName, navTitle, navText, navSub, btnLabel;
+        private final LinearLayout navPanel;
+        private final android.widget.ImageView navIcon;
+        private final Icons.GlyphView navGlyph;
+        private String shown = "";
 
         MapCard(final MainActivity a, boolean stretch) {
             super(a);
@@ -504,7 +516,8 @@ final class Parts {
             btn.setGravity(Gravity.CENTER);
             btn.setBackground(Ui.fill(Ui.accent(), 0, 16).glow(Ui.accentGlow()));
             btn.addView(new Icons.GlyphView(a, Icons.NAV, 0xFFFFFFFF, 20), Ui.lp(Ui.u(20), Ui.u(20)));
-            btn.addView(Ui.text(a, "Open navigation", 17, 0xFFFFFFFF, Ui.body(600)), Ui.margins(Ui.lp(Ui.WRAP, Ui.WRAP), 10, 0, 0, 0));
+            btnLabel = Ui.text(a, "Open navigation", 17, 0xFFFFFFFF, Ui.body(600));
+            btn.addView(btnLabel, Ui.margins(Ui.lp(Ui.WRAP, Ui.WRAP), 10, 0, 0, 0));
             btn.setOnClickListener(new OnClickListener() {
                 @Override
                 public void onClick(View v) { a.openMaps(); }
@@ -513,12 +526,67 @@ final class Parts {
             LayoutParams bp = Ui.flp(Ui.MATCH, Ui.u(56), Gravity.BOTTOM);
             bp.setMargins(Ui.u(14), 0, Ui.u(14), Ui.u(14));
             addView(btn, bp);
+
+            // Next turn from the phone.
+            navPanel = Ui.row(a);
+            navPanel.setPadding(Ui.u(16), Ui.u(14), Ui.u(16), Ui.u(14));
+            navPanel.setBackground(Ui.fill(0xE6121318, Ui.withAlpha(Ui.accent(), 0x99), 20));
+            FrameLayout iconBox = new FrameLayout(a);
+            iconBox.setBackground(Ui.fill(Ui.accent(), 0, 16).glow(Ui.accentGlow()));
+            navIcon = new android.widget.ImageView(a);
+            navIcon.setScaleType(android.widget.ImageView.ScaleType.FIT_CENTER);
+            navIcon.setColorFilter(0xFFFFFFFF);
+            iconBox.addView(navIcon, Ui.flp(Ui.u(48), Ui.u(48), Gravity.CENTER));
+            navGlyph = new Icons.GlyphView(a, Icons.NAV, 0xFFFFFFFF, 30);
+            iconBox.addView(navGlyph, Ui.flp(Ui.u(34), Ui.u(34), Gravity.CENTER));
+            navPanel.addView(iconBox, Ui.lp(Ui.u(68), Ui.u(68)));
+            LinearLayout nt = Ui.col(a);
+            navTitle = Ui.text(a, "", 30, Ui.TEXT, Ui.display(600));
+            navTitle.setSingleLine(true);
+            navText = Ui.text(a, "", 16, Ui.TEXT, Ui.body(500));
+            navText.setSingleLine(false);
+            navText.setMaxLines(2);
+            navText.setEllipsize(android.text.TextUtils.TruncateAt.END);
+            navSub = Ui.text(a, "", 13, Ui.TEXT_2, Ui.body(400));
+            navSub.setSingleLine(true);
+            nt.addView(navTitle);
+            nt.addView(navText, Ui.margins(Ui.lp(Ui.MATCH, Ui.WRAP), 0, 2, 0, 0));
+            nt.addView(navSub, Ui.margins(Ui.lp(Ui.MATCH, Ui.WRAP), 0, 4, 0, 0));
+            navPanel.addView(nt, Ui.margins(Ui.lpw(0, Ui.WRAP, 1), 14, 0, 0, 0));
+            LayoutParams np = Ui.flp(Ui.MATCH, Ui.WRAP, Gravity.CENTER_VERTICAL);
+            np.setMargins(Ui.u(14), 0, Ui.u(14), 0);
+            navPanel.setVisibility(GONE);
+            addView(navPanel, np);
             update();
         }
 
         void update() {
+            PhoneBridge.Nav n = a.nav();
             String label = AppsRepo.labelFor(a, a.prefs().mapsApp());
-            appName.setText(label != null ? "Opens " + label : "Choose your maps app on first tap");
+            String sig = n == null ? "none:" + label : n.at + ":" + n.title + ":" + n.text;
+            if (sig.equals(shown)) return;
+            shown = sig;
+            if (n == null) {
+                navPanel.setVisibility(GONE);
+                appName.setText(label != null ? "Opens " + label : "Choose your maps app on first tap");
+                btnLabel.setText("Open navigation");
+                return;
+            }
+            navTitle.setText(n.title != null ? n.title : n.text != null ? n.text : "Navigating");
+            navText.setText(n.title != null ? n.text : null);
+            navText.setVisibility(n.title != null && n.text != null ? VISIBLE : GONE);
+            navSub.setText(n.sub);
+            navSub.setVisibility(n.sub != null ? VISIBLE : GONE);
+            navIcon.setImageBitmap(n.icon);
+            navIcon.setVisibility(n.icon != null ? VISIBLE : GONE);
+            navGlyph.setVisibility(n.icon != null ? GONE : VISIBLE);
+            String phone = a.bridge().phoneName();
+            appName.setText((n.app != null ? n.app : "Navigation") + " on " + (phone != null ? phone : "your phone"));
+            btnLabel.setText(label != null ? "Open " + label : "Open navigation");
+            if (navPanel.getVisibility() != VISIBLE) {
+                navPanel.setVisibility(VISIBLE);
+                Ui.rise(navPanel, 0);
+            }
         }
     }
 }

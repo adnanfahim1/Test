@@ -53,7 +53,7 @@ final class HomeScreen extends Screen {
         root.addView(content, Ui.lpw(0, Ui.MATCH, 1));
 
         LinearLayout rail = Parts.rail(a);
-        root.addView(rail, Ui.margins(Ui.lp(Ui.u(88), Ui.MATCH), 20, 0, 0, 0));
+        root.addView(rail, Ui.margins(Ui.lp(Ui.u(Parts.RAIL_WIDTH), Ui.MATCH), 16, 0, 0, 0));
         Ui.rise(rail, 0);
         return root;
     }
@@ -233,6 +233,7 @@ final class HomeScreen extends Screen {
         if (header != null) header.update();
         updateClock();
         if (musicBar != null) musicBar.tick();
+        if (map != null) map.update(); // hides a finished route
     }
 
     @Override
@@ -243,4 +244,7 @@ final class HomeScreen extends Screen {
 
     @Override
     void onWeather() { if (weather != null) weather.update(); }
+
+    @Override
+    void onNav() { if (map != null) map.update(); }
 }

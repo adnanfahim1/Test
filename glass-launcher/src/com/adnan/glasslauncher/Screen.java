@@ -26,6 +26,7 @@ abstract class Screen {
     void onMedia() {}
     void onPhone() {}
     void onWeather() {}
+    void onNav() {}
     /** @return true if the screen handled Back itself. */
     boolean onBack() { return false; }
 }

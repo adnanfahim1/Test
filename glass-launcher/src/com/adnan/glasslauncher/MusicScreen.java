@@ -16,7 +16,9 @@ import android.view.View;
 import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
+import android.widget.BaseAdapter;
 import android.widget.LinearLayout;
+import android.widget.ListView;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
@@ -31,8 +33,8 @@ import java.util.Set;
 
 /**
  * Now Playing for whichever app holds the active media session. The right column is the
- * player (Back / Volume at top-right); the left lists the session's queue (when the app
- * exposes one) or the installed music apps.
+ * player (Back / Volume at top-right). The left has three tabs: songs stored on the head
+ * unit (internal memory, SD card, USB), the playing app's queue, and installed music apps.
  */
 final class MusicScreen extends Screen {
     private Widgets.Disc disc;
@@ -47,7 +49,15 @@ final class MusicScreen extends Screen {
     private EditText search;
     private TextView[] tabs;
     private View indicator;
-    private int tab = 0;
+    static final int T_SONGS = 0, T_QUEUE = 1, T_APPS = 2;
+    private static final int TAB_W = 136;
+    private int tab = T_SONGS;
+    private ScrollView scroll;
+    private ListView songList;
+    private SongAdapter songs;
+    private LinearLayout libBar, chipRow;
+    private TextView libCount;
+    private int sourceFilter = -1; // -1 = all
     private String query = "";
     private String listSig = "";
 
@@ -235,7 +245,7 @@ final class MusicScreen extends Screen {
         LinearLayout top = Ui.row(c);
         FrameLayout tabBox = new FrameLayout(c);
         LinearLayout tabRow = Ui.row(c);
-        String[] names = {"Queue", "Music apps"};
+        String[] names = {"My songs", "Queue", "Music apps"};
         tabs = new TextView[names.length];
         for (int i = 0; i < names.length; i++) {
             final int idx = i;
@@ -246,7 +256,7 @@ final class MusicScreen extends Screen {
                 public void onClick(View v) { selectTab(idx, true); }
             });
             tabs[i] = t;
-            tabRow.addView(t, Ui.lp(Ui.u(150), Ui.u(48)));
+            tabRow.addView(t, Ui.lp(Ui.u(TAB_W), Ui.u(48)));
         }
         tabBox.addView(tabRow, Ui.flp(Ui.WRAP, Ui.u(48), Gravity.TOP));
         indicator = new View(c);
@@ -273,18 +283,54 @@ final class MusicScreen extends Screen {
             }
         });
         searchBox.addView(search, Ui.margins(Ui.lpw(0, Ui.MATCH, 1), 10, 0, 0, 0));
-        top.addView(searchBox, Ui.lp(Ui.u(220), Ui.u(48)));
+        top.addView(searchBox, Ui.lp(Ui.u(210), Ui.u(48)));
         col.addView(top);
 
-        ScrollView sv = new ScrollView(c);
-        sv.setVerticalScrollBarEnabled(false);
-        sv.setOverScrollMode(View.OVER_SCROLL_NEVER);
+        // Songs toolbar: storage filter, count, shuffle, scan.
+        libBar = Ui.row(c);
+        chipRow = Ui.row(c);
+        libBar.addView(chipRow, Ui.lpw(0, Ui.WRAP, 1));
+        TextView shuffle = Parts.outlineButton(c, "Shuffle all", 15, 16, 44, 22, new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                List<LocalMusic.Track> f = filtered();
+                if (f.isEmpty()) { a.toast("No songs to play"); return; }
+                a.media().player().playList(f, new java.util.Random().nextInt(f.size()), true);
+            }
+        });
+        libBar.addView(shuffle, Ui.margins(Ui.lp(Ui.WRAP, Ui.u(44)), 10, 0, 0, 0));
+        TextView scan = Parts.outlineButton(c, "Scan storage", 15, 16, 44, 22, new View.OnClickListener() {
+            @Override
+            public void onClick(View v) { scanStorage(); }
+        });
+        libBar.addView(scan, Ui.margins(Ui.lp(Ui.WRAP, Ui.u(44)), 10, 0, 0, 0));
+        col.addView(libBar, Ui.margins(Ui.lp(Ui.MATCH, Ui.u(44)), 0, 16, 0, 0));
+
+        FrameLayout body = new FrameLayout(c);
+        scroll = new ScrollView(c);
+        scroll.setVerticalScrollBarEnabled(false);
+        scroll.setOverScrollMode(View.OVER_SCROLL_NEVER);
         list = Ui.col(c);
         list.setPadding(Ui.u(2), Ui.u(2), Ui.u(8), Ui.u(24));
-        sv.addView(list);
-        col.addView(sv, Ui.margins(Ui.lpw(Ui.MATCH, 0, 1), 0, 22, 0, 0));
+        scroll.addView(list);
+        body.addView(scroll, new FrameLayout.LayoutParams(Ui.MATCH, Ui.MATCH));
+        songList = new ListView(c);
+        songList.setDivider(new android.graphics.drawable.ColorDrawable(0));
+        songList.setDividerHeight(Ui.u(10));
+        songList.setSelector(new android.graphics.drawable.ColorDrawable(0));
+        songList.setVerticalScrollBarEnabled(true);
+        songList.setOverScrollMode(View.OVER_SCROLL_NEVER);
+        songList.setPadding(Ui.u(2), Ui.u(2), Ui.u(8), Ui.u(24));
+        songList.setClipToPadding(false);
+        songList.setItemsCanFocus(true);
+        songs = new SongAdapter();
+        songList.setAdapter(songs);
+        body.addView(songList, new FrameLayout.LayoutParams(Ui.MATCH, Ui.MATCH));
+        col.addView(body, Ui.margins(Ui.lpw(Ui.MATCH, 0, 1), 0, 16, 0, 0));
         emptyNote = Ui.multiline(c, "", 17, Ui.MUTED, Ui.body(400));
-        selectTab(0, false);
+        LocalPlayer lp = LocalPlayer.peek();
+        boolean otherPlaying = a.media().hasSession() && !a.media().isLocal();
+        selectTab(otherPlaying && (lp == null || !lp.hasTrack()) ? T_QUEUE : tab, false);
         return col;
     }
 
@@ -308,7 +354,7 @@ final class MusicScreen extends Screen {
             tabs[k].setTextColor(k == i ? 0xFFFFFFFF : Ui.MUTED);
             tabs[k].setTypeface(Ui.body(k == i ? 600 : 400));
         }
-        float x = Ui.uf(150) * i + (Ui.uf(150) - Ui.uf(40)) / 2f;
+        float x = Ui.uf(TAB_W) * i + (Ui.uf(TAB_W) - Ui.uf(40)) / 2f;
         if (animate && !Ui.reduceMotion) indicator.animate().translationX(x).setDuration(450).setInterpolator(Ui.OVERSHOOT).start();
         else indicator.setTranslationX(x);
         listSig = "";
@@ -322,14 +368,26 @@ final class MusicScreen extends Screen {
     private void rebuildList() {
         if (list == null) return;
         MediaHub m = a.media();
-        if (tab == 0) {
+        boolean songsTab = tab == T_SONGS;
+        if (songsTab) {
+            // Playback changes only need the highlighted row updated.
+            String sig = "s" + System.identityHashCode(LocalMusic.cached()) + ":" + sourceFilter + ":" + query + ":" + LocalMusic.hasPermission(a);
+            if (sig.equals(songsSig) && songList.getVisibility() == View.VISIBLE) songs.notifyDataSetChanged();
+            else rebuildSongs();
+            return;
+        }
+        libBar.setVisibility(View.GONE);
+        songList.setVisibility(View.GONE);
+        scroll.setVisibility(View.VISIBLE);
+        if (tab == T_QUEUE) {
             List<MediaSession.QueueItem> q = m.queue();
             long active = m.activeQueueId();
-            String sig = "q" + q.size() + ":" + active + ":" + m.packageName() + ":" + m.hasAccess();
+            String sig = "q" + q.size() + ":" + active + ":" + m.packageName() + ":" + m.hasAccess() + ":" + query
+                    + ":" + (q.isEmpty() ? "" : q.get(0).getQueueId());
             if (sig.equals(listSig)) return;
             listSig = sig;
             list.removeAllViews();
-            if (!m.hasAccess()) {
+            if (!m.hasAccess() && !m.isLocal()) {
                 list.addView(note("Allow notification access to see the queue of the app that's playing.", "Allow access", new View.OnClickListener() {
                     @Override
                     public void onClick(View v) { a.askNotificationAccess(); }
@@ -339,7 +397,7 @@ final class MusicScreen extends Screen {
             if (q.isEmpty()) {
                 list.addView(note(m.hasSession()
                         ? "This music app doesn't share its queue. Use the controls on the right, or switch tracks in the app."
-                        : "Nothing is playing. Pick a music app under “Music apps”.", null, null));
+                        : "Nothing is playing. Pick a song under “My songs” or an app under “Music apps”.", null, null));
                 return;
             }
             int n = 0;
@@ -384,6 +442,202 @@ final class MusicScreen extends Screen {
                 n++;
             }
             if (n == 0) list.addView(note(query.length() > 0 ? "No apps match “" + query + "”" : "No music apps found.", null, null));
+        }
+    }
+
+    // ---- My songs (head unit storage) -------------------------------------------------------
+    private List<LocalMusic.Track> filtered() {
+        List<LocalMusic.Track> all = LocalMusic.cached();
+        List<LocalMusic.Track> out = new ArrayList<LocalMusic.Track>();
+        if (all == null) return out;
+        for (LocalMusic.Track t : all) {
+            if (sourceFilter >= 0 && t.source != sourceFilter) continue;
+            if (query.length() > 0 && !matches(t.title) && !matches(t.artist) && !matches(t.album)) continue;
+            out.add(t);
+        }
+        return out;
+    }
+
+    private void showNote(View note) {
+        libBar.setVisibility(View.GONE);
+        songList.setVisibility(View.GONE);
+        scroll.setVisibility(View.VISIBLE);
+        list.removeAllViews();
+        list.addView(note);
+    }
+
+    private String songsSig = "";
+
+    private void rebuildSongs() {
+        listSig = "";
+        songsSig = "s" + System.identityHashCode(LocalMusic.cached()) + ":" + sourceFilter + ":" + query + ":" + LocalMusic.hasPermission(a);
+        if (!LocalMusic.hasPermission(a)) {
+            showNote(note("Allow access to music files to play songs from the head unit's memory, SD card or USB drive.",
+                    "Allow access", new View.OnClickListener() {
+                        @Override
+                        public void onClick(View v) { a.requestMusicPermission(); }
+                    }));
+            return;
+        }
+        List<LocalMusic.Track> all = LocalMusic.cached();
+        if (all == null) {
+            showNote(note("Looking for songs…", null, null));
+            if (!LocalMusic.isLoading()) {
+                LocalMusic.load(a, false, new Runnable() {
+                    @Override
+                    public void run() { if (tab == T_SONGS) rebuildSongs(); }
+                });
+            }
+            return;
+        }
+        if (all.isEmpty()) {
+            showNote(note(LocalMusic.isLoading() ? "Scanning storage…"
+                            : "No songs found. Copy music to the head unit's memory, an SD card or a USB drive, then tap Scan storage.",
+                    LocalMusic.isLoading() ? null : "Scan storage", new View.OnClickListener() {
+                        @Override
+                        public void onClick(View v) { scanStorage(); }
+                    }));
+            return;
+        }
+        // Storage filter chips: only sources that have songs.
+        chipRow.removeAllViews();
+        int[] counts = {LocalMusic.count(all, 0), LocalMusic.count(all, 1), LocalMusic.count(all, 2)};
+        int sources = 0;
+        for (int n : counts) if (n > 0) sources++;
+        if (sourceFilter >= 0 && counts[sourceFilter] == 0) sourceFilter = -1;
+        chipRow.addView(chip("All " + all.size(), -1));
+        if (sources > 1) {
+            for (int k = 0; k < 3; k++) if (counts[k] > 0) chipRow.addView(chip(LocalMusic.SOURCE_NAMES[k] + " " + counts[k], k));
+        } else {
+            for (int k = 0; k < 3; k++) {
+                if (counts[k] == 0) continue;
+                TextView t = Ui.text(a, LocalMusic.SOURCE_NAMES[k], 15, Ui.MUTED, Ui.body(400));
+                chipRow.addView(t, Ui.margins(Ui.lp(Ui.WRAP, Ui.WRAP), 12, 0, 0, 0));
+            }
+        }
+        libBar.setVisibility(View.VISIBLE);
+        scroll.setVisibility(View.GONE);
+        songs.set(filtered());
+        if (songs.getCount() == 0) {
+            showNote(note("No songs match “" + query + "”", null, null));
+            libBar.setVisibility(View.VISIBLE);
+            return;
+        }
+        songList.setVisibility(View.VISIBLE);
+    }
+
+    private View chip(String label, final int source) {
+        boolean on = sourceFilter == source;
+        TextView t = Ui.text(a, label, 14, on ? 0xFFFFFFFF : Ui.TEXT_2, Ui.body(on ? 600 : 400));
+        t.setGravity(Gravity.CENTER);
+        t.setSingleLine(true);
+        t.setPadding(Ui.u(14), 0, Ui.u(14), 0);
+        t.setBackground(on ? Ui.fill(Ui.withAlpha(Ui.accent(), 0x55), Ui.withAlpha(Ui.accent(), 0xAA), 18)
+                : Ui.fill(Ui.white(0.06f), Ui.white(0.12f), 18));
+        t.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                sourceFilter = source;
+                rebuildSongs();
+            }
+        });
+        Ui.pressable(t);
+        t.setLayoutParams(Ui.margins(Ui.lp(Ui.WRAP, Ui.u(40)), chipRow.getChildCount() == 0 ? 0 : 8, 0, 0, 0));
+        return t;
+    }
+
+    private void scanStorage() {
+        if (!LocalMusic.hasPermission(a)) { a.requestMusicPermission(); return; }
+        a.toast("Scanning memory, SD card and USB…");
+        LocalMusic.load(a, true, new Runnable() {
+            @Override
+            public void run() {
+                List<LocalMusic.Track> all = LocalMusic.cached();
+                a.toast((all != null ? all.size() : 0) + " songs found");
+                if (tab == T_SONGS) rebuildSongs();
+            }
+        });
+        if (tab == T_SONGS && (LocalMusic.cached() == null || LocalMusic.cached().isEmpty())) showNote(note("Scanning storage…", null, null));
+    }
+
+    /** Storage permission granted, or an SD card / USB drive was inserted or removed. */
+    void libraryChanged() {
+        if (list != null && tab == T_SONGS) rebuildSongs();
+    }
+
+    private final class SongAdapter extends BaseAdapter {
+        private List<LocalMusic.Track> items = new ArrayList<LocalMusic.Track>();
+
+        void set(List<LocalMusic.Track> l) {
+            items = l;
+            notifyDataSetChanged();
+        }
+
+        @Override public int getCount() { return items.size(); }
+        @Override public Object getItem(int i) { return items.get(i); }
+        @Override public long getItemId(int i) { return i; }
+
+        @Override
+        public View getView(final int i, View convert, android.view.ViewGroup parent) {
+            SongRow r = convert instanceof SongRow ? (SongRow) convert : new SongRow(a);
+            LocalMusic.Track t = items.get(i);
+            LocalPlayer lp = LocalPlayer.peek();
+            boolean current = lp != null && lp.current() == t;
+            r.bind(t, current, current && lp.isPlaying());
+            r.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    LocalPlayer p = a.media().player();
+                    if (p.current() == items.get(i)) p.toggle();
+                    else p.playList(items, i, false);
+                }
+            });
+            return r;
+        }
+    }
+
+    /** One song in the list; recycled by the ListView, so large libraries stay smooth. */
+    private static final class SongRow extends LinearLayout {
+        private final TextView title, sub;
+        private final View shade;
+        private final Widgets.EqBars bars;
+
+        SongRow(Context c) {
+            super(c);
+            setOrientation(HORIZONTAL);
+            setGravity(Gravity.CENTER_VERTICAL);
+            setPadding(Ui.u(10), Ui.u(10), Ui.u(12), Ui.u(10));
+            setMinimumHeight(Ui.u(76));
+            FrameLayout artBox = new FrameLayout(c);
+            artBox.addView(new Icons.GlassView(c, "music"), new FrameLayout.LayoutParams(Ui.MATCH, Ui.MATCH));
+            shade = new View(c);
+            shade.setBackground(Ui.fill(0x730C0C10, 0, 14));
+            artBox.addView(shade, new FrameLayout.LayoutParams(Ui.MATCH, Ui.MATCH));
+            bars = new Widgets.EqBars(c);
+            artBox.addView(bars, new FrameLayout.LayoutParams(Ui.MATCH, Ui.MATCH));
+            addView(artBox, Ui.lp(Ui.u(56), Ui.u(56)));
+            LinearLayout tc = Ui.col(c);
+            title = Ui.text(c, "", 19, Ui.TEXT, Ui.body(600));
+            title.setSingleLine(true);
+            title.setEllipsize(android.text.TextUtils.TruncateAt.END);
+            sub = Ui.text(c, "", 15, Ui.MUTED, Ui.body(400));
+            sub.setSingleLine(true);
+            sub.setEllipsize(android.text.TextUtils.TruncateAt.END);
+            tc.addView(title, Ui.lp(Ui.MATCH, Ui.WRAP));
+            tc.addView(sub, Ui.margins(Ui.lp(Ui.MATCH, Ui.WRAP), 0, 3, 0, 0));
+            addView(tc, Ui.margins(Ui.lpw(0, Ui.WRAP, 1), 16, 0, 0, 0));
+            Ui.pressable(this);
+            setLayoutParams(new android.widget.AbsListView.LayoutParams(Ui.MATCH, Ui.WRAP));
+        }
+
+        void bind(LocalMusic.Track t, boolean current, boolean playing) {
+            title.setText(t.title);
+            title.setTextColor(current ? 0xFFFFFFFF : Ui.TEXT);
+            sub.setText(t.subtitle());
+            setBackground(current ? Ui.fill(Ui.white(0.12f), Ui.withAlpha(Ui.accent(), 0x99), 20) : Ui.tile(20));
+            shade.setVisibility(playing ? VISIBLE : GONE);
+            bars.setVisibility(playing ? VISIBLE : GONE);
+            setContentDescription(t.title);
         }
     }
 
@@ -479,17 +733,17 @@ final class MusicScreen extends Screen {
         if (title == null) return;
         MediaHub m = a.media();
         boolean playing = m.isPlaying();
-        if (!m.hasAccess()) {
+        if (!m.hasSession() && !m.hasAccess()) {
             title.setText("Music");
-            artist.setText("Controls work; allow access for track info");
+            artist.setText("Pick a song under My songs, or allow access for other apps' track info");
         } else if (!m.hasSession()) {
             title.setText("Nothing playing");
-            artist.setText("Start music in any app");
+            artist.setText("Pick a song under My songs or start music in any app");
         } else {
             String t = m.title();
             title.setText(t != null ? t : "Unknown track");
             String ar = m.artist();
-            artist.setText(ar != null ? ar : a.appLabel(m.packageName()));
+            artist.setText(ar != null ? ar : m.isLocal() ? "On this head unit" : a.appLabel(m.packageName()));
         }
         disc.setArt(m.art());
         disc.setSpinning(playing);

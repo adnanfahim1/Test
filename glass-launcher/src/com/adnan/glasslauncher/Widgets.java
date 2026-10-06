@@ -204,6 +204,9 @@ final class Widgets {
         void setTrackHeight(float designPx) { trackH = designPx; }
         boolean isDragging() { return dragging; }
 
+        /** True while any slider is being dragged, so screen swipes don't steal the gesture. */
+        static boolean anyDragging;
+
         void setMax(int m) { max = Math.max(1, m); invalidate(); }
 
         void setValue(int v) {
@@ -238,6 +241,7 @@ final class Widgets {
             switch (e.getActionMasked()) {
                 case MotionEvent.ACTION_DOWN:
                     dragging = true;
+                    anyDragging = true;
                     getParent().requestDisallowInterceptTouchEvent(true);
                     update(e.getX());
                     return true;
@@ -248,6 +252,7 @@ final class Widgets {
                 case MotionEvent.ACTION_CANCEL:
                     update(e.getX());
                     dragging = false;
+                    anyDragging = false;
                     if (release != null) release.released(value);
                     return true;
                 default:
