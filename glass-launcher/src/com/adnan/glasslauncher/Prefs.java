@@ -80,6 +80,10 @@ final class Prefs {
     boolean matchSystemWallpaper() { return getBool("match_wallpaper", false); }
     void setMatchSystemWallpaper(boolean v) { sp.edit().putBoolean("match_wallpaper", v).apply(); }
 
+    /** Colour the Android pull-down panel with the theme accent (Android 12+). */
+    boolean matchShade() { return getBool("match_shade", false); }
+    void setMatchShade(boolean v) { sp.edit().putBoolean("match_shade", v).apply(); }
+
     // ---- Connections ----------------------------------------------------------------------
     /** Component ("pkg/cls") of the maps app opened by Navigate, or null for auto/ask. */
     String mapsApp() { return getStr("maps_app", null); }
@@ -121,5 +125,12 @@ final class Prefs {
     String lastError() { return getStr("last_error", null); }
 
     /** Clears everything the user configured (safe-mode "reset"), keeping nothing stale. */
-    void resetAll() { sp.edit().clear().putInt("schema", SCHEMA).commit(); }
+    void resetAll() {
+        // Keep the saved original pull-down panel colours so they can still be restored.
+        boolean shadeSaved = getBool("shade_saved", false);
+        String shadeOriginal = getStr("shade_original", null);
+        SharedPreferences.Editor e = sp.edit().clear().putInt("schema", SCHEMA);
+        if (shadeSaved) e.putBoolean("shade_saved", true).putString("shade_original", shadeOriginal);
+        e.commit();
+    }
 }

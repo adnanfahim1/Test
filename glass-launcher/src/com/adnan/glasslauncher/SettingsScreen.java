@@ -232,12 +232,24 @@ final class SettingsScreen extends SidebarScreen {
                         if (on) a.applySystemTheme();
                     }
                 });
+        String shadeSub;
+        if (!SystemTheme.shadeSupported()) shadeSub = "Needs Android 12 or newer, so the panel stays as it is on this unit";
+        else if (!SystemTheme.shadeAllowed(a)) shadeSub = "Run the setup script once over USB to allow this (one permission)";
+        else shadeSub = "Colours the notification / quick-settings panel with the theme. Turn off to restore it exactly";
+        Widgets.Toggle shade = toggle(out, "Match pull-down panel to theme", shadeSub, a.prefs().matchShade(), new Widgets.Toggle.OnChange() {
+            @Override
+            public void changed(boolean on) {
+                a.setMatchShade(on);
+                refresh();
+            }
+        });
+        if (!SystemTheme.shadeAllowed(a) && !a.prefs().matchShade()) shade.setEnabled(SystemTheme.shadeSupported());
         button(out, "Apply theme to system now", false, new View.OnClickListener() {
             @Override
             public void onClick(View v) { a.applySystemTheme(); }
         });
-        para(out, "Android lets an app change the system wallpaper, and on some firmwares dark mode. Colours, icons and fonts of other apps "
-                + "can't be changed without root, so they stay as they are. The setup script (tools/setup-headunit) can also switch dark mode over USB.");
+        para(out, "Android lets an app change the system wallpaper, the pull-down panel colour (Android 12+) and on some firmwares dark mode. "
+                + "Icons and fonts of other apps can't be changed without root, so they stay as they are.");
     }
 
     // ---- Sound & music --------------------------------------------------------------------

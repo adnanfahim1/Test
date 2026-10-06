@@ -35,6 +35,16 @@ for l in 1 2 3; do
 done
 adb shell am start -n $ACT --es theme Emerald --ei home_layout 0 --es screen home >/dev/null; shot home-emerald 4
 
+echo "== Pull-down panel"
+adb shell settings get secure theme_customization_overlay_packages
+adb shell cmd statusbar expand-settings >/dev/null 2>&1 || adb shell service call statusbar 2 >/dev/null 2>&1
+shot shade-emerald 3
+adb shell cmd statusbar collapse >/dev/null 2>&1 || adb shell service call statusbar 2 >/dev/null 2>&1
+adb shell am start -n $ACT --es theme Violet --es screen home >/dev/null; sleep 3
+adb shell cmd statusbar expand-settings >/dev/null 2>&1 || true
+shot shade-violet 3
+adb shell cmd statusbar collapse >/dev/null 2>&1 || true
+
 echo "== Hardware keys"
 for k in KEYCODE_MEDIA_PLAY_PAUSE KEYCODE_MEDIA_NEXT KEYCODE_MUSIC KEYCODE_SETTINGS KEYCODE_DPAD_DOWN KEYCODE_DPAD_RIGHT KEYCODE_BACK KEYCODE_HOME; do
   adb shell input keyevent $k; sleep 1

@@ -7,13 +7,13 @@
 #
 # Usage (or double-click setup-headunit.bat):
 #   powershell -ExecutionPolicy Bypass -File tools\setup-headunit.ps1 [-Theme Violet|Ocean|Emerald|Rose]
-#       [-Layout dashboard|showcase|minimal|drive] [-Apk path] [-NoDark] [-NoWallpaper]
+#       [-Layout dashboard|showcase|minimal|drive] [-Apk path] [-NoDark] [-NoWallpaper] [-NoShade]
 #       [-NoDefaultHome] [-Fresh] [-Serial DEVICE]
 param(
     [ValidateSet('Violet', 'Ocean', 'Emerald', 'Rose')] [string]$Theme = 'Violet',
     [ValidateSet('', 'dashboard', 'showcase', 'minimal', 'drive')] [string]$Layout = '',
     [string]$Apk = (Join-Path $PSScriptRoot '..\dist\GlassLauncher.apk'),
-    [switch]$NoDark, [switch]$NoWallpaper, [switch]$NoDefaultHome, [switch]$Fresh,
+    [switch]$NoDark, [switch]$NoWallpaper, [switch]$NoShade, [switch]$NoDefaultHome, [switch]$Fresh,
     [string]$Serial = ''
 )
 
@@ -64,6 +64,11 @@ if ($Sdk -ge 23) {
     }
 } else { Skip 'Runtime permissions' "Android $Rel grants them at install" }
 
+if ($Sdk -ge 31 -and -not $NoShade) {
+    if ((Sh pm grant $Pkg android.permission.WRITE_SECURE_SETTINGS) -match '(?i)exception|error') { Skip 'Pull-down panel colour permission' 'not grantable on this firmware' }
+    else { Ok 'Pull-down panel colour permission granted' }
+}
+
 Write-Host '3. Now-playing access (notification listener)'
 $done = $false
 if ($Sdk -ge 27 -and -not ((Sh cmd notification allow_listener $Listener) -match '(?i)exception|error|unknown')) { $done = $true }
@@ -92,10 +97,19 @@ $extra = @('--es', 'theme', $Theme)
 $map = @{ 'dashboard' = 0; 'showcase' = 1; 'minimal' = 2; 'drive' = 3 }
 if ($Layout) { $extra += @('--ei', 'home_layout', $map[$Layout]) }
 if (-not $NoWallpaper) { $extra += @('--ez', 'apply_system_theme', 'true') }
+if ($Sdk -ge 31 -and -not $NoShade) { $extra += @('--ez', 'match_shade', 'true') }
 if ((Sh am start -n $Act @extra) -match '(?i)error') { Skip 'Launcher theme' "launcher didn't start" }
 else {
     Ok ("Launcher theme set to $Theme" + $(if ($Layout) { ", home layout $Layout" } else { '' }))
     if (-not $NoWallpaper) { Ok "System wallpaper matched to $Theme (the launcher shows what it could change)" }
+}
+if (-not $NoShade) {
+    if ($Sdk -lt 31) { Skip 'Pull-down panel colour' "Android $Rel can't recolour it (needs 12+)" }
+    else {
+        Start-Sleep -Seconds 2
+        if ((Sh settings get secure theme_customization_overlay_packages) -match '(?i)system_palette') { Ok "Pull-down panel colour matched to $Theme" }
+        else { Skip 'Pull-down panel colour' 'this firmware ignores it' }
+    }
 }
 if (-not $NoDark) {
     if ($Sdk -ge 29) {

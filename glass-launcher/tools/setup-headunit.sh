@@ -8,7 +8,7 @@
 #
 # Usage: tools/setup-headunit.sh [--theme Violet|Ocean|Emerald|Rose]
 #                                [--layout dashboard|showcase|minimal|drive]
-#                                [--apk path/to/GlassLauncher.apk] [--no-dark] [--no-wallpaper]
+#                                [--apk path/to/GlassLauncher.apk] [--no-dark] [--no-wallpaper] [--no-shade]
 #                                [--no-default-home] [--fresh] [--serial DEVICE]
 set -u
 PKG=com.adnan.glasslauncher
@@ -16,7 +16,7 @@ ACT=$PKG/.MainActivity
 LISTENER=$PKG/$PKG.MediaListenerService
 HERE="$(cd "$(dirname "$0")" && pwd)"
 APK="$HERE/../dist/GlassLauncher.apk"
-THEME=Violet; LAYOUT=""; DARK=1; WALL=1; SETHOME=1; FRESH=0; SERIAL=""
+THEME=Violet; LAYOUT=""; DARK=1; WALL=1; SHADE=1; SETHOME=1; FRESH=0; SERIAL=""
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -25,6 +25,7 @@ while [ $# -gt 0 ]; do
     --apk) APK="$2"; shift ;;
     --no-dark) DARK=0 ;;
     --no-wallpaper) WALL=0 ;;
+    --no-shade) SHADE=0 ;;
     --no-default-home) SETHOME=0 ;;
     --fresh) FRESH=1 ;;
     --serial) SERIAL="$2"; shift ;;
@@ -91,6 +92,11 @@ else
   skip "Runtime permissions" "Android $REL grants them at install"
 fi
 
+if [ "$SDK" -ge 31 ] && [ "$SHADE" = 1 ]; then
+  if sh_ pm grant $PKG android.permission.WRITE_SECURE_SETTINGS | grep -q -i -E "exception|error"; then skip "Pull-down panel colour permission" "not grantable on this firmware"
+  else ok "Pull-down panel colour permission granted"; fi
+fi
+
 echo "3. Now-playing access (notification listener)"
 DONE=0
 if [ "$SDK" -ge 27 ] && ! sh_ cmd notification allow_listener $LISTENER | grep -q -i -E "exception|error|unknown"; then DONE=1; fi
@@ -118,10 +124,19 @@ echo "6. Theme"
 EXTRA=(--es theme "$THEME")
 [ -n "$LAYOUT_N" ] && EXTRA+=(--ei home_layout "$LAYOUT_N")
 [ "$WALL" = 1 ] && EXTRA+=(--ez apply_system_theme true)
+[ "$SDK" -ge 31 ] && [ "$SHADE" = 1 ] && EXTRA+=(--ez match_shade true)
 if sh_ am start -n $ACT "${EXTRA[@]}" | grep -q -i error; then skip "Launcher theme" "launcher didn't start"
 else
   ok "Launcher theme set to $THEME${LAYOUT:+, home layout $LAYOUT}"
   [ "$WALL" = 1 ] && ok "System wallpaper matched to $THEME (the launcher shows what it could change)"
+fi
+if [ "$SHADE" = 1 ]; then
+  if [ "$SDK" -lt 31 ]; then skip "Pull-down panel colour" "Android $REL can't recolour it (needs 12+)"
+  else
+    sleep 2
+    if sh_ settings get secure theme_customization_overlay_packages | grep -q -i "system_palette"; then ok "Pull-down panel colour matched to $THEME"
+    else skip "Pull-down panel colour" "this firmware ignores it"; fi
+  fi
 fi
 if [ "$DARK" = 1 ]; then
   if [ "$SDK" -ge 29 ]; then

@@ -285,6 +285,11 @@ public class MainActivity extends Activity implements MediaHub.Listener {
                 applySystemTheme();
                 changed = true;
             }
+            if (i.hasExtra("match_shade")) {
+                boolean on = i.getBooleanExtra("match_shade", true);
+                prefs.setMatchShade(on);
+                if (on) SystemTheme.applyShade(this, Ui.themeIndex); else SystemTheme.restoreShade(this);
+            }
             if (i.getBooleanExtra("reset_safe_mode", false)) {
                 CrashGuard.markStable(this);
                 changed = true;
@@ -521,6 +526,15 @@ public class MainActivity extends Activity implements MediaHub.Listener {
         rebuildAll();
         toast(Ui.THEME_NAMES[idx] + " theme");
         if (prefs.matchSystemWallpaper()) applySystemTheme();
+        if (prefs.matchShade()) toast(SystemTheme.describe(SystemTheme.applyShade(this, idx)));
+    }
+
+    /** Turns pull-down panel matching on or off; off restores the original colours. */
+    void setMatchShade(boolean on) {
+        prefs.setMatchShade(on);
+        SystemTheme.Shade r = on ? SystemTheme.applyShade(this, Ui.themeIndex) : SystemTheme.restoreShade(this);
+        if (on && r != SystemTheme.Shade.APPLIED) prefs.setMatchShade(false);
+        toast(SystemTheme.describe(r));
     }
 
     void applySystemTheme() {

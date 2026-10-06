@@ -3,7 +3,7 @@
 An Android home-screen launcher for Nakamichi Android car players, built from the "NAM5240T
 Glass Launcher" design handoff (`design-source/`).
 
-**Download:** [`dist/GlassLauncher.apk`](dist/GlassLauncher.apk) (about 3 MB, version 1.1.1).
+**Download:** [`dist/GlassLauncher.apk`](dist/GlassLauncher.apk) (about 3 MB, version 1.2.0).
 
 ![Dashboard](screenshots/01-home-dashboard.png)
 
@@ -88,8 +88,9 @@ changes; everything else it leaves as it is and lists:
 | Battery optimisation off for the launcher | Android 6+ |
 | Make it the default home app | Android 7+ (otherwise press Home › Always) |
 | Launcher theme, home layout, matching system wallpaper | always |
+| **Pull-down panel** (notifications / quick settings) coloured with the theme | Android 12+ (grants one permission over USB); turning it off restores the original colours exactly |
 | System dark mode | Android 10+, when the firmware allows it |
-| Other apps' colours, icons and fonts; boot logo, steering-key learning, EQ | never changed: needs root or the vendor app |
+| Pull-down panel on Android 5–11, other apps' icons and fonts, boot logo, steering-key learning, EQ | never changed: needs root or the vendor app |
 
 **Back to the stock launcher at any time:** Android Settings › Apps › Default apps › Home app.
 

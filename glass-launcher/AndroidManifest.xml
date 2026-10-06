@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.adnan.glasslauncher"
-    android:versionCode="3"
-    android:versionName="1.1.1">
+    android:versionCode="4"
+    android:versionName="1.2.0">
 
     <!-- Android 5.0 (API 21) to Android 15+ (API 35). Newer APIs are isolated in NewApi.java. -->
     <uses-sdk android:minSdkVersion="21" android:targetSdkVersion="35" />
@@ -14,6 +14,8 @@
     <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
     <uses-permission android:name="android.permission.SET_WALLPAPER" />
+    <!-- Only granted over USB by the setup script; lets the theme colour the pull-down panel (Android 12+). -->
+    <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS" />
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
     <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
 
