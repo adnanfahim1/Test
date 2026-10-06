@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="LauncherTheme" parent="@android:style/Theme.Material.NoActionBar.Fullscreen">
+        <item name="android:windowBackground">@color/ground</item>
+        <item name="android:colorAccent">#7C5CFF</item>
+        <item name="android:windowShowWallpaper">false</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:statusBarColor">#00000000</item>
+        <item name="android:navigationBarColor">#FF0E0F12</item>
+    </style>
+    <color name="ground">#FF0E0F12</color>
+</resources>

@@ -1,0 +1,295 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Car Settings</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&amp;family=Manrope:wght@400;500;600&amp;display=swap">
+<style>
+body{margin:0}
+@keyframes rise{from{opacity:0;transform:translateY(14px) scale(.985)}to{opacity:1;transform:none}}
+@keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes pop{0%{transform:scale(.55);opacity:0}70%{transform:scale(1.08);opacity:1}100%{transform:scale(1)}}
+button,a,input{-webkit-tap-highlight-color:transparent}
+button,a{transition:transform .22s cubic-bezier(.2,.8,.2,1),filter .25s ease,box-shadow .3s ease,background-color .3s ease !important}
+button:hover,a:hover{filter:brightness(1.15)}
+button:active,a:active{transform:scale(.95) !important;filter:brightness(1.3)}
+button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid #fff;outline-offset:3px}
+.rise{animation:rise .6s cubic-bezier(.2,.8,.2,1) both}
+.stagger>*{animation:rise .5s cubic-bezier(.2,.8,.2,1) both}.stagger>*:nth-child(1){animation-delay:150ms}.stagger>*:nth-child(2){animation-delay:180ms}.stagger>*:nth-child(3){animation-delay:210ms}.stagger>*:nth-child(4){animation-delay:240ms}.stagger>*:nth-child(5){animation-delay:270ms}.stagger>*:nth-child(6){animation-delay:300ms}.stagger>*:nth-child(7){animation-delay:330ms}.stagger>*:nth-child(8){animation-delay:360ms}.stagger>*:nth-child(9){animation-delay:390ms}.stagger>*:nth-child(10){animation-delay:420ms}.stagger>*:nth-child(11){animation-delay:450ms}.stagger>*:nth-child(12){animation-delay:480ms}.stagger>*:nth-child(13){animation-delay:510ms}.stagger>*:nth-child(14){animation-delay:540ms}.stagger>*:nth-child(15){animation-delay:570ms}.stagger>*:nth-child(16){animation-delay:600ms}.stagger>*:nth-child(17){animation-delay:630ms}.stagger>*:nth-child(18){animation-delay:660ms}
+main>*{animation:fade .38s cubic-bezier(.2,.8,.2,1) both}main>*:nth-child(2){animation-delay:70ms}main>*:nth-child(3){animation-delay:105ms}main>*:nth-child(4){animation-delay:140ms}main>*:nth-child(5){animation-delay:175ms}main>*:nth-child(6){animation-delay:210ms}main>*:nth-child(7){animation-delay:245ms}main>*:nth-child(8){animation-delay:280ms}main>*:nth-child(9){animation-delay:315ms}
+.sw{appearance:none;-webkit-appearance:none;margin:0;flex-shrink:0;box-sizing:border-box;position:relative;width:60px;height:34px;border-radius:17px;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.2);cursor:pointer;transition:background-color .3s ease,box-shadow .3s ease}
+.sw::before{content:"";position:absolute;top:4px;left:4px;width:24px;height:24px;border-radius:12px;background:#fff;box-shadow:0 2px 6px rgba(0,0,0,.35);transition:transform .38s cubic-bezier(.3,1.4,.5,1),width .2s ease}
+.sw:checked{background:var(--accent);box-shadow:0 0 18px color-mix(in srgb,var(--accent) 55%,transparent)}
+.sw:checked::before{transform:translateX(26px)}
+.sw:active::before{width:30px}.sw:checked:active::before{transform:translateX(20px)}
+.knob{transition:top .45s cubic-bezier(.3,1.3,.5,1)}
+.pp svg{animation:pop .32s cubic-bezier(.2,.8,.2,1)}
+input[type=range]{cursor:pointer}
+@media (prefers-reduced-motion:reduce){*{animation:none !important;transition:none !important}}
+a{color:#C7C9D6}a:hover{color:#E3E4EA}
+
+
+@keyframes wheelspin{to{transform:rotate(360deg)}}
+@keyframes loaderOut{0%,60%{opacity:1;visibility:visible}100%{opacity:0;visibility:hidden}}
+@keyframes wheelIn{from{transform:translateX(-40px) scale(.8);opacity:0}to{transform:none;opacity:1}}
+.loader{position:absolute;inset:0;z-index:50;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:rgba(12,12,16,.45);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);pointer-events:none;animation:loaderOut .75s ease forwards}
+.loader .wheelwrap{animation:wheelIn .3s cubic-bezier(.2,.8,.2,1) both}
+.loader .wheel{animation:wheelspin .55s linear infinite}
+@media (prefers-reduced-motion:reduce){.loader{display:none !important}}
+
+@keyframes toastIn{from{opacity:0;transform:translate(-50%,16px)}to{opacity:1;transform:translate(-50%,0)}}
+.toast{animation:toastIn .35s cubic-bezier(.2,.8,.2,1) both}
+@keyframes dlgIn{from{opacity:0;transform:scale(.94)}to{opacity:1;transform:none}}
+.dlg{animation:dlgIn .28s cubic-bezier(.2,.8,.2,1) both}
+.scrim{animation:fade .25s ease both}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.dotpulse{animation:pulse 1s ease-in-out infinite}
+@keyframes popin{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+.pop-in{animation:popin .3s cubic-bezier(.2,.8,.2,1) both}
+</style>
+</helmet>
+<div style="position: relative; width: 1280px; height: 720px; box-sizing: border-box; padding: 28px 32px 24px; --accent: {{accent}}; background: {{ground}}; color: #F2F3F5; font-family: Manrope, sans-serif; display: flex; flex-direction: row-reverse; gap: 24px">
+  <div class="loader" role="status" aria-label="Loading">
+    <span class="wheelwrap" style="display: block">
+      <svg class="wheel" width="56" height="56" viewBox="0 0 64 64" aria-hidden="true" style="display: block">
+        <circle cx="32" cy="32" r="28" fill="#1B1C21" stroke="#2E3038" stroke-width="2"></circle>
+        <circle cx="32" cy="32" r="19" fill="none" stroke="#CDCFD6" stroke-width="3"></circle>
+        <path d="M32 15v10M48.2 26.7l-9.5 3.1M42 45.8l-5.9-8.1M22 45.8l5.9-8.1M15.8 26.7l9.5 3.1" stroke="#CDCFD6" stroke-width="4" stroke-linecap="round"></path>
+        <circle cx="32" cy="32" r="6" fill="{{accent}}"></circle>
+      </svg>
+    </span>
+  </div>
+  <nav aria-label="Car settings sections" style="width: 320px; flex-shrink: 0; display: flex; flex-direction: column; gap: 8px">
+    <div style="display: flex; flex-direction: row-reverse; justify-content: flex-start; align-items: center; gap: 16px; margin-bottom: 12px">
+      <a href="Main.dc.html" aria-label="Back to home" class="rise" style="animation-delay: 0ms; display: flex; align-items: center; justify-content: center; width: 56px; height: 56px; border-radius: 16px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.14); backdrop-filter: blur(28px) saturate(140%); -webkit-backdrop-filter: blur(28px) saturate(140%); box-shadow: inset 0 1px 0 rgba(255,255,255,0.16), 0 16px 48px rgba(4,4,8,0.45)">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#F2F3F5" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg>
+      </a>
+      <div style="font-family: 'Barlow Semi Condensed', sans-serif; font-size: 36px; font-weight: 600">Car settings</div>
+    </div>
+    <sc-for list="{{sections}}" as="s" hint-placeholder-count="6">
+      <sc-if value="{{s.active}}" hint-placeholder-val="{{ false }}">
+        <button aria-current="page" onClick="{{s.pick}}" style="all: unset; cursor: pointer; display: flex; align-items: center; gap: 16px; height: 64px; padding: 0 20px; border-radius: 16px; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.10); box-shadow: inset 0 1px 0 rgba(255,255,255,0.08); font-size: 19px; font-weight: 600">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="{{accent}}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{s.icon}}"></path></svg>
+          {{s.label}}
+        </button>
+      </sc-if>
+      <sc-if value="{{s.inactive}}" hint-placeholder-val="{{ true }}">
+        <button onClick="{{s.pick}}" style="all: unset; cursor: pointer; display: flex; align-items: center; gap: 16px; height: 64px; padding: 0 20px; border-radius: 16px; font-size: 19px; color: #C8CAD1">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#B3B5BD" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{s.icon}}"></path></svg>
+          {{s.label}}
+        </button>
+      </sc-if>
+    </sc-for>
+    <a href="Settings.dc.html" style="margin-top: auto; display: flex; align-items: center; justify-content: space-between; height: 64px; padding: 0 20px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.14); font-size: 18px; text-decoration: none; color: #F2F3F5">Android settings
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#B3B5BD" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6"></path></svg>
+    </a>
+  </nav>
+
+  <main class="rise" style="animation-delay: 80ms; flex-grow: 1; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.14); backdrop-filter: blur(28px) saturate(140%); -webkit-backdrop-filter: blur(28px) saturate(140%); box-shadow: inset 0 1px 0 rgba(255,255,255,0.16), 0 16px 48px rgba(4,4,8,0.45); border-radius: 24px; padding: 32px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px">
+    <sc-if value="{{isSound}}" hint-placeholder-val="{{ true }}">
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px">
+        <h1 style="margin: 0; font-family: 'Barlow Semi Condensed', sans-serif; font-size: 34px; font-weight: 600">Sound &amp; EQ</h1>
+        <span style="display: flex; gap: 8px">
+          <sc-for list="{{presets}}" as="p" hint-placeholder-count="5">
+            <sc-if value="{{p.active}}" hint-placeholder-val="{{ false }}"><button aria-pressed="true" onClick="{{p.pick}}" style="all: unset; cursor: pointer; padding: 10px 18px; border-radius: 12px; font-size: 16px; font-weight: 600; background: {{accent}}; color: #FFFFFF">{{p.label}}</button></sc-if>
+            <sc-if value="{{p.inactive}}" hint-placeholder-val="{{ true }}"><button aria-pressed="false" onClick="{{p.pick}}" style="all: unset; cursor: pointer; padding: 10px 18px; border-radius: 12px; font-size: 16px; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.10); box-shadow: inset 0 1px 0 rgba(255,255,255,0.08); color: #C8CAD1">{{p.label}}</button></sc-if>
+          </sc-for>
+        </span>
+      </div>
+      <div style="display: flex; justify-content: space-between; gap: 8px; height: 250px; padding: 20px 24px 16px; border-radius: 16px; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.10); box-shadow: inset 0 1px 0 rgba(255,255,255,0.08); box-sizing: border-box">
+        <sc-for list="{{bands}}" as="b" hint-placeholder-count="12">
+          <div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 10px">
+            <div style="position: relative; flex-grow: 1; width: 6px; border-radius: 3px; background: rgba(255,255,255,0.16)">
+              <div class="knob" style="position: absolute; left: -11px; top: {{b.top}}; width: 28px; height: 28px; border-radius: 14px; background: {{accent}}; transform: translateY(-50%)"></div>
+            </div>
+            <span style="font-size: 14px; color: #B3B5BD">{{b.hz}}</span>
+          </div>
+        </sc-for>
+      </div>
+      <div style="display: flex; align-items: center; justify-content: space-between; min-height: 72px; padding: 0 24px; border-radius: 16px; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.10); box-shadow: inset 0 1px 0 rgba(255,255,255,0.08)">
+        <span style="font-size: 19px">Loudness</span>
+        <input type="checkbox" role="switch" class="sw" aria-label="Loudness" checked>
+      </div>
+      <label style="display: flex; flex-direction: column; gap: 12px; padding: 20px 24px; border-radius: 16px; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.10); box-shadow: inset 0 1px 0 rgba(255,255,255,0.08)"><span style="font-size: 19px">Bass boost</span><input type="range" min="0" max="10" value="4" style="width: 100%; height: 28px; accent-color: {{accent}}"></label>
+      <button onClick="{{openSub}}" data-title="Balance &amp; fader" style="all: unset; cursor: pointer; box-sizing: border-box; display: flex; align-items: center; justify-content: space-between; min-height: 72px; padding: 0 24px; border-radius: 16px; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.10); box-shadow: inset 0 1px 0 rgba(255,255,255,0.08)">
+        <span style="font-size: 19px">Balance &amp; fader</span>
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#B3B5BD" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6"></path></svg>
+      </button>
+    </sc-if>
+
+    <sc-if value="{{isCamera}}" hint-placeholder-val="{{ false }}">
+      <h1 style="margin: 0 0 12px; font-family: 'Barlow Semi Condensed', sans-serif; font-size: 34px; font-weight: 600">Reverse camera</h1>
+      <div style="display: flex; align-items: center; justify-content: space-between; min-height: 72px; padding: 0 24px; border-radius: 16px; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.10); box-shadow: inset 0 1px 0 rgba(255,255,255,0.08)">
+        <span style="font-size: 19px">Camera format</span>
+        <span style="display: flex; gap: 6px"><sc-for list="{{camOpts}}" as="o" hint-placeholder-count="3"><sc-if value="{{o.active}}" hint-placeholder-val="{{ false }}"><button aria-pressed="true" onClick="{{o.pick}}" style="all: unset; cursor: pointer; padding: 12px 18px; border-radius: 12px; font-size: 16px; font-weight: 600; background: rgba(255,255,255,0.18); box-shadow: inset 0 1px 0 rgba(255,255,255,0.2)">{{o.label}}</button></sc-if><sc-if value="{{o.inactive}}" hint-placeholder-val="{{ true }}"><button aria-pressed="false" onClick="{{o.pick}}" style="all: unset; cursor: pointer; padding: 12px 18px; border-radius: 12px; font-size: 16px; color: #C8CAD1">{{o.label}}</button></sc-if></sc-for></span>
+      </div>
+      <div style="display: flex; align-items: center; justify-content: space-between; min-height: 72px; padding: 0 24px; border-radius: 16px; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.10); box-shadow: inset 0 1px 0 rgba(255,255,255,0.08)">
+        <span style="font-size: 19px">Parking guide lines</span>
+        <input type="checkbox" role="switch" class="sw" aria-label="Parking guide lines" checked>
+      </div>
+      <div style="display: flex; align-items: center; justify-content: space-between; min-height: 72px; padding: 0 24px; border-radius: 16px; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.10); box-shadow: inset 0 1px 0 rgba(255,255,255,0.08)">
+        <span style="font-size: 19px">Mirror image</span>
+        <input type="checkbox" role="switch" class="sw" aria-label="Mirror image">
+      </div>
+      <div style="display: flex; align-items: center; justify-content: space-between; min-height: 72px; padding: 0 24px; border-radius: 16px; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.10); box-shadow: inset 0 1px 0 rgba(255,255,255,0.08)">
+        <span style="display: flex; flex-direction: column"><span style="font-size: 19px">Lower volume when reversing</span><span style="font-size: 15px; color: #B3B5BD">Music drops while the camera is on</span></span>
+        <input type="checkbox" role="switch" class="sw" aria-label="Lower volume when reversing" checked>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{isSteering}}" hint-placeholder-val="{{ false }}">
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px">
+        <h1 style="margin: 0; font-family: 'Barlow Semi Condensed', sans-serif; font-size: 34px; font-weight: 600">Steering wheel keys</h1>
+        <button onClick="{{toggleLearn}}" style="all: unset; cursor: pointer; display: flex; align-items: center; gap: 10px; padding: 14px 22px; border-radius: 14px; background: {{learnBg}}; color: #FFFFFF; font-size: 17px; font-weight: 600"><sc-if value="{{learning}}" hint-placeholder-val="{{ false }}"><span class="dotpulse" style="width: 10px; height: 10px; border-radius: 5px; background: #FFFFFF"></span></sc-if>{{learnLabel}}</button>
+      </div>
+      <sc-if value="{{learning}}" hint-placeholder-val="{{ false }}"><div class="pop-in" role="status" style="padding: 14px 18px; border-radius: 14px; background: rgba(255,255,255,0.10); border: 1px solid rgba(255,255,255,0.18); font-size: 16px">Listening… press each steering-wheel button once and the head unit will detect it.</div></sc-if>
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px">
+        <sc-for list="{{keys}}" as="k" hint-placeholder-count="8">
+          <div style="display: flex; align-items: center; justify-content: space-between; min-height: 72px; padding: 0 24px; border-radius: 16px; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.10); box-shadow: inset 0 1px 0 rgba(255,255,255,0.08)">
+            <span style="font-size: 19px">{{k}}</span>
+            <span style="font-size: 16px; color: #B3B5BD">[Not set]</span>
+          </div>
+        </sc-for>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{isLights}}" hint-placeholder-val="{{ false }}">
+      <h1 style="margin: 0 0 12px; font-family: 'Barlow Semi Condensed', sans-serif; font-size: 34px; font-weight: 600">Lights &amp; driving</h1>
+      <div style="display: flex; align-items: center; justify-content: space-between; min-height: 72px; padding: 0 24px; border-radius: 16px; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.10); box-shadow: inset 0 1px 0 rgba(255,255,255,0.08)">
+        <span style="font-size: 19px">Button backlight</span>
+        <span style="display: flex; gap: 12px"><sc-for list="{{swatches}}" as="c" hint-placeholder-count="5"><sc-if value="{{c.active}}" hint-placeholder-val="{{ false }}"><button aria-label="{{c.label}}" aria-pressed="true" onClick="{{c.pick}}" style="all: unset; cursor: pointer; width: 40px; height: 40px; border-radius: 20px; background: {{c.color}}; outline: 3px solid #F2F3F5; outline-offset: 3px; box-shadow: 0 0 16px {{c.color}}"></button></sc-if><sc-if value="{{c.inactive}}" hint-placeholder-val="{{ true }}"><button aria-label="{{c.label}}" aria-pressed="false" onClick="{{c.pick}}" style="all: unset; cursor: pointer; width: 40px; height: 40px; border-radius: 20px; background: {{c.color}}"></button></sc-if></sc-for></span>
+      </div>
+      <div style="display: flex; align-items: center; justify-content: space-between; min-height: 72px; padding: 0 24px; border-radius: 16px; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.10); box-shadow: inset 0 1px 0 rgba(255,255,255,0.08)">
+        <span style="display: flex; flex-direction: column"><span style="font-size: 19px">Dim with headlights</span><span style="font-size: 15px; color: #B3B5BD">Uses the illumination wire</span></span>
+        <input type="checkbox" role="switch" class="sw" aria-label="Dim with headlights" checked>
+      </div>
+      <div style="display: flex; align-items: center; justify-content: space-between; min-height: 72px; padding: 0 24px; border-radius: 16px; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.10); box-shadow: inset 0 1px 0 rgba(255,255,255,0.08)">
+        <span style="display: flex; flex-direction: column"><span style="font-size: 19px">Block video while driving</span><span style="font-size: 15px; color: #B3B5BD">Needs the parking-brake wire</span></span>
+        <input type="checkbox" role="switch" class="sw" aria-label="Block video while driving" checked>
+      </div>
+      <div style="display: flex; align-items: center; justify-content: space-between; min-height: 72px; padding: 0 24px; border-radius: 16px; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.10); box-shadow: inset 0 1px 0 rgba(255,255,255,0.08)">
+        <span style="font-size: 19px">Boot logo</span>
+        <span style="font-size: 17px; color: #B3B5BD">[Logo]</span>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{isNav}}" hint-placeholder-val="{{ false }}">
+      <h1 style="margin: 0 0 12px; font-family: 'Barlow Semi Condensed', sans-serif; font-size: 34px; font-weight: 600">Navigation &amp; startup</h1>
+      <div style="display: flex; align-items: center; justify-content: space-between; min-height: 72px; padding: 0 24px; border-radius: 16px; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.10); box-shadow: inset 0 1px 0 rgba(255,255,255,0.08)">
+        <span style="font-size: 19px">Default navigation app</span>
+        <span style="font-size: 17px; color: #B3B5BD">[App]</span>
+      </div>
+      <div style="display: flex; align-items: center; justify-content: space-between; min-height: 72px; padding: 0 24px; border-radius: 16px; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.10); box-shadow: inset 0 1px 0 rgba(255,255,255,0.08)">
+        <span style="display: flex; flex-direction: column"><span style="font-size: 19px">Mix navigation voice</span><span style="font-size: 15px; color: #B3B5BD">Lower music during directions</span></span>
+        <input type="checkbox" role="switch" class="sw" aria-label="Mix navigation voice" checked>
+      </div>
+      <div style="display: flex; align-items: center; justify-content: space-between; min-height: 72px; padding: 0 24px; border-radius: 16px; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.10); box-shadow: inset 0 1px 0 rgba(255,255,255,0.08)">
+        <span style="font-size: 19px">Resume last source on start</span>
+        <input type="checkbox" role="switch" class="sw" aria-label="Resume last source on start" checked>
+      </div>
+      <div style="display: flex; align-items: center; justify-content: space-between; min-height: 72px; padding: 0 24px; border-radius: 16px; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.10); box-shadow: inset 0 1px 0 rgba(255,255,255,0.08)">
+        <span style="font-size: 19px">Auto-launch CarPlay / Android Auto</span>
+        <input type="checkbox" role="switch" class="sw" aria-label="Auto-launch CarPlay or Android Auto">
+      </div>
+    </sc-if>
+
+    <sc-if value="{{isSystem}}" hint-placeholder-val="{{ false }}">
+      <h1 style="margin: 0 0 12px; font-family: 'Barlow Semi Condensed', sans-serif; font-size: 34px; font-weight: 600">System</h1>
+      <div style="display: flex; align-items: center; justify-content: space-between; min-height: 72px; padding: 0 24px; border-radius: 16px; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.10); box-shadow: inset 0 1px 0 rgba(255,255,255,0.08)"><span style="font-size: 19px">Radio region</span><span style="font-size: 17px; color: #B3B5BD">[Region]</span></div>
+      <div style="display: flex; align-items: center; justify-content: space-between; min-height: 72px; padding: 0 24px; border-radius: 16px; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.10); box-shadow: inset 0 1px 0 rgba(255,255,255,0.08)"><span style="font-size: 19px">MCU version</span><span style="font-size: 17px; color: #B3B5BD">[Version]</span></div>
+      <div style="display: flex; align-items: center; justify-content: space-between; min-height: 72px; padding: 0 24px; border-radius: 16px; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.10); box-shadow: inset 0 1px 0 rgba(255,255,255,0.08)">
+        <span style="display: flex; flex-direction: column"><span style="font-size: 19px">Factory settings</span><span style="font-size: 15px; color: #B3B5BD">Installer only · needs a code</span></span>
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#B3B5BD" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg>
+      </div>
+      <button onClick="{{askReset}}" style="all: unset; cursor: pointer; display: flex; align-items: center; justify-content: center; min-height: 64px; border-radius: 16px; border: 1px solid #E5484D; color: #FF8A8E; font-size: 18px; font-weight: 600">Reset to factory defaults</button>
+    </sc-if>
+  </main>
+  <sc-if value="{{hasToast}}" hint-placeholder-val="{{ false }}">
+    <div class="toast" role="status" style="position: absolute; left: 50%; bottom: 32px; z-index: 40; transform: translateX(-50%); padding: 14px 22px; border-radius: 18px; background: rgba(22,23,28,0.9); border: 1px solid rgba(255,255,255,0.18); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); box-shadow: 0 16px 40px rgba(0,0,0,0.45); font-size: 16px; color: #F2F3F5; white-space: nowrap">{{toast}}</div>
+  </sc-if>
+  <sc-if value="{{confirmReset}}" hint-placeholder-val="{{ false }}">
+    <div class="scrim" style="position: absolute; inset: 0; z-index: 45; display: flex; align-items: center; justify-content: center; background: rgba(6,6,8,0.6); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px)">
+      <div class="dlg" role="alertdialog" aria-labelledby="rst-title" style="width: 460px; padding: 32px; border-radius: 28px; background: rgba(32,33,40,0.96); border: 1px solid rgba(255,255,255,0.18); box-shadow: 0 30px 80px rgba(0,0,0,0.6); display: flex; flex-direction: column; gap: 14px">
+        <h2 id="rst-title" style="margin: 0; font-family: 'Barlow Semi Condensed', sans-serif; font-size: 30px; font-weight: 600">Reset to factory defaults?</h2>
+        <p style="margin: 0; font-size: 16px; line-height: 1.5; color: #C8CAD1">This erases your apps, paired phones and all settings on the head unit. It can't be undone.</p>
+        <div style="display: flex; gap: 12px; margin-top: 10px">
+          <button onClick="{{cancelReset}}" style="all: unset; cursor: pointer; flex: 1; display: flex; align-items: center; justify-content: center; min-height: 56px; border-radius: 16px; background: rgba(255,255,255,0.12); font-size: 17px; font-weight: 600">Cancel</button>
+          <button onClick="{{doReset}}" style="all: unset; cursor: pointer; flex: 1; display: flex; align-items: center; justify-content: center; min-height: 56px; border-radius: 16px; background: #C62828; color: #FFFFFF; font-size: 17px; font-weight: 600">Reset</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#7C5CFF","options":["#7C5CFF","#4FA3F7","#3FD1A8","#F2F3F5"]},"$preview":{"width":1280,"height":720}}'>
+class Component extends DCLogic {
+  themeVals() {
+    const T = {
+      Violet: { a: '#7C5CFF', g: ['#3B3368', '#2A2C33', '#1D1E24', '#0E0F12'] },
+      Ocean: { a: '#2563EB', g: ['#1F3D73', '#2A2C33', '#1D1E24', '#0E0F12'] },
+      Emerald: { a: '#047857', g: ['#0F4A3F', '#2A2C33', '#1D1E24', '#0E0F12'] },
+      Rose: { a: '#BE185D', g: ['#5A1F45', '#2A2C33', '#1D1E24', '#0E0F12'] }
+    };
+    const name = (this.state && this.state.theme) || this.props.theme || 'Violet';
+    const t = T[name] || T.Violet;
+    const g = t.g;
+    return {
+      accent: t.a,
+      themeName: name,
+      ground: 'radial-gradient(680px 460px at 10% -12%, ' + g[0] + ' 0%, transparent 62%), radial-gradient(700px 520px at 105% 110%, ' + g[1] + ' 0%, transparent 60%), radial-gradient(520px 380px at 70% 20%, ' + g[2] + ' 0%, transparent 70%), ' + g[3],
+      themes: Object.keys(T).map((n) => ({ label: n, swatch: T[n].a, active: n === name, inactive: n !== name, pick: () => this.setState({ theme: n }) }))
+    };
+  }
+  constructor(props) { super(props); this.state = { toast: '', tab: 'sound', preset: 'Custom' }; }
+  showToast(msg) { clearTimeout(this.toastT); this.setState({ toast: msg }); this.toastT = setTimeout(() => this.setState({ toast: '' }), 2200); }
+  componentWillUnmount() { clearTimeout(this.toastT); }
+  renderVals() {
+    const tab = this.state.tab;
+    const preset = this.state.preset;
+    const list = [
+      ['sound', 'Sound & EQ', 'M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6'],
+      ['camera', 'Reverse camera', 'M23 7l-7 5 7 5V7zM1 5h15v14H1z'],
+      ['steering', 'Steering wheel', 'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM2.5 10.5L9 12M21.5 10.5L15 12M12 15v7'],
+      ['lights', 'Lights & driving', 'M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2z'],
+      ['nav', 'Navigation & startup', 'M3 11l19-9-9 19-2-8-8-2z'],
+      ['system', 'System', 'M4 4h16v16H4zM9 9h6v6H9zM9 1v3M15 1v3M9 20v3M15 20v3M20 9h3M20 14h3M1 9h3M1 14h3']
+    ];
+    const curves = {
+      Flat: [0,0,0,0,0,0,0,0,0,0,0,0],
+      Pop: [-1,1,3,4,3,1,0,-1,0,1,2,2],
+      Rock: [4,3,2,0,-1,-1,0,2,3,4,4,3],
+      Jazz: [3,2,1,2,-1,-1,0,1,2,3,3,2],
+      Custom: [5,4,2,0,-1,0,1,2,3,3,2,1]
+    };
+    const hz = ['31','62','125','250','500','1k','2k','4k','6k','8k','12k','16k'];
+    const c = curves[preset] || curves.Flat;
+    return {
+      ...this.themeVals(),
+      openSub: (e) => this.showToast((e.currentTarget.getAttribute('data-title') || 'This') + ' opens in the full launcher'),
+      camOpts: ['CVBS', 'AHD 720P', 'AHD 1080P'].map((o) => ({ label: o, active: (this.state.cam || 'AHD 720P') === o, inactive: (this.state.cam || 'AHD 720P') !== o, pick: () => this.setState({ cam: o }) })),
+      swatches: [['Amber', '#F2A33A'], ['Blue', '#4FA3F7'], ['Teal', '#3FD1A8'], ['Red', '#E5484D'], ['White', '#F2F3F5']].map(([label, color]) => ({ label, color, active: (this.state.light || 'Amber') === label, inactive: (this.state.light || 'Amber') !== label, pick: () => this.setState({ light: label }) })),
+      learning: !!this.state.learning,
+      learnLabel: this.state.learning ? 'Stop learning' : 'Start learning',
+      learnBg: this.state.learning ? '#C62828' : this.themeVals().accent,
+      toggleLearn: () => this.setState({ learning: !this.state.learning }),
+      confirmReset: !!this.state.confirmReset,
+      askReset: () => this.setState({ confirmReset: true }),
+      cancelReset: () => this.setState({ confirmReset: false }),
+      doReset: () => { this.setState({ confirmReset: false }); this.showToast('Demo only: nothing was reset'); },
+      sections: list.map(([id, label, icon]) => ({ label, icon, active: tab === id, inactive: tab !== id, pick: () => this.setState({ tab: id }) })),
+      presets: Object.keys(curves).map((p) => ({ label: p, active: p === preset, inactive: p !== preset, pick: () => this.setState({ preset: p }) })),
+      bands: hz.map((h, i) => ({ hz: h, top: (50 - c[i] * 7) + '%' })),
+      keys: ['Volume +', 'Volume −', 'Next', 'Previous', 'Mute', 'Answer call', 'End call', 'Voice assistant'],
+      isSound: tab === 'sound', isCamera: tab === 'camera', isSteering: tab === 'steering',
+      isLights: tab === 'lights', isNav: tab === 'nav', isSystem: tab === 'system'
+    };
+  }
+}
+</script>
+</body>
+</html>

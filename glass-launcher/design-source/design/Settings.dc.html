@@ -1,0 +1,340 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Settings</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&amp;family=Manrope:wght@400;500;600&amp;display=swap">
+<style>
+body{margin:0}
+@keyframes rise{from{opacity:0;transform:translateY(14px) scale(.985)}to{opacity:1;transform:none}}
+@keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes pop{0%{transform:scale(.55);opacity:0}70%{transform:scale(1.08);opacity:1}100%{transform:scale(1)}}
+button,a,input{-webkit-tap-highlight-color:transparent}
+button,a{transition:transform .22s cubic-bezier(.2,.8,.2,1),filter .25s ease,box-shadow .3s ease,background-color .3s ease !important}
+button:hover,a:hover{filter:brightness(1.15)}
+button:active,a:active{transform:scale(.95) !important;filter:brightness(1.3)}
+button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid #fff;outline-offset:3px}
+.rise{animation:rise .6s cubic-bezier(.2,.8,.2,1) both}
+.stagger>*{animation:rise .5s cubic-bezier(.2,.8,.2,1) both}.stagger>*:nth-child(1){animation-delay:150ms}.stagger>*:nth-child(2){animation-delay:180ms}.stagger>*:nth-child(3){animation-delay:210ms}.stagger>*:nth-child(4){animation-delay:240ms}.stagger>*:nth-child(5){animation-delay:270ms}.stagger>*:nth-child(6){animation-delay:300ms}.stagger>*:nth-child(7){animation-delay:330ms}.stagger>*:nth-child(8){animation-delay:360ms}.stagger>*:nth-child(9){animation-delay:390ms}.stagger>*:nth-child(10){animation-delay:420ms}.stagger>*:nth-child(11){animation-delay:450ms}.stagger>*:nth-child(12){animation-delay:480ms}.stagger>*:nth-child(13){animation-delay:510ms}.stagger>*:nth-child(14){animation-delay:540ms}.stagger>*:nth-child(15){animation-delay:570ms}.stagger>*:nth-child(16){animation-delay:600ms}.stagger>*:nth-child(17){animation-delay:630ms}.stagger>*:nth-child(18){animation-delay:660ms}
+main>*{animation:fade .38s cubic-bezier(.2,.8,.2,1) both}main>*:nth-child(2){animation-delay:70ms}main>*:nth-child(3){animation-delay:105ms}main>*:nth-child(4){animation-delay:140ms}main>*:nth-child(5){animation-delay:175ms}main>*:nth-child(6){animation-delay:210ms}main>*:nth-child(7){animation-delay:245ms}main>*:nth-child(8){animation-delay:280ms}main>*:nth-child(9){animation-delay:315ms}
+.sw{appearance:none;-webkit-appearance:none;margin:0;flex-shrink:0;box-sizing:border-box;position:relative;width:60px;height:34px;border-radius:17px;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.2);cursor:pointer;transition:background-color .3s ease,box-shadow .3s ease}
+.sw::before{content:"";position:absolute;top:4px;left:4px;width:24px;height:24px;border-radius:12px;background:#fff;box-shadow:0 2px 6px rgba(0,0,0,.35);transition:transform .38s cubic-bezier(.3,1.4,.5,1),width .2s ease}
+.sw:checked{background:var(--accent);box-shadow:0 0 18px color-mix(in srgb,var(--accent) 55%,transparent)}
+.sw:checked::before{transform:translateX(26px)}
+.sw:active::before{width:30px}.sw:checked:active::before{transform:translateX(20px)}
+.knob{transition:top .45s cubic-bezier(.3,1.3,.5,1)}
+.pp svg{animation:pop .32s cubic-bezier(.2,.8,.2,1)}
+input[type=range]{cursor:pointer}
+@media (prefers-reduced-motion:reduce){*{animation:none !important;transition:none !important}}
+a{color:#C7C9D6}a:hover{color:#E3E4EA}
+
+
+@keyframes wheelspin{to{transform:rotate(360deg)}}
+@keyframes loaderOut{0%,60%{opacity:1;visibility:visible}100%{opacity:0;visibility:hidden}}
+@keyframes wheelIn{from{transform:translateX(-40px) scale(.8);opacity:0}to{transform:none;opacity:1}}
+.loader{position:absolute;inset:0;z-index:50;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:rgba(12,12,16,.45);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);pointer-events:none;animation:loaderOut .75s ease forwards}
+.loader .wheelwrap{animation:wheelIn .3s cubic-bezier(.2,.8,.2,1) both}
+.loader .wheel{animation:wheelspin .55s linear infinite}
+@media (prefers-reduced-motion:reduce){.loader{display:none !important}}
+
+@keyframes toastIn{from{opacity:0;transform:translate(-50%,16px)}to{opacity:1;transform:translate(-50%,0)}}
+.toast{animation:toastIn .35s cubic-bezier(.2,.8,.2,1) both}
+@keyframes dlgIn{from{opacity:0;transform:scale(.94)}to{opacity:1;transform:none}}
+.dlg{animation:dlgIn .28s cubic-bezier(.2,.8,.2,1) both}
+.scrim{animation:fade .25s ease both}
+
+.thumb-Violet{background:url(/_blob/204ea6d6dc3b87349aa5635870beeab2) center/cover no-repeat,#05070D}
+.thumb-Ocean{background:url(/_blob/1b5d6df23ae88251b01b12c9bf9c51c9) center/cover no-repeat,#05070D}
+.thumb-Emerald{background:url(/_blob/43447fb096768256f42383de8d2d4fe0) center/cover no-repeat,#05070D}
+.thumb-Rose{background:url(/_blob/4c0442b14fa496b0ffe913ebfee065e5) center/cover no-repeat,#05070D}
+</style>
+</helmet>
+<div style="position: relative; width: 1280px; height: 720px; box-sizing: border-box; padding: 28px 32px 24px; --accent: {{accent}}; background: {{ground}}; color: #F2F3F5; font-family: Manrope, sans-serif; display: flex; flex-direction: row-reverse; gap: 24px">
+  <div class="loader" role="status" aria-label="Loading">
+    <span class="wheelwrap" style="display: block">
+      <svg class="wheel" width="56" height="56" viewBox="0 0 64 64" aria-hidden="true" style="display: block">
+        <circle cx="32" cy="32" r="28" fill="#1B1C21" stroke="#2E3038" stroke-width="2"></circle>
+        <circle cx="32" cy="32" r="19" fill="none" stroke="#CDCFD6" stroke-width="3"></circle>
+        <path d="M32 15v10M48.2 26.7l-9.5 3.1M42 45.8l-5.9-8.1M22 45.8l5.9-8.1M15.8 26.7l9.5 3.1" stroke="#CDCFD6" stroke-width="4" stroke-linecap="round"></path>
+        <circle cx="32" cy="32" r="6" fill="{{accent}}"></circle>
+      </svg>
+    </span>
+  </div>
+  <nav aria-label="Settings sections" style="width: 320px; flex-shrink: 0; display: flex; flex-direction: column; gap: 8px">
+    <div style="display: flex; flex-direction: row-reverse; justify-content: flex-start; align-items: center; gap: 16px; margin-bottom: 12px">
+      <a href="Main.dc.html" aria-label="Back to home" class="rise" style="animation-delay: 0ms; display: flex; align-items: center; justify-content: center; width: 56px; height: 56px; border-radius: 16px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.14); backdrop-filter: blur(28px) saturate(140%); -webkit-backdrop-filter: blur(28px) saturate(140%); box-shadow: inset 0 1px 0 rgba(255,255,255,0.16), 0 16px 48px rgba(4,4,8,0.45)">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#F2F3F5" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg>
+      </a>
+      <div style="font-family: 'Barlow Semi Condensed', sans-serif; font-size: 36px; font-weight: 600">Settings</div>
+    </div>
+    <sc-for list="{{sections}}" as="s" hint-placeholder-count="6">
+      <sc-if value="{{s.active}}" hint-placeholder-val="{{ false }}">
+        <button aria-current="page" onClick="{{s.pick}}" style="all: unset; cursor: pointer; display: flex; align-items: center; gap: 16px; height: 64px; padding: 0 20px; border-radius: 16px; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.10); box-shadow: inset 0 1px 0 rgba(255,255,255,0.08); font-size: 19px; font-weight: 600">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="{{accent}}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{s.icon}}"></path></svg>
+          {{s.label}}
+        </button>
+      </sc-if>
+      <sc-if value="{{s.inactive}}" hint-placeholder-val="{{ true }}">
+        <button onClick="{{s.pick}}" style="all: unset; cursor: pointer; display: flex; align-items: center; gap: 16px; height: 64px; padding: 0 20px; border-radius: 16px; font-size: 19px; color: #C8CAD1">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#B3B5BD" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{s.icon}}"></path></svg>
+          {{s.label}}
+        </button>
+      </sc-if>
+    </sc-for>
+    <a href="CarSettings.dc.html" style="margin-top: auto; display: flex; align-items: center; justify-content: space-between; height: 64px; padding: 0 20px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.14); font-size: 18px; text-decoration: none; color: #F2F3F5">Car settings
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#B3B5BD" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6"></path></svg>
+    </a>
+  </nav>
+
+  <main class="rise" style="animation-delay: 80ms; flex-grow: 1; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.14); backdrop-filter: blur(28px) saturate(140%); -webkit-backdrop-filter: blur(28px) saturate(140%); box-shadow: inset 0 1px 0 rgba(255,255,255,0.16), 0 16px 48px rgba(4,4,8,0.45); border-radius: 24px; padding: 32px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px">
+    <sc-if value="{{isHome}}" hint-placeholder-val="{{ false }}">
+      <h1 style="margin: 0 0 4px; font-family: 'Barlow Semi Condensed', sans-serif; font-size: 34px; font-weight: 600">Home screen</h1>
+      <p style="margin: 0 0 10px; font-size: 15px; color: #B3B5BD">Pick the layout you see when you press Home. Tap Preview to look before choosing.</p>
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px">
+        <div style="position: relative; display: flex; flex-direction: column; border-radius: 22px; overflow: hidden; background: rgba(255,255,255,0.06); border: 2px solid {{home1Border}}; box-shadow: {{home1Glow}}">
+          <button onClick="{{pickHome1}}" aria-pressed="{{home1Pressed}}" style="all: unset; cursor: pointer; display: flex; flex-direction: column">
+            <span aria-hidden="true" style="position: relative; display: block; height: 118px; margin: 12px 12px 0; border-radius: 14px; overflow: hidden; background: linear-gradient(135deg, #2A2C33 0%, #0E0F12 100%)"><span style="background: {{accent}}; border-radius: 4px; position: absolute; right: 6px; top: 6px; bottom: 6px; width: 12px"></span><span style="background: rgba(255,255,255,0.22); border-radius: 4px; position: absolute; left: 6px; top: 6px; width: 70px; height: 70px"></span><span style="background: rgba(255,255,255,0.22); border-radius: 4px; position: absolute; left: 82px; top: 6px; width: 80px; height: 70px"></span><span style="background: rgba(255,255,255,0.22); border-radius: 4px; position: absolute; left: 168px; top: 6px; right: 24px; height: 70px"></span><span style="background: rgba(255,255,255,0.22); border-radius: 4px; position: absolute; left: 6px; bottom: 6px; right: 24px; height: 24px"></span></span>
+            <span style="display: flex; align-items: center; gap: 10px; padding: 12px 16px 4px">
+              <span style="width: 20px; height: 20px; border-radius: 10px; box-sizing: border-box; border: 2px solid {{home1Border}}; background: {{home1Dot}}"></span>
+              <span style="font-size: 18px; font-weight: 600">Dashboard</span>
+            </span>
+            <span style="padding: 0 16px 12px 46px; font-size: 14px; line-height: 1.4; color: #B3B5BD">Car, map, weather and music together.</span>
+          </button>
+          <a href="Main.dc.html" style="position: absolute; top: 20px; right: 20px; padding: 8px 12px; border-radius: 10px; background: rgba(12,12,16,0.7); border: 1px solid rgba(255,255,255,0.2); font-size: 13px; font-weight: 600; color: #F2F3F5; text-decoration: none">Preview ›</a>
+        </div>
+        <div style="position: relative; display: flex; flex-direction: column; border-radius: 22px; overflow: hidden; background: rgba(255,255,255,0.06); border: 2px solid {{home2Border}}; box-shadow: {{home2Glow}}">
+          <button onClick="{{pickHome2}}" aria-pressed="{{home2Pressed}}" style="all: unset; cursor: pointer; display: flex; flex-direction: column">
+            <span aria-hidden="true" style="position: relative; display: block; height: 118px; margin: 12px 12px 0; border-radius: 14px; overflow: hidden; background: linear-gradient(135deg, #2A2C33 0%, #0E0F12 100%)"><span style="background: {{accent}}; border-radius: 4px; position: absolute; right: 6px; top: 6px; bottom: 6px; width: 12px"></span><img src="/_blob/e98f3d2b2825dd65064eb377977473ca" alt="" style="position: absolute; left: 50%; top: 50%; width: 150px; height: 109px; margin: -50px 0 0 -84px"></span>
+            <span style="display: flex; align-items: center; gap: 10px; padding: 12px 16px 4px">
+              <span style="width: 20px; height: 20px; border-radius: 10px; box-sizing: border-box; border: 2px solid {{home2Border}}; background: {{home2Dot}}"></span>
+              <span style="font-size: 18px; font-weight: 600">Car showcase</span>
+            </span>
+            <span style="padding: 0 16px 12px 46px; font-size: 14px; line-height: 1.4; color: #B3B5BD">Just your car, big and centred.</span>
+          </button>
+          <a href="HomeShowcase.dc.html" style="position: absolute; top: 20px; right: 20px; padding: 8px 12px; border-radius: 10px; background: rgba(12,12,16,0.7); border: 1px solid rgba(255,255,255,0.2); font-size: 13px; font-weight: 600; color: #F2F3F5; text-decoration: none">Preview ›</a>
+        </div>
+        <div style="position: relative; display: flex; flex-direction: column; border-radius: 22px; overflow: hidden; background: rgba(255,255,255,0.06); border: 2px solid {{home3Border}}; box-shadow: {{home3Glow}}">
+          <button onClick="{{pickHome3}}" aria-pressed="{{home3Pressed}}" style="all: unset; cursor: pointer; display: flex; flex-direction: column">
+            <span class="wallthumb thumb-{{themeName}}" aria-hidden="true" style="position: relative; display: block; height: 118px; margin: 12px 12px 0; border-radius: 14px; overflow: hidden"><span style="background: {{accent}}; border-radius: 4px; position: absolute; right: 6px; top: 6px; bottom: 6px; width: 12px"></span><span style="position: absolute; left: 0; right: 18px; top: 32px; text-align: center; font-family: 'Barlow Semi Condensed', sans-serif; font-size: 40px; font-weight: 600; color: #F2F3F5">12:45<span style="font-size: 16px; margin-left: 4px">PM</span></span></span>
+            <span style="display: flex; align-items: center; gap: 10px; padding: 12px 16px 4px">
+              <span style="width: 20px; height: 20px; border-radius: 10px; box-sizing: border-box; border: 2px solid {{home3Border}}; background: {{home3Dot}}"></span>
+              <span style="font-size: 18px; font-weight: 600">Minimal</span>
+            </span>
+            <span style="padding: 0 16px 12px 46px; font-size: 14px; line-height: 1.4; color: #B3B5BD">A large clock only. No car or widgets.</span>
+          </button>
+          <a href="HomeMinimal.dc.html" style="position: absolute; top: 20px; right: 20px; padding: 8px 12px; border-radius: 10px; background: rgba(12,12,16,0.7); border: 1px solid rgba(255,255,255,0.2); font-size: 13px; font-weight: 600; color: #F2F3F5; text-decoration: none">Preview ›</a>
+        </div>
+        <div style="position: relative; display: flex; flex-direction: column; border-radius: 22px; overflow: hidden; background: rgba(255,255,255,0.06); border: 2px solid {{home4Border}}; box-shadow: {{home4Glow}}">
+          <button onClick="{{pickHome4}}" aria-pressed="{{home4Pressed}}" style="all: unset; cursor: pointer; display: flex; flex-direction: column">
+            <span aria-hidden="true" style="position: relative; display: block; height: 118px; margin: 12px 12px 0; border-radius: 14px; overflow: hidden; background: linear-gradient(135deg, #2A2C33 0%, #0E0F12 100%)"><span style="background: {{accent}}; border-radius: 4px; position: absolute; right: 6px; top: 6px; bottom: 6px; width: 12px"></span><span style="background: rgba(255,255,255,0.22); border-radius: 4px; position: absolute; left: 6px; top: 6px; width: 60px; height: 70px"></span><span style="background: linear-gradient(160deg, rgba(124,92,255,0.5), rgba(255,255,255,0.15)); border-radius: 4px; position: absolute; left: 72px; top: 6px; right: 24px; height: 70px"></span><span style="background: rgba(255,255,255,0.22); border-radius: 4px; position: absolute; left: 6px; bottom: 6px; right: 24px; height: 24px"></span></span>
+            <span style="display: flex; align-items: center; gap: 10px; padding: 12px 16px 4px">
+              <span style="width: 20px; height: 20px; border-radius: 10px; box-sizing: border-box; border: 2px solid {{home4Border}}; background: {{home4Dot}}"></span>
+              <span style="font-size: 18px; font-weight: 600">Drive focus</span>
+            </span>
+            <span style="padding: 0 16px 12px 46px; font-size: 14px; line-height: 1.4; color: #B3B5BD">Big map with weather and music. No car.</span>
+          </button>
+          <a href="HomeDrive.dc.html" style="position: absolute; top: 20px; right: 20px; padding: 8px 12px; border-radius: 10px; background: rgba(12,12,16,0.7); border: 1px solid rgba(255,255,255,0.2); font-size: 13px; font-weight: 600; color: #F2F3F5; text-decoration: none">Preview ›</a>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{isNetwork}}" hint-placeholder-val="{{ false }}">
+      <h1 style="margin: 0 0 12px; font-family: 'Barlow Semi Condensed', sans-serif; font-size: 34px; font-weight: 600">Network &amp; internet</h1>
+      <div style="display: flex; align-items: center; justify-content: space-between; min-height: 72px; padding: 0 24px; border-radius: 16px; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.10); box-shadow: inset 0 1px 0 rgba(255,255,255,0.08)">
+        <span style="font-size: 19px">Wi-Fi</span>
+        <input type="checkbox" role="switch" class="sw" aria-label="Wi-Fi" checked>
+      </div>
+      <div style="display: flex; align-items: center; justify-content: space-between; min-height: 72px; padding: 0 24px; border-radius: 16px; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.10); box-shadow: inset 0 1px 0 rgba(255,255,255,0.08)">
+        <span style="display: flex; flex-direction: column"><span style="font-size: 19px">[Network name]</span><span style="font-size: 15px; color: #B3B5BD">Connected</span></span>
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="{{accent}}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.6a10 10 0 0 1 14 0M8.5 16a5 5 0 0 1 7 0M2 8.8a15 15 0 0 1 20 0M12 20h.01"></path></svg>
+      </div>
+      <button onClick="{{openSub}}" data-title="Phone hotspot" style="all: unset; cursor: pointer; box-sizing: border-box; display: flex; align-items: center; justify-content: space-between; min-height: 72px; padding: 0 24px; border-radius: 16px; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.10); box-shadow: inset 0 1px 0 rgba(255,255,255,0.08)">
+        <span style="display: flex; flex-direction: column"><span style="font-size: 19px">Phone hotspot</span><span style="font-size: 15px; color: #B3B5BD">Share your phone's internet with the head unit</span></span>
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#B3B5BD" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6"></path></svg>
+      </button>
+      <div style="display: flex; align-items: center; justify-content: space-between; min-height: 72px; padding: 0 24px; border-radius: 16px; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.10); box-shadow: inset 0 1px 0 rgba(255,255,255,0.08)">
+        <span style="font-size: 19px">Mobile data (SIM)</span>
+        <span style="font-size: 16px; color: #B3B5BD">[No SIM]</span>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{isBluetooth}}" hint-placeholder-val="{{ false }}">
+      <h1 style="margin: 0 0 12px; font-family: 'Barlow Semi Condensed', sans-serif; font-size: 34px; font-weight: 600">Bluetooth</h1>
+      <div style="display: flex; align-items: center; justify-content: space-between; min-height: 72px; padding: 0 24px; border-radius: 16px; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.10); box-shadow: inset 0 1px 0 rgba(255,255,255,0.08)">
+        <span style="font-size: 19px">Bluetooth</span>
+        <input type="checkbox" role="switch" class="sw" aria-label="Bluetooth" checked>
+      </div>
+      <div style="display: flex; align-items: center; justify-content: space-between; min-height: 72px; padding: 0 24px; border-radius: 16px; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.10); box-shadow: inset 0 1px 0 rgba(255,255,255,0.08)">
+        <span style="font-size: 19px">Device name</span>
+        <span style="font-size: 17px; color: #B3B5BD">NAM5240T</span>
+      </div>
+      <div style="font-size: 14px; letter-spacing: 2px; text-transform: uppercase; color: #B3B5BD; margin: 12px 0 0">Paired devices</div>
+      <div style="display: flex; align-items: center; justify-content: space-between; min-height: 72px; padding: 0 24px; border-radius: 16px; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.10); box-shadow: inset 0 1px 0 rgba(255,255,255,0.08)">
+        <span style="display: flex; flex-direction: column"><span style="font-size: 19px">[Phone name]</span><span style="font-size: 15px; color: {{btStatusColor}}">{{btStatus}}</span></span>
+        <button onClick="{{toggleBt}}" style="all: unset; cursor: pointer; padding: 12px 20px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.22); font-size: 16px; font-weight: 600">{{btAction}}</button>
+      </div>
+      <button style="all: unset; cursor: pointer; display: flex; align-items: center; justify-content: center; min-height: 64px; border-radius: 16px; background: {{accent}}; color: #FFFFFF; font-size: 18px; font-weight: 600" onClick="{{pairNew}}">Pair new device</button>
+    </sc-if>
+
+    <sc-if value="{{isDisplay}}" hint-placeholder-val="{{ true }}">
+      <h1 style="margin: 0 0 12px; font-family: 'Barlow Semi Condensed', sans-serif; font-size: 34px; font-weight: 600">Display</h1>
+      <label style="display: flex; flex-direction: column; gap: 12px; padding: 20px 24px; border-radius: 16px; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.10); box-shadow: inset 0 1px 0 rgba(255,255,255,0.08)">
+        <span style="font-size: 19px">Brightness</span>
+        <input type="range" min="0" max="100" value="70" style="width: 100%; height: 28px; accent-color: {{accent}}">
+      </label>
+      <div style="display: flex; align-items: center; justify-content: space-between; min-height: 72px; padding: 0 24px; border-radius: 16px; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.10); box-shadow: inset 0 1px 0 rgba(255,255,255,0.08)">
+        <span style="font-size: 19px">Theme</span>
+        <span style="display: flex; gap: 8px">
+          <sc-for list="{{themes}}" as="t" hint-placeholder-count="4">
+            <sc-if value="{{t.active}}" hint-placeholder-val="{{ false }}"><button aria-pressed="true" onClick="{{t.pick}}" style="all: unset; cursor: pointer; display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-radius: 12px; background: rgba(255,255,255,0.16); font-size: 16px; font-weight: 600"><span style="width: 16px; height: 16px; border-radius: 8px; background: {{t.swatch}}; box-shadow: 0 0 10px {{t.swatch}}"></span>{{t.label}}</button></sc-if>
+            <sc-if value="{{t.inactive}}" hint-placeholder-val="{{ true }}"><button aria-pressed="false" onClick="{{t.pick}}" style="all: unset; cursor: pointer; display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-radius: 12px; font-size: 16px; color: #C8CAD1"><span style="width: 16px; height: 16px; border-radius: 8px; background: {{t.swatch}}"></span>{{t.label}}</button></sc-if>
+          </sc-for>
+        </span>
+      </div>
+      <div style="display: flex; align-items: center; justify-content: space-between; min-height: 72px; padding: 0 24px; border-radius: 16px; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.10); box-shadow: inset 0 1px 0 rgba(255,255,255,0.08)">
+        <span style="display: flex; flex-direction: column"><span style="font-size: 19px">Auto-dim at night</span><span style="font-size: 15px; color: #B3B5BD">Follows headlight signal</span></span>
+        <input type="checkbox" role="switch" class="sw" aria-label="Auto-dim at night" checked>
+      </div>
+      <button onClick="{{openSub}}" data-title="Wallpaper" style="all: unset; cursor: pointer; box-sizing: border-box; display: flex; align-items: center; justify-content: space-between; min-height: 72px; padding: 0 24px; border-radius: 16px; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.10); box-shadow: inset 0 1px 0 rgba(255,255,255,0.08)">
+        <span style="font-size: 19px">Wallpaper</span>
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#B3B5BD" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6"></path></svg>
+      </button>
+      <div style="display: flex; align-items: center; justify-content: space-between; min-height: 72px; padding: 0 24px; border-radius: 16px; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.10); box-shadow: inset 0 1px 0 rgba(255,255,255,0.08)">
+        <span style="font-size: 19px">Font size</span>
+        <span style="display: flex; gap: 6px"><sc-for list="{{fontOpts}}" as="o" hint-placeholder-count="3"><sc-if value="{{o.active}}" hint-placeholder-val="{{ false }}"><button aria-pressed="true" onClick="{{o.pick}}" style="all: unset; cursor: pointer; padding: 12px 18px; border-radius: 12px; font-size: 16px; font-weight: 600; background: rgba(255,255,255,0.18); box-shadow: inset 0 1px 0 rgba(255,255,255,0.2)">{{o.label}}</button></sc-if><sc-if value="{{o.inactive}}" hint-placeholder-val="{{ true }}"><button aria-pressed="false" onClick="{{o.pick}}" style="all: unset; cursor: pointer; padding: 12px 18px; border-radius: 12px; font-size: 16px; color: #C8CAD1">{{o.label}}</button></sc-if></sc-for></span>
+      </div>
+      <div style="display: flex; align-items: center; justify-content: space-between; min-height: 72px; padding: 0 24px; border-radius: 16px; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.10); box-shadow: inset 0 1px 0 rgba(255,255,255,0.08)">
+        <span style="font-size: 19px">Screen off timeout</span>
+        <span style="font-size: 17px; color: #B3B5BD">Never</span>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{isSound}}" hint-placeholder-val="{{ false }}">
+      <h1 style="margin: 0 0 12px; font-family: 'Barlow Semi Condensed', sans-serif; font-size: 34px; font-weight: 600">Sound</h1>
+      <label style="display: flex; flex-direction: column; gap: 12px; padding: 20px 24px; border-radius: 16px; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.10); box-shadow: inset 0 1px 0 rgba(255,255,255,0.08)"><span style="font-size: 19px">Media volume</span><input type="range" min="0" max="40" value="18" style="width: 100%; height: 28px; accent-color: {{accent}}"></label>
+      <label style="display: flex; flex-direction: column; gap: 12px; padding: 20px 24px; border-radius: 16px; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.10); box-shadow: inset 0 1px 0 rgba(255,255,255,0.08)"><span style="font-size: 19px">Navigation voice</span><input type="range" min="0" max="40" value="24" style="width: 100%; height: 28px; accent-color: {{accent}}"></label>
+      <label style="display: flex; flex-direction: column; gap: 12px; padding: 20px 24px; border-radius: 16px; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.10); box-shadow: inset 0 1px 0 rgba(255,255,255,0.08)"><span style="font-size: 19px">Call volume</span><input type="range" min="0" max="40" value="22" style="width: 100%; height: 28px; accent-color: {{accent}}"></label>
+      <div style="display: flex; align-items: center; justify-content: space-between; min-height: 72px; padding: 0 24px; border-radius: 16px; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.10); box-shadow: inset 0 1px 0 rgba(255,255,255,0.08)">
+        <span style="font-size: 19px">Touch sounds</span>
+        <input type="checkbox" role="switch" class="sw" aria-label="Touch sounds">
+      </div>
+      <a href="CarSettings.dc.html" style="display: flex; align-items: center; justify-content: space-between; min-height: 72px; padding: 0 24px; border-radius: 16px; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.10); box-shadow: inset 0 1px 0 rgba(255,255,255,0.08); color: #F2F3F5; text-decoration: none">
+        <span style="font-size: 19px">Equalizer &amp; bass</span>
+        <span style="font-size: 16px; color: #B3B5BD">In Car settings</span>
+      </a>
+    </sc-if>
+
+    <sc-if value="{{isStorage}}" hint-placeholder-val="{{ false }}">
+      <h1 style="margin: 0 0 12px; font-family: 'Barlow Semi Condensed', sans-serif; font-size: 34px; font-weight: 600">Storage &amp; apps</h1>
+      <div style="display: flex; flex-direction: column; gap: 14px; padding: 24px; border-radius: 16px; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.10); box-shadow: inset 0 1px 0 rgba(255,255,255,0.08)">
+        <div style="display: flex; justify-content: space-between; font-size: 19px"><span>Internal storage</span><span style="color: #B3B5BD">[Used] of 32 GB</span></div>
+        <div style="height: 10px; border-radius: 5px; background: rgba(255,255,255,0.16)"><div style="width: 30%; height: 10px; border-radius: 5px; background: {{accent}}"></div></div>
+      </div>
+      <button onClick="{{openSub}}" data-title="Installed apps" style="all: unset; cursor: pointer; box-sizing: border-box; display: flex; align-items: center; justify-content: space-between; min-height: 72px; padding: 0 24px; border-radius: 16px; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.10); box-shadow: inset 0 1px 0 rgba(255,255,255,0.08)">
+        <span style="font-size: 19px">Installed apps</span>
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#B3B5BD" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6"></path></svg>
+      </button>
+      <div style="display: flex; align-items: center; justify-content: space-between; min-height: 72px; padding: 0 24px; border-radius: 16px; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.10); box-shadow: inset 0 1px 0 rgba(255,255,255,0.08)">
+        <span style="display: flex; flex-direction: column"><span style="font-size: 19px">Default home app</span><span style="font-size: 15px; color: #B3B5BD">The launcher shown when you press Home</span></span>
+        <span style="font-size: 17px; color: #B3B5BD">[This launcher]</span>
+      </div>
+      <button onClick="{{openSub}}" data-title="Install from USB" style="all: unset; cursor: pointer; box-sizing: border-box; display: flex; align-items: center; justify-content: space-between; min-height: 72px; padding: 0 24px; border-radius: 16px; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.10); box-shadow: inset 0 1px 0 rgba(255,255,255,0.08)">
+        <span style="font-size: 19px">Install from USB</span>
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#B3B5BD" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6"></path></svg>
+      </button>
+    </sc-if>
+
+    <sc-if value="{{isAbout}}" hint-placeholder-val="{{ false }}">
+      <h1 style="margin: 0 0 12px; font-family: 'Barlow Semi Condensed', sans-serif; font-size: 34px; font-weight: 600">About device</h1>
+      <div style="display: flex; align-items: center; justify-content: space-between; min-height: 64px; padding: 0 24px; border-radius: 16px; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.10); box-shadow: inset 0 1px 0 rgba(255,255,255,0.08)"><span style="font-size: 19px">Model</span><span style="font-size: 17px; color: #B3B5BD">NAM5240T</span></div>
+      <div style="display: flex; align-items: center; justify-content: space-between; min-height: 64px; padding: 0 24px; border-radius: 16px; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.10); box-shadow: inset 0 1px 0 rgba(255,255,255,0.08)"><span style="font-size: 19px">Android version</span><span style="font-size: 17px; color: #B3B5BD">[Version]</span></div>
+      <div style="display: flex; align-items: center; justify-content: space-between; min-height: 64px; padding: 0 24px; border-radius: 16px; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.10); box-shadow: inset 0 1px 0 rgba(255,255,255,0.08)"><span style="font-size: 19px">System software</span><span style="font-size: 17px; color: #B3B5BD">[Version]</span></div>
+      <div style="display: flex; align-items: center; justify-content: space-between; min-height: 64px; padding: 0 24px; border-radius: 16px; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.10); box-shadow: inset 0 1px 0 rgba(255,255,255,0.08)"><span style="font-size: 19px">MCU software</span><span style="font-size: 17px; color: #B3B5BD">[Version]</span></div>
+      <div style="display: flex; align-items: center; justify-content: space-between; min-height: 64px; padding: 0 24px; border-radius: 16px; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.10); box-shadow: inset 0 1px 0 rgba(255,255,255,0.08)"><span style="font-size: 19px">Launcher version</span><span style="font-size: 17px; color: #B3B5BD">[Version]</span></div>
+      <div style="display: flex; align-items: center; justify-content: space-between; min-height: 64px; padding: 0 24px; border-radius: 16px; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.10); box-shadow: inset 0 1px 0 rgba(255,255,255,0.08)"><span style="font-size: 19px">Car 3D model</span><span style="font-size: 15px; color: #B3B5BD; text-align: right">“Toyota Noah” by Nieve5677 · CC BY</span></div>
+    </sc-if>
+  </main>
+  <sc-if value="{{hasToast}}" hint-placeholder-val="{{ false }}">
+    <div class="toast" role="status" style="position: absolute; left: 50%; bottom: 32px; z-index: 40; transform: translateX(-50%); padding: 14px 22px; border-radius: 18px; background: rgba(22,23,28,0.9); border: 1px solid rgba(255,255,255,0.18); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); box-shadow: 0 16px 40px rgba(0,0,0,0.45); font-size: 16px; color: #F2F3F5; white-space: nowrap">{{toast}}</div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#7C5CFF","options":["#7C5CFF","#4FA3F7","#3FD1A8","#F2F3F5"]},"$preview":{"width":1280,"height":720}}'>
+class Component extends DCLogic {
+  themeVals() {
+    const T = {
+      Violet: { a: '#7C5CFF', g: ['#3B3368', '#2A2C33', '#1D1E24', '#0E0F12'] },
+      Ocean: { a: '#2563EB', g: ['#1F3D73', '#2A2C33', '#1D1E24', '#0E0F12'] },
+      Emerald: { a: '#047857', g: ['#0F4A3F', '#2A2C33', '#1D1E24', '#0E0F12'] },
+      Rose: { a: '#BE185D', g: ['#5A1F45', '#2A2C33', '#1D1E24', '#0E0F12'] }
+    };
+    const name = (this.state && this.state.theme) || this.props.theme || 'Violet';
+    const t = T[name] || T.Violet;
+    const g = t.g;
+    return {
+      accent: t.a,
+      themeName: name,
+      ground: 'radial-gradient(680px 460px at 10% -12%, ' + g[0] + ' 0%, transparent 62%), radial-gradient(700px 520px at 105% 110%, ' + g[1] + ' 0%, transparent 60%), radial-gradient(520px 380px at 70% 20%, ' + g[2] + ' 0%, transparent 70%), ' + g[3],
+      themes: Object.keys(T).map((n) => ({ label: n, swatch: T[n].a, active: n === name, inactive: n !== name, pick: () => this.setState({ theme: n }) }))
+    };
+  }
+  constructor(props) { super(props); this.state = { toast: '', tab: 'display' }; }
+  showToast(msg) { clearTimeout(this.toastT); this.setState({ toast: msg }); this.toastT = setTimeout(() => this.setState({ toast: '' }), 2200); }
+  componentWillUnmount() { clearTimeout(this.toastT); }
+  renderVals() {
+    const tv0 = this.themeVals();
+    const tab = this.state.tab;
+    const list = [
+      ['home', 'Home screen', 'M3 11l9-8 9 8M5 10v10h14V10'],
+      ['network', 'Network & internet', 'M5 12.6a10 10 0 0 1 14 0M8.5 16a5 5 0 0 1 7 0M2 8.8a15 15 0 0 1 20 0M12 20h.01'],
+      ['bluetooth', 'Bluetooth', 'M7 7l10 10-5 5V2l5 5L7 17'],
+      ['display', 'Display', 'M2 4h20v13H2zM8 21h8M12 17v4'],
+      ['sound', 'Sound', 'M11 5L6 9H2v6h4l5 4V5zM15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14'],
+      ['storage', 'Storage & apps', 'M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z'],
+      ['about', 'About device', 'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM12 16v-4M12 8h.01']
+    ];
+    return {
+      ...this.themeVals(),
+      openSub: (e) => this.showToast((e.currentTarget.getAttribute('data-title') || 'This') + ' opens in the full launcher'),
+      fontOpts: ['Small', 'Default', 'Large'].map((o) => ({ label: o, active: (this.state.font || 'Default') === o, inactive: (this.state.font || 'Default') !== o, pick: () => this.setState({ font: o }) })),
+      btStatus: this.state.btOff ? 'Not connected' : 'Connected · Calls & music',
+      btStatusColor: this.state.btOff ? '#B3B5BD' : '#6EE7B7',
+      btAction: this.state.btOff ? 'Connect' : 'Disconnect',
+      toggleBt: () => { const off = !this.state.btOff; this.setState({ btOff: off }); this.showToast(off ? 'Phone disconnected' : 'Phone connected'); },
+      pairNew: () => this.showToast('Searching for nearby devices… open Bluetooth on your phone'),
+      sections: list.map(([id, label, icon]) => ({ label, icon, active: tab === id, inactive: tab !== id, pick: () => this.setState({ tab: id }) })),
+      isHome: tab === 'home',
+      home1Border: (this.state.home || 'Dashboard') === 'Dashboard' ? tv0.accent : 'rgba(255,255,255,0.12)',
+      home1Glow: (this.state.home || 'Dashboard') === 'Dashboard' ? '0 0 24px ' + tv0.accent + '66' : 'none',
+      home1Dot: (this.state.home || 'Dashboard') === 'Dashboard' ? tv0.accent : 'transparent',
+      home1Pressed: (this.state.home || 'Dashboard') === 'Dashboard' ? 'true' : 'false',
+      pickHome1: () => { this.setState({ home: 'Dashboard' }); this.showToast('Dashboard set as your Home screen'); },
+      home2Border: (this.state.home || 'Dashboard') === 'Car showcase' ? tv0.accent : 'rgba(255,255,255,0.12)',
+      home2Glow: (this.state.home || 'Dashboard') === 'Car showcase' ? '0 0 24px ' + tv0.accent + '66' : 'none',
+      home2Dot: (this.state.home || 'Dashboard') === 'Car showcase' ? tv0.accent : 'transparent',
+      home2Pressed: (this.state.home || 'Dashboard') === 'Car showcase' ? 'true' : 'false',
+      pickHome2: () => { this.setState({ home: 'Car showcase' }); this.showToast('Car showcase set as your Home screen'); },
+      home3Border: (this.state.home || 'Dashboard') === 'Minimal' ? tv0.accent : 'rgba(255,255,255,0.12)',
+      home3Glow: (this.state.home || 'Dashboard') === 'Minimal' ? '0 0 24px ' + tv0.accent + '66' : 'none',
+      home3Dot: (this.state.home || 'Dashboard') === 'Minimal' ? tv0.accent : 'transparent',
+      home3Pressed: (this.state.home || 'Dashboard') === 'Minimal' ? 'true' : 'false',
+      pickHome3: () => { this.setState({ home: 'Minimal' }); this.showToast('Minimal set as your Home screen'); },
+      home4Border: (this.state.home || 'Dashboard') === 'Drive focus' ? tv0.accent : 'rgba(255,255,255,0.12)',
+      home4Glow: (this.state.home || 'Dashboard') === 'Drive focus' ? '0 0 24px ' + tv0.accent + '66' : 'none',
+      home4Dot: (this.state.home || 'Dashboard') === 'Drive focus' ? tv0.accent : 'transparent',
+      home4Pressed: (this.state.home || 'Dashboard') === 'Drive focus' ? 'true' : 'false',
+      pickHome4: () => { this.setState({ home: 'Drive focus' }); this.showToast('Drive focus set as your Home screen'); },
+
+      isNetwork: tab === 'network', isBluetooth: tab === 'bluetooth', isDisplay: tab === 'display',
+      isSound: tab === 'sound', isStorage: tab === 'storage', isAbout: tab === 'about'
+    };
+  }
+}
+</script>
+</body>
+</html>

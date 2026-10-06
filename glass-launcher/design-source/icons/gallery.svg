@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="256" height="256"><defs>
+<linearGradient id="gBlue" x1="0" y1="0" x2="0.4" y2="1"><stop offset="0" stop-color="#8FB3FF"/><stop offset="1" stop-color="#3D5AFE"/></linearGradient>
+<linearGradient id="gViolet" x1="0" y1="0" x2="0.4" y2="1"><stop offset="0" stop-color="#D4B8FF"/><stop offset="1" stop-color="#7C5CFF"/></linearGradient>
+<linearGradient id="gTeal" x1="0" y1="0" x2="0.4" y2="1"><stop offset="0" stop-color="#8FF5DF"/><stop offset="1" stop-color="#1FAE9F"/></linearGradient>
+<linearGradient id="gSun" x1="0" y1="0" x2="0.4" y2="1"><stop offset="0" stop-color="#FFE7A0"/><stop offset="1" stop-color="#FFB547"/></linearGradient>
+<linearGradient id="gFrost" x1="0" y1="0" x2="0.3" y2="1"><stop offset="0" stop-color="#FFFFFF" stop-opacity="0.88"/><stop offset="1" stop-color="#DCD6FF" stop-opacity="0.42"/></linearGradient>
+<linearGradient id="gDot" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#A9FFF0"/><stop offset="1" stop-color="#2BC4B4"/></linearGradient>
+</defs><path d="M27 7h18a11 11 0 0 1 11 11v18a11 11 0 0 1 -11 11h-18a11 11 0 0 1 -11 -11v-18a11 11 0 0 1 11 -11z" fill="url(#gTeal)"/><path d="M19 16h18a11 11 0 0 1 11 11v18a11 11 0 0 1 -11 11h-18a11 11 0 0 1 -11 -11v-18a11 11 0 0 1 11 -11z" fill="url(#gFrost)" stroke="rgba(255,255,255,0.75)" stroke-width="0.8"/><path d="M14 49l9-11 7 7 5-5 8 9" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><path d="M31.5 28a4.5 4.5 0 1 0 9 0a4.5 4.5 0 1 0 -9 0z" fill="url(#gSun)"/></svg>

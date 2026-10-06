@@ -1,0 +1,383 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Home — Drive focus</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&amp;family=Manrope:wght@400;500;600&amp;display=swap">
+<style>
+body{margin:0}
+@keyframes rise{from{opacity:0;transform:translateY(14px) scale(.985)}to{opacity:1;transform:none}}
+@keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes pop{0%{transform:scale(.55);opacity:0}70%{transform:scale(1.08);opacity:1}100%{transform:scale(1)}}
+button,a,input{-webkit-tap-highlight-color:transparent}
+button,a{transition:transform .22s cubic-bezier(.2,.8,.2,1),filter .25s ease,box-shadow .3s ease,background-color .3s ease !important}
+button:hover,a:hover{filter:brightness(1.15)}
+button:active,a:active{transform:scale(.95) !important;filter:brightness(1.3)}
+button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid #fff;outline-offset:3px}
+.rise{animation:rise .6s cubic-bezier(.2,.8,.2,1) both}
+.stagger>*{animation:rise .5s cubic-bezier(.2,.8,.2,1) both}.stagger>*:nth-child(1){animation-delay:150ms}.stagger>*:nth-child(2){animation-delay:180ms}.stagger>*:nth-child(3){animation-delay:210ms}.stagger>*:nth-child(4){animation-delay:240ms}.stagger>*:nth-child(5){animation-delay:270ms}.stagger>*:nth-child(6){animation-delay:300ms}.stagger>*:nth-child(7){animation-delay:330ms}.stagger>*:nth-child(8){animation-delay:360ms}.stagger>*:nth-child(9){animation-delay:390ms}.stagger>*:nth-child(10){animation-delay:420ms}.stagger>*:nth-child(11){animation-delay:450ms}.stagger>*:nth-child(12){animation-delay:480ms}.stagger>*:nth-child(13){animation-delay:510ms}.stagger>*:nth-child(14){animation-delay:540ms}.stagger>*:nth-child(15){animation-delay:570ms}.stagger>*:nth-child(16){animation-delay:600ms}.stagger>*:nth-child(17){animation-delay:630ms}.stagger>*:nth-child(18){animation-delay:660ms}
+main>*{animation:fade .38s cubic-bezier(.2,.8,.2,1) both}main>*:nth-child(2){animation-delay:70ms}main>*:nth-child(3){animation-delay:105ms}main>*:nth-child(4){animation-delay:140ms}main>*:nth-child(5){animation-delay:175ms}main>*:nth-child(6){animation-delay:210ms}main>*:nth-child(7){animation-delay:245ms}main>*:nth-child(8){animation-delay:280ms}main>*:nth-child(9){animation-delay:315ms}
+.sw{appearance:none;-webkit-appearance:none;margin:0;flex-shrink:0;box-sizing:border-box;position:relative;width:60px;height:34px;border-radius:17px;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.2);cursor:pointer;transition:background-color .3s ease,box-shadow .3s ease}
+.sw::before{content:"";position:absolute;top:4px;left:4px;width:24px;height:24px;border-radius:12px;background:#fff;box-shadow:0 2px 6px rgba(0,0,0,.35);transition:transform .38s cubic-bezier(.3,1.4,.5,1),width .2s ease}
+.sw:checked{background:var(--accent);box-shadow:0 0 18px color-mix(in srgb,var(--accent) 55%,transparent)}
+.sw:checked::before{transform:translateX(26px)}
+.sw:active::before{width:30px}.sw:checked:active::before{transform:translateX(20px)}
+.knob{transition:top .45s cubic-bezier(.3,1.3,.5,1)}
+.pp svg{animation:pop .32s cubic-bezier(.2,.8,.2,1)}
+input[type=range]{cursor:pointer}
+@media (prefers-reduced-motion:reduce){*{animation:none !important;transition:none !important}}
+a{color:#C7C9D6}a:hover{color:#E3E4EA}
+
+
+@keyframes spin{to{transform:rotate(360deg)}}
+.disc{animation:spin 7s linear infinite}
+@keyframes floaty{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+.floaty{animation:floaty 4.5s ease-in-out infinite}
+.car3d{transition:transform .35s cubic-bezier(.2,.8,.2,1)}
+.shadow3d{transition:transform .35s cubic-bezier(.2,.8,.2,1)}
+.stage:hover,.stage:active{transform:none !important;filter:none !important}
+.carglare{pointer-events:none;background:radial-gradient(circle at calc(var(--gx) * 1%) calc(var(--gy) * 1%),rgba(255,255,255,.55),rgba(255,255,255,0) 45%);mix-blend-mode:overlay;-webkit-mask-image:url(/_blob/e98f3d2b2825dd65064eb377977473ca);mask-image:url(/_blob/e98f3d2b2825dd65064eb377977473ca);-webkit-mask-size:100% 100%;mask-size:100% 100%;transition:opacity .3s ease}
+.beam{pointer-events:none;transition:opacity .35s ease}
+@keyframes dash{to{stroke-dashoffset:-48}}
+.route{stroke-dasharray:14 10;animation:dash 1.6s linear infinite}
+@keyframes prog{from{width:8%}to{width:100%}}
+.prog{animation:prog 210s linear infinite}
+@keyframes drift{0%,100%{transform:translateX(0)}50%{transform:translateX(-8px)}}
+.cloudy{animation:drift 6s ease-in-out infinite}
+
+@keyframes popin{from{opacity:0;transform:translateY(10px) scale(.97)}to{opacity:1;transform:none}}
+.pop-in{animation:popin .45s cubic-bezier(.2,.8,.2,1) both}
+.spinner{animation:spin .9s linear infinite}
+.mapfade{transition:opacity .6s ease}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+.dotpulse{animation:pulse 1s ease-in-out infinite}
+
+@keyframes toastIn{from{opacity:0;transform:translate(-50%,16px)}to{opacity:1;transform:translate(-50%,0)}}
+.toast{animation:toastIn .35s cubic-bezier(.2,.8,.2,1) both}
+.railicon{filter:drop-shadow(0 6px 8px rgba(4,4,8,.45));transition:transform .3s cubic-bezier(.3,1.4,.5,1)}
+a:hover .railicon{transform:translateY(-2px) scale(1.05)}
+a:active .railicon{transform:scale(.9)}
+</style>
+</helmet>
+<div style="position: relative; --accent: {{accent}}; background: {{ground}}; width: 1280px; height: 720px; box-sizing: border-box; padding: 24px; color: #F2F3F5; font-family: Manrope, sans-serif; display: flex; flex-direction: row-reverse; gap: 20px; overflow: hidden">
+  <svg width="0" height="0" style="position: absolute" aria-hidden="true">
+    <defs>
+      <linearGradient id="gBlue" x1="0" y1="0" x2="0.4" y2="1"><stop offset="0" stop-color="#8FB3FF"></stop><stop offset="1" stop-color="#3D5AFE"></stop></linearGradient>
+      <linearGradient id="gViolet" x1="0" y1="0" x2="0.4" y2="1"><stop offset="0" stop-color="#D4B8FF"></stop><stop offset="1" stop-color="#7C5CFF"></stop></linearGradient>
+      <linearGradient id="gTeal" x1="0" y1="0" x2="0.4" y2="1"><stop offset="0" stop-color="#8FF5DF"></stop><stop offset="1" stop-color="#1FAE9F"></stop></linearGradient>
+      <linearGradient id="gSun" x1="0" y1="0" x2="0.4" y2="1"><stop offset="0" stop-color="#FFE7A0"></stop><stop offset="1" stop-color="#FFB547"></stop></linearGradient>
+      <linearGradient id="gFrost" x1="0" y1="0" x2="0.3" y2="1"><stop offset="0" stop-color="#FFFFFF" stop-opacity="0.88"></stop><stop offset="1" stop-color="#DCD6FF" stop-opacity="0.42"></stop></linearGradient>
+      <linearGradient id="gDot" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#A9FFF0"></stop><stop offset="1" stop-color="#2BC4B4"></stop></linearGradient>
+    </defs>
+  </svg>
+  <nav aria-label="Main" class="rise" style="width: 88px; flex-shrink: 0; display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 16px 0; border-radius: 28px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.14); backdrop-filter: blur(28px) saturate(140%); -webkit-backdrop-filter: blur(28px) saturate(140%); box-shadow: inset 0 1px 0 rgba(255,255,255,0.16), 0 16px 48px rgba(4,4,8,0.45)">
+    <sc-for list="{{rail}}" as="r" hint-placeholder-count="5">
+      <a href="{{r.href}}" onClick="{{r.tap}}" aria-label="{{r.label}}" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; width: 72px; height: 72px; border-radius: 18px; text-decoration: none">
+        <svg class="railicon" width="38" height="38" viewBox="0 0 64 64" aria-hidden="true"><path d="{{r.back}}" fill="url(#{{r.bg}})"></path><path d="{{r.front}}" fill="url(#gFrost)" stroke="rgba(255,255,255,0.75)" stroke-width="0.8"></path><path d="{{r.detail}}" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></path><path d="{{r.dot}}" fill="url(#{{r.dotFill}})"></path></svg>
+        <span style="font-size: 11px; color: #C8CAD1">{{r.short}}</span>
+      </a>
+    </sc-for>
+    <a href="Main.dc.html" aria-current="page" style="margin-top: auto; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; width: 72px; height: 72px; border-radius: 18px; text-decoration: none; color: #FFFFFF; font-size: 11px; font-weight: 600; background: rgba(255,255,255,0.14); border: 1px solid rgba(255,255,255,0.22); box-shadow: inset 0 1px 0 rgba(255,255,255,0.2), 0 0 22px {{accentGlow}}">
+      <svg class="railicon" width="38" height="38" viewBox="0 0 64 64" aria-hidden="true"><path d="{{homeIcon.back}}" fill="url(#gViolet)"></path><path d="{{homeIcon.front}}" fill="url(#gFrost)" stroke="rgba(255,255,255,0.75)" stroke-width="0.8"></path><path d="{{homeIcon.dot}}" fill="url(#gBlue)"></path></svg>
+      Home
+    </a>
+  </nav>
+
+  <div style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 16px">
+    <header style="display: flex; align-items: center; justify-content: space-between; height: 36px; padding: 0 8px">
+      <div style="font-size: 18px; color: #C8CAD1">{{greeting}}</div>
+      <div style="display: flex; align-items: center; gap: 18px; font-size: 17px; color: #E6E7EB">
+        <button onClick="{{phoneChipAction}}" aria-label="{{phoneChipLabel}}" style="all: unset; cursor: pointer; display: flex; align-items: center; gap: 8px; padding: 7px 14px; border-radius: 999px; background: {{phoneChipBg}}; border: 1px solid rgba(255,255,255,0.18); font-size: 14px; font-weight: 600; color: #F2F3F5">
+          <span class="{{phoneDotClass}}" style="width: 8px; height: 8px; border-radius: 4px; background: {{phoneDot}}"></span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#F2F3F5" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 2h10v20H7zM11 18h2"></path></svg>
+          {{phoneChipText}}
+        </button>
+        <span>{{dateLabel}}</span>
+        <span style="font-family: 'Barlow Semi Condensed', sans-serif; font-size: 22px; font-weight: 600">{{timeLabel}}</span>
+      </div>
+    </header>
+
+    <div style="flex-grow: 1; min-height: 0; display: flex; flex-direction: column; gap: 20px">
+      <div style="flex-grow: 1; min-height: 0; display: flex; gap: 20px">
+<section class="rise" style="order: 1; animation-delay: 280ms; width: 330px; flex-shrink: 0; position: relative; overflow: hidden; display: flex; flex-direction: column; padding: 24px; border-radius: 28px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.14); backdrop-filter: blur(28px) saturate(140%); -webkit-backdrop-filter: blur(28px) saturate(140%); box-shadow: inset 0 1px 0 rgba(255,255,255,0.16), 0 16px 48px rgba(4,4,8,0.45)">
+            <sc-if value="{{isOn}}" hint-placeholder-val="{{ false }}">
+              <svg class="cloudy pop-in" width="150" height="110" viewBox="0 0 150 110" style="position: absolute; right: 8px; top: 18px" aria-hidden="true">
+                <circle cx="96" cy="38" r="26" fill="#FFD36B"></circle>
+                <path d="M38 100h78a24 24 0 0 0 0-48 34 34 0 0 0-64 6 21 21 0 0 0-14 42z" fill="rgba(255,255,255,0.88)"></path>
+              </svg>
+              <div class="pop-in" style="font-family: 'Barlow Semi Condensed', sans-serif; font-size: 76px; font-weight: 600; line-height: 1; white-space: nowrap">28°C</div>
+              <div class="pop-in" style="display: flex; align-items: center; gap: 8px; font-size: 17px; color: #C8CAD1; margin-top: 8px">[City]<span style="padding: 3px 8px; border-radius: 8px; background: rgba(255,255,255,0.14); font-size: 10px; letter-spacing: 1px; text-transform: uppercase; color: #E6E7EB">Sample</span></div>
+              <div class="pop-in" style="font-size: 22px; font-weight: 600; margin-top: auto">Partly cloudy</div>
+              <div class="pop-in" style="display: flex; flex-direction: column; gap: 8px; margin-top: 14px; font-size: 15px">
+                <div style="display: flex; justify-content: space-between"><span style="color: #C8CAD1">Chance of rain</span><span>40%</span></div>
+                <div style="display: flex; justify-content: space-between"><span style="color: #C8CAD1">Visibility</span><span>8 km</span></div>
+              </div>
+            </sc-if>
+            <sc-if value="{{isOff}}" hint-placeholder-val="{{ true }}">
+              <div class="pop-in" style="margin: auto 0; display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center">
+                <svg width="88" height="64" viewBox="0 0 150 110" aria-hidden="true" style="opacity: 0.55">
+                  <circle cx="96" cy="38" r="26" fill="#FFD36B"></circle>
+                  <path d="M38 100h78a24 24 0 0 0 0-48 34 34 0 0 0-64 6 21 21 0 0 0-14 42z" fill="rgba(255,255,255,0.88)"></path>
+                </svg>
+                <span style="font-size: 19px; font-weight: 600">Weather needs your phone</span>
+                <span style="font-size: 14px; line-height: 1.45; color: #C8CAD1">Uses your phone's internet and location for live local weather.</span>
+                <button onClick="{{connect}}" style="all: unset; cursor: pointer; margin-top: 6px; padding: 12px 20px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.28); background: rgba(255,255,255,0.08); font-size: 15px; font-weight: 600; color: #F2F3F5">Connect phone</button>
+              </div>
+            </sc-if>
+            <sc-if value="{{isConnecting}}" hint-placeholder-val="{{ false }}">
+              <div class="pop-in" role="status" style="margin: auto; display: flex; flex-direction: column; align-items: center; gap: 14px">
+                <span class="spinner" style="width: 40px; height: 40px; border-radius: 50%; border: 4px solid rgba(255,255,255,0.18); border-top-color: {{accent}}"></span>
+                <span style="font-size: 16px; color: #E6E7EB">Fetching weather…</span>
+              </div>
+            </sc-if>
+          </section>
+<div class="rise" style="order: 2; animation-delay: 160ms; flex-grow: 1; min-width: 0; position: relative; overflow: hidden; display: flex; flex-direction: column; border-radius: 28px; color: #F2F3F5; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.14); backdrop-filter: blur(28px) saturate(140%); -webkit-backdrop-filter: blur(28px) saturate(140%); box-shadow: inset 0 1px 0 rgba(255,255,255,0.16), 0 16px 48px rgba(4,4,8,0.45)">
+            <svg class="mapfade" width="300" height="420" viewBox="0 0 200 420" preserveAspectRatio="none" style="position: absolute; inset: 0; width: 100%; height: 100%; opacity: {{mapOpacity}}" aria-hidden="true">
+              <g stroke="rgba(255,255,255,0.10)" stroke-width="10" fill="none">
+                <path d="M-10 120 L210 90"></path><path d="M-10 250 L210 300"></path><path d="M60 -10 L40 430"></path><path d="M150 -10 L170 430"></path><path d="M-10 360 L210 340"></path>
+              </g>
+              <path class="route" d="M100 430 L104 330 Q108 290 140 270 L160 255 L156 150 Q154 120 120 116 L70 112" fill="none" stroke="{{accent}}" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"></path>
+              <circle cx="102" cy="360" r="11" fill="#FFFFFF"></circle><circle cx="102" cy="360" r="6" fill="{{accent}}"></circle>
+            </svg>
+            <sc-if value="{{isOn}}" hint-placeholder-val="{{ false }}">
+              <div class="pop-in" style="position: relative; display: flex; align-items: center; gap: 10px; margin: 14px; padding: 10px 12px; border-radius: 16px; background: rgba(12,12,16,0.55); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px)">
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 20V10a3 3 0 0 1 3-3h7M15 3l4 4-4 4"></path></svg>
+                <span style="display: flex; flex-direction: column"><span style="font-size: 17px; font-weight: 600">350 m · Turn right</span><span style="font-size: 12px; color: #C8CAD1">onto [Street name]</span></span>
+                <span style="margin-left: auto; padding: 3px 8px; border-radius: 8px; background: rgba(255,255,255,0.14); font-size: 10px; letter-spacing: 1px; text-transform: uppercase; color: #E6E7EB">Sample</span>
+              </div>
+              <a href="#" onClick="{{openMaps}}" class="pop-in" style="position: relative; margin: auto 14px 14px; display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 52px; border-radius: 16px; background: {{accent}}; box-shadow: 0 0 22px {{accentGlow}}; font-size: 17px; font-weight: 600; color: #FFFFFF; text-decoration: none">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l19-9-9 19-2-8-8-2z"></path></svg>
+                Open navigation
+              </a>
+            </sc-if>
+            <sc-if value="{{isOff}}" hint-placeholder-val="{{ true }}">
+              <div class="pop-in" style="position: relative; margin: auto 16px; display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center">
+                <span style="display: flex; align-items: center; justify-content: center; width: 60px; height: 60px; border-radius: 20px; background: rgba(255,255,255,0.10); border: 1px solid rgba(255,255,255,0.18)">
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#F2F3F5" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l19-9-9 19-2-8-8-2z"></path></svg>
+                </span>
+                <span style="font-size: 19px; font-weight: 600">Directions from your phone</span>
+                <span style="font-size: 14px; line-height: 1.45; color: #C8CAD1">Connect your phone to see turn-by-turn directions here.</span>
+                <button onClick="{{connect}}" style="all: unset; cursor: pointer; margin-top: 6px; padding: 14px 22px; border-radius: 16px; background: {{accent}}; box-shadow: 0 0 22px {{accentGlow}}; font-size: 16px; font-weight: 600; color: #FFFFFF">Connect phone</button>
+              </div>
+            </sc-if>
+            <sc-if value="{{isConnecting}}" hint-placeholder-val="{{ false }}">
+              <div class="pop-in" role="status" style="position: relative; margin: auto; display: flex; flex-direction: column; align-items: center; gap: 14px">
+                <span class="spinner" style="width: 40px; height: 40px; border-radius: 50%; border: 4px solid rgba(255,255,255,0.18); border-top-color: {{accent}}"></span>
+                <span style="font-size: 16px; color: #E6E7EB">Connecting to phone…</span>
+              </div>
+            </sc-if>
+          </div>
+      </div>
+<section class="rise" style="animation-delay: 340ms; height: 132px; flex-shrink: 0; display: flex; align-items: center; gap: 22px; padding: 0 28px 0 22px; border-radius: 28px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.14); backdrop-filter: blur(28px) saturate(140%); -webkit-backdrop-filter: blur(28px) saturate(140%); box-shadow: inset 0 1px 0 rgba(255,255,255,0.16), 0 16px 48px rgba(4,4,8,0.45)">
+          <a href="Media.dc.html" aria-label="Open music" class="disc" style="order: 1; animation-play-state: {{spinState}}; flex-shrink: 0; width: 88px; height: 88px; border-radius: 50%; background: repeating-radial-gradient(circle, #141519 0px, #141519 3px, #202228 4px, #141519 6px); box-shadow: 0 8px 20px rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center">
+            <span style="width: 40px; height: 40px; border-radius: 50%; background: {{track.art}}; box-shadow: inset 0 0 0 2px rgba(255,255,255,0.3)"></span>
+          </a>
+          <a href="Media.dc.html" style="order: 2; flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; text-decoration: none; color: #F2F3F5">
+            <span style="font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; color: #B3B5BD">Now playing · tap to open</span>
+            <span style="font-family: 'Barlow Semi Condensed', sans-serif; font-size: 26px; font-weight: 600">{{track.title}}</span>
+            <span style="font-size: 15px; color: #C8CAD1">{{track.artist}}</span>
+            <span style="height: 4px; margin-top: 6px; border-radius: 2px; background: rgba(255,255,255,0.14)"><span class="prog" style="display: block; height: 4px; border-radius: 2px; background: {{accent}}; box-shadow: 0 0 10px {{accentGlow}}; animation-play-state: {{spinState}}"></span></span>
+          </a>
+          <div style="order: 5; display: flex; align-items: center; gap: 8px">
+            <button aria-label="Previous track" onClick="{{prevTrack}}" style="all: unset; cursor: pointer; width: 56px; height: 56px; display: flex; align-items: center; justify-content: center; border-radius: 18px">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="#F2F3F5" aria-hidden="true"><path d="M19 20L9 12l10-8v16z"></path><rect x="4" y="4" width="2.5" height="16" rx="1"></rect></svg>
+            </button>
+            <button class="pp" aria-label="{{playLabel}}" onClick="{{togglePlay}}" style="all: unset; cursor: pointer; width: 64px; height: 64px; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: {{accent}}; box-shadow: 0 0 24px {{accentGlow}}">
+              <sc-if value="{{playing}}" hint-placeholder-val="{{ true }}"><svg width="26" height="26" viewBox="0 0 24 24" fill="#FFFFFF" aria-hidden="true"><rect x="6" y="4" width="4" height="16" rx="1"></rect><rect x="14" y="4" width="4" height="16" rx="1"></rect></svg></sc-if>
+              <sc-if value="{{paused}}" hint-placeholder-val="{{ false }}"><svg width="26" height="26" viewBox="0 0 24 24" fill="#FFFFFF" aria-hidden="true"><path d="M8 4l12 8-12 8V4z"></path></svg></sc-if>
+            </button>
+            <button aria-label="Next track" onClick="{{nextTrack}}" style="all: unset; cursor: pointer; width: 56px; height: 56px; display: flex; align-items: center; justify-content: center; border-radius: 18px">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="#F2F3F5" aria-hidden="true"><path d="M5 4l10 8-10 8V4z"></path><rect x="17.5" y="4" width="2.5" height="16" rx="1"></rect></svg>
+            </button>
+          </div>
+          <div style="order: 4; width: 1px; height: 64px; background: rgba(255,255,255,0.14)"></div>
+          <div style="order: 3; display: flex; align-items: center; gap: 10px; width: 260px">
+            <button aria-label="{{muteLabel}}" aria-pressed="{{mutedPressed}}" onClick="{{toggleMute}}" style="all: unset; cursor: pointer; flex-shrink: 0; width: 52px; height: 52px; display: flex; align-items: center; justify-content: center; border-radius: 16px; background: rgba(255,255,255,0.07)">
+              <sc-if value="{{muted}}" hint-placeholder-val="{{ false }}"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#F2F3F5" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5L6 9H2v6h4l5 4V5zM22 9l-6 6M16 9l6 6"></path></svg></sc-if>
+              <sc-if value="{{unmuted}}" hint-placeholder-val="{{ true }}"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#F2F3F5" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5L6 9H2v6h4l5 4V5zM15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14"></path></svg></sc-if>
+            </button>
+            <label style="flex-grow: 1; display: flex; flex-direction: column; gap: 4px">
+              <span style="display: flex; justify-content: space-between; font-size: 12px; color: #B3B5BD"><span>Volume</span><span>{{volLabel}}</span></span>
+              <input type="range" min="0" max="40" value="{{volume}}" onChange="{{setVolume}}" style="width: 100%; height: 26px; accent-color: {{accent}}">
+            </label>
+          </div>
+        </section>
+    </div>
+  </div>
+
+  <sc-if value="{{hasToast}}" hint-placeholder-val="{{ false }}">
+    <div class="toast" role="status" style="position: absolute; left: 50%; bottom: 168px; z-index: 40; transform: translateX(-50%); display: flex; align-items: center; gap: 10px; padding: 14px 22px; border-radius: 18px; background: rgba(22,23,28,0.85); border: 1px solid rgba(255,255,255,0.18); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); box-shadow: 0 16px 40px rgba(0,0,0,0.45); font-size: 16px; color: #F2F3F5; white-space: nowrap">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="{{accent}}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM12 16v-4M12 8h.01"></path></svg>
+      {{toast}}
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["Violet","Ocean","Emerald","Rose"],"default":"Violet"},"$preview":{"width":1280,"height":720}}'>
+class Component extends DCLogic {
+  themeVals() {
+    const T = {
+      Violet: { a: '#7C5CFF', g: ['#3B3368', '#2A2C33', '#1D1E24', '#0E0F12'] },
+      Ocean: { a: '#2563EB', g: ['#1F3D73', '#2A2C33', '#1D1E24', '#0E0F12'] },
+      Emerald: { a: '#047857', g: ['#0F4A3F', '#2A2C33', '#1D1E24', '#0E0F12'] },
+      Rose: { a: '#BE185D', g: ['#5A1F45', '#2A2C33', '#1D1E24', '#0E0F12'] }
+    };
+    const name = (this.state && this.state.theme) || this.props.theme || 'Violet';
+    const t = T[name] || T.Violet;
+    const g = t.g;
+    return {
+      accent: t.a,
+      themeName: name,
+      ground: 'radial-gradient(680px 460px at 10% -12%, ' + g[0] + ' 0%, transparent 62%), radial-gradient(700px 520px at 105% 110%, ' + g[1] + ' 0%, transparent 60%), radial-gradient(520px 380px at 70% 20%, ' + g[2] + ' 0%, transparent 70%), ' + g[3],
+      themes: Object.keys(T).map((n) => ({ label: n, swatch: T[n].a, active: n === name, inactive: n !== name, pick: () => this.setState({ theme: n }) }))
+    };
+  }
+  constructor(props) {
+    super(props);
+    this.state = { toast: '', track: 0, volume: 18, muted: false, phone: 'off', rx: 0, ry: 0, gx: 50, gy: 30, hover: false, pressed: false, lights: false, playing: true, now: new Date() };
+  }
+  componentDidMount() { this.clock = setInterval(() => this.setState({ now: new Date() }), 15000); }
+  componentWillUnmount() { clearInterval(this.clock); clearTimeout(this.pairing); clearTimeout(this.toastT); }
+  icons() {
+    const rr = (x, y, w, h, r) => 'M' + (x + r) + ' ' + y + 'h' + (w - 2 * r) + 'a' + r + ' ' + r + ' 0 0 1 ' + r + ' ' + r + 'v' + (h - 2 * r) + 'a' + r + ' ' + r + ' 0 0 1 -' + r + ' ' + r + 'h-' + (w - 2 * r) + 'a' + r + ' ' + r + ' 0 0 1 -' + r + ' -' + r + 'v-' + (h - 2 * r) + 'a' + r + ' ' + r + ' 0 0 1 ' + r + ' -' + r + 'z';
+    const ci = (cx, cy, r) => 'M' + (cx - r) + ' ' + cy + 'a' + r + ' ' + r + ' 0 1 0 ' + (2 * r) + ' 0a' + r + ' ' + r + ' 0 1 0 -' + (2 * r) + ' 0z';
+    const gear = (() => {
+      const n = 8, ro = 24, ri = 18, pts = [];
+      for (let i = 0; i < n * 4; i++) {
+        const a = (i / (n * 4)) * Math.PI * 2 - Math.PI / 2;
+        const r = (i % 4 === 0 || i % 4 === 1) ? ro : ri;
+        pts.push((32 + r * Math.cos(a)).toFixed(1) + ' ' + (32 + r * Math.sin(a)).toFixed(1));
+      }
+      return 'M' + pts.join('L') + 'z';
+    })();
+    return {
+      apps: { back: rr(8, 8, 22, 22, 7) + rr(34, 34, 22, 22, 7), bg: 'gViolet', front: rr(34, 8, 22, 22, 7) + rr(8, 34, 22, 22, 7), detail: '', dot: '', dotFill: 'gDot' },
+      home: { back: 'M32 7a4 4 0 0 1 2.6 1l21 18a3.5 3.5 0 0 1-2.3 6.2H10.7A3.5 3.5 0 0 1 8.4 26l21-18A4 4 0 0 1 32 7z', bg: 'gViolet', front: rr(14, 28, 36, 26, 8), detail: '', dot: rr(27, 38, 10, 16, 3), dotFill: 'gBlue' },
+      maps: { back: 'M8 18l16-7 16 7 16-7v36l-16 7-16-7-16 7z', bg: 'gBlue', front: 'M32 12c-7.7 0-13 5.6-13 12.6C19 34 32 48 32 48s13-14 13-23.4C45 17.6 39.7 12 32 12z', detail: '', dot: ci(32, 25, 4.5), dotFill: 'gDot' },
+      music: { back: ci(32, 32, 23), bg: 'gViolet', front: ci(32, 32, 13), detail: '', dot: ci(32, 32, 4.5), dotFill: 'gDot' },
+      phone: { back: rr(9, 9, 46, 46, 15), bg: 'gTeal', front: 'M22 17c2.4-2.4 5.6-2 6.8 1.2l2 5.2c.8 2.2 0 4.2-2 5.4l-1.6 1c2 4.6 5.6 8.4 10.2 10.4l1-1.6c1.2-2 3.2-2.8 5.4-2l5.2 2c3.2 1.2 3.6 4.4 1.2 6.8l-2.6 2.6c-3.4 3.4-10 1.8-17-5.2s-8.6-13.6-5.2-17z', detail: '', dot: '', dotFill: 'gDot' },
+      radio: { back: rr(7, 19, 50, 36, 11), bg: 'gBlue', front: rr(12, 25, 24, 24, 8), detail: 'M42 30h9M42 37h9M42 44h9M18 19L42 7', dot: ci(24, 37, 5), dotFill: 'gDot' },
+      camera: { back: rr(7, 19, 50, 36, 11) + rr(21, 11, 22, 12, 5), bg: 'gViolet', front: ci(32, 37, 13), detail: '', dot: ci(32, 37, 7.5) + ci(49, 26, 2.5), dotFill: 'gBlue' },
+      link: { back: rr(17, 6, 30, 52, 9), bg: 'gBlue', front: rr(21, 12, 22, 36, 5), detail: '', dot: ci(32, 52.5, 2.6), dotFill: 'gDot' },
+      bt: { back: ci(32, 32, 23), bg: 'gBlue', front: '', detail: 'M24 24l16 16-8 7V17l8 7-16 16', dot: '', dotFill: 'gDot' },
+      video: { back: rr(7, 13, 50, 38, 11), bg: 'gViolet', front: 'M27 22.5c0-2 2.2-3.2 3.8-2.1l11 7.4c1.5 1 1.5 3.2 0 4.2l-11 7.4c-1.6 1.1-3.8-.1-3.8-2.1z', detail: '', dot: '', dotFill: 'gDot' },
+      gallery: { back: rr(16, 7, 40, 40, 11), bg: 'gTeal', front: rr(8, 16, 40, 40, 11), detail: 'M14 49l9-11 7 7 5-5 8 9', dot: ci(36, 28, 4.5), dotFill: 'gSun' },
+      files: { back: 'M7 18a7 7 0 0 1 7-7h11l6 6h19a7 7 0 0 1 7 7v24a7 7 0 0 1-7 7H14a7 7 0 0 1-7-7z', bg: 'gBlue', front: 'M12 28a5 5 0 0 1 5-5h36a4 4 0 0 1 4 4.8l-3.8 21.4A6 6 0 0 1 47.3 54H11.5a4 4 0 0 1-4-4.8z', detail: '', dot: '', dotFill: 'gDot' },
+      browser: { back: ci(32, 32, 23), bg: 'gBlue', front: '', detail: 'M10 32h44M32 10c-8 7-8 37 0 44M32 10c8 7 8 37 0 44M14 21h36M14 43h36', dot: '', dotFill: 'gDot' },
+      store: { back: rr(9, 20, 46, 36, 11), bg: 'gViolet', front: rr(16, 30, 32, 18, 7), detail: 'M22 22v-4a10 10 0 0 1 20 0v4', dot: ci(47, 24, 5), dotFill: 'gDot' },
+      eq: { back: rr(9, 9, 46, 46, 15), bg: 'gViolet', front: '', detail: 'M21 18v28M32 18v28M43 18v28', dot: ci(21, 38, 5) + ci(32, 24, 5) + ci(43, 34, 5), dotFill: 'gDot' },
+      weather: { back: ci(40, 24, 13), bg: 'gSun', front: 'M17 52h31a10 10 0 0 0 0-20 14 14 0 0 0-26.6 3.4A8.4 8.4 0 0 0 17 52z', detail: '', dot: '', dotFill: 'gDot' },
+      calc: { back: rr(13, 6, 38, 52, 11), bg: 'gBlue', front: rr(18, 11, 28, 12, 5), detail: '', dot: ci(23, 31, 3) + ci(32, 31, 3) + ci(41, 31, 3) + ci(23, 40, 3) + ci(32, 40, 3) + ci(41, 40, 3) + ci(23, 49, 3) + ci(32, 49, 3) + ci(41, 49, 3), dotFill: 'gFrost' },
+      clock: { back: ci(32, 32, 23), bg: 'gBlue', front: ci(32, 32, 17), detail: 'M32 22v10l7 5', dot: '', dotFill: 'gDot' },
+      settings: { back: gear, bg: 'gViolet', front: ci(32, 32, 10), detail: '', dot: ci(32, 32, 5.5), dotFill: 'gDot' },
+      car: { back: 'M8 40l4.5-12.5C14 23.5 17 21 21 21h22c4 0 7 2.5 8.5 6.5L56 40v9a3 3 0 0 1-3 3H11a3 3 0 0 1-3-3z', bg: 'gBlue', front: 'M17 31l2.4-5.2c.6-1.3 1.8-2 3.2-2h18.8c1.4 0 2.6.7 3.2 2L47 31z', detail: '', dot: ci(19, 50, 5) + ci(45, 50, 5), dotFill: 'gDot' }
+    };
+  }
+  renderVals() {
+    const tv = this.themeVals();
+    const s = this.state;
+    const n = s.now;
+    const TRACKS = [
+      { title: '[Track 1]', artist: '[Artist]', art: 'linear-gradient(160deg, #F7B2A8 0%, #7A5CFF 100%)' },
+      { title: '[Track 2]', artist: '[Artist]', art: 'linear-gradient(160deg, #FFD39A 0%, #B35C3C 100%)' },
+      { title: '[Track 3]', artist: '[Artist]', art: 'linear-gradient(160deg, #7FE0D0 0%, #1B5E6B 100%)' },
+      { title: '[Track 4]', artist: '[Artist]', art: 'linear-gradient(160deg, #C9D6FF 0%, #B07BE8 100%)' }
+    ];
+    const h = n.getHours();
+    const showToast = (msg) => { clearTimeout(this.toastT); this.setState({ toast: msg }); this.toastT = setTimeout(() => this.setState({ toast: '' }), 2400); };
+    const IC = this.icons();
+    const KEY = { 'Navigation': 'maps', 'Music': 'music', 'All apps': 'apps', 'Car settings': 'car', 'Settings': 'settings' };
+    const R = (label, href, icon, short) => ({ label, href, short, ...IC[KEY[label]], tap: href === '#' ? (e) => { e.preventDefault(); showToast('This opens your maps app on the head unit'); } : undefined });
+    return {
+      ...tv,
+      accentGlow: tv.accent + '88',
+      greeting: h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening',
+      timeShort: ((h % 12) || 12) + ':' + String(n.getMinutes()).padStart(2, '0'),
+      ampm: h < 12 ? 'AM' : 'PM',
+      timeLabel: ((h % 12) || 12) + ':' + String(n.getMinutes()).padStart(2, '0') + ' ' + (h < 12 ? 'AM' : 'PM'),
+      dateLabel: n.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }),
+      homeIcon: IC.home,
+      rail: [
+        R('Navigation', '#', 'M3 11l19-9-9 19-2-8-8-2z', 'Maps'),
+        R('Music', 'Media.dc.html', 'M9 18V5l12-2v13M9 18a3 3 0 1 1-6 0 3 3 0 0 1 6 0zM21 16a3 3 0 1 1-6 0 3 3 0 0 1 6 0z', 'Music'),
+        R('All apps', 'AppDrawer.dc.html', 'M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z', 'Apps'),
+        R('Car settings', 'CarSettings.dc.html', 'M5 17h14M3 17v-5l2-5h14l2 5v5M7 17v2M17 17v2M6.5 13.5h.01M17.5 13.5h.01', 'Car'),
+        R('Settings', 'Settings.dc.html', 'M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6', 'Settings')
+      ],
+      stats: [
+        { label: 'Trip time', value: '[--]' },
+        { label: 'Distance', value: '[--] km' },
+        { label: 'Avg speed', value: '[--] km/h' },
+        { label: 'Odometer', value: '[--] km' }
+      ],
+      carTransform: 'rotateX(' + s.rx.toFixed(2) + 'deg) rotateY(' + s.ry.toFixed(2) + 'deg) translateZ(' + (s.hover ? 30 : 0) + 'px) scale(' + (s.pressed ? 0.95 : 1) + ')',
+      shadowTransform: 'translateX(' + (-s.ry * 2).toFixed(1) + 'px) scale(' + (s.pressed ? 0.9 : 1 - Math.abs(s.ry) / 90).toFixed(3) + ')',
+      gx: s.gx.toFixed(1),
+      gy: s.gy.toFixed(1),
+      glareOpacity: s.hover ? 1 : 0.35,
+      lightsOpacity: s.lights ? 1 : 0,
+      lightsColor: s.lights ? '#FFE9A8' : '#B3B5BD',
+      lightsChip: s.lights ? 'Lights on' : 'Tap car for lights',
+      lightsLabel: s.lights ? 'Turn headlight preview off' : 'Turn headlight preview on',
+      lightsPressed: s.lights ? 'true' : 'false',
+      tilt: (e) => {
+        const r = e.currentTarget.getBoundingClientRect();
+        const x = (e.clientX - r.left) / r.width - 0.5;
+        const y = (e.clientY - r.top) / r.height - 0.5;
+        this.setState({ ry: x * 26, rx: -y * 18, gx: (x + 0.5) * 100, gy: (y + 0.5) * 100, hover: true });
+      },
+      untilt: () => this.setState({ rx: 0, ry: 0, gx: 50, gy: 30, hover: false, pressed: false }),
+      press: () => this.setState({ pressed: true }),
+      release: () => this.setState({ pressed: false }),
+      toggleLights: () => this.setState({ lights: !s.lights }),
+      playing: s.playing,
+      paused: !s.playing,
+      playLabel: s.playing ? 'Pause' : 'Play',
+      spinState: s.playing ? 'running' : 'paused',
+      togglePlay: () => this.setState({ playing: !s.playing }),
+      isOn: s.phone === 'on',
+      isOff: s.phone === 'off',
+      isConnecting: s.phone === 'connecting',
+      mapOpacity: s.phone === 'on' ? 1 : 0.25,
+      connect: () => {
+        if (s.phone !== 'off') return;
+        this.setState({ phone: 'connecting' });
+        this.pairing = setTimeout(() => this.setState({ phone: 'on' }), 1600);
+      },
+      phoneChipAction: () => {
+        if (s.phone === 'on') { this.setState({ phone: 'off' }); return; }
+        if (s.phone === 'off') {
+          this.setState({ phone: 'connecting' });
+          this.pairing = setTimeout(() => this.setState({ phone: 'on' }), 1600);
+        }
+      },
+      phoneChipText: s.phone === 'on' ? '[Phone] connected' : s.phone === 'connecting' ? 'Connecting…' : 'No phone',
+      phoneChipLabel: s.phone === 'on' ? 'Phone connected. Tap to disconnect' : s.phone === 'connecting' ? 'Connecting to phone' : 'No phone connected. Tap to connect',
+      phoneChipBg: s.phone === 'on' ? 'rgba(255,255,255,0.14)' : 'rgba(255,255,255,0.06)',
+      phoneDot: s.phone === 'on' ? '#34D399' : s.phone === 'connecting' ? '#FBBF24' : '#9A9CA5',
+      phoneDotClass: s.phone === 'connecting' ? 'dotpulse' : '',
+      track: TRACKS[s.track],
+      prevTrack: () => this.setState({ track: (s.track + TRACKS.length - 1) % TRACKS.length, playing: true }),
+      nextTrack: () => this.setState({ track: (s.track + 1) % TRACKS.length, playing: true }),
+      volume: s.muted ? 0 : s.volume,
+      volLabel: s.muted ? 'Muted' : String(s.volume),
+      setVolume: (e) => this.setState({ volume: Number(e.target.value), muted: Number(e.target.value) === 0 }),
+      muted: s.muted || s.volume === 0,
+      unmuted: !(s.muted || s.volume === 0),
+      mutedPressed: s.muted ? 'true' : 'false',
+      muteLabel: s.muted ? 'Unmute' : 'Mute',
+      toggleMute: () => this.setState({ muted: !s.muted, volume: s.volume === 0 ? 12 : s.volume }),
+      hasToast: !!s.toast,
+      toast: s.toast,
+      openMaps: (e) => { e.preventDefault(); showToast('This opens your maps app on the head unit'); }
+    };
+  }
+}
+</script>
+</body>
+</html>

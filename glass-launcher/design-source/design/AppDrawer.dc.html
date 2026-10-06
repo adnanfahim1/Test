@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>App Drawer</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&amp;family=Manrope:wght@400;500;600&amp;display=swap">
+<style>
+body{margin:0}
+@keyframes rise{from{opacity:0;transform:translateY(14px) scale(.985)}to{opacity:1;transform:none}}
+@keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes pop{0%{transform:scale(.55);opacity:0}70%{transform:scale(1.08);opacity:1}100%{transform:scale(1)}}
+button,a,input{-webkit-tap-highlight-color:transparent}
+button,a{transition:transform .22s cubic-bezier(.2,.8,.2,1),filter .25s ease,box-shadow .3s ease,background-color .3s ease !important}
+button:hover,a:hover{filter:brightness(1.15)}
+button:active,a:active{transform:scale(.95) !important;filter:brightness(1.3)}
+button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid #fff;outline-offset:3px}
+.rise{animation:rise .6s cubic-bezier(.2,.8,.2,1) both}
+.stagger>*{animation:rise .5s cubic-bezier(.2,.8,.2,1) both}.stagger>*:nth-child(1){animation-delay:150ms}.stagger>*:nth-child(2){animation-delay:180ms}.stagger>*:nth-child(3){animation-delay:210ms}.stagger>*:nth-child(4){animation-delay:240ms}.stagger>*:nth-child(5){animation-delay:270ms}.stagger>*:nth-child(6){animation-delay:300ms}.stagger>*:nth-child(7){animation-delay:330ms}.stagger>*:nth-child(8){animation-delay:360ms}.stagger>*:nth-child(9){animation-delay:390ms}.stagger>*:nth-child(10){animation-delay:420ms}.stagger>*:nth-child(11){animation-delay:450ms}.stagger>*:nth-child(12){animation-delay:480ms}.stagger>*:nth-child(13){animation-delay:510ms}.stagger>*:nth-child(14){animation-delay:540ms}.stagger>*:nth-child(15){animation-delay:570ms}.stagger>*:nth-child(16){animation-delay:600ms}.stagger>*:nth-child(17){animation-delay:630ms}.stagger>*:nth-child(18){animation-delay:660ms}
+main>*{animation:fade .38s cubic-bezier(.2,.8,.2,1) both}main>*:nth-child(2){animation-delay:70ms}main>*:nth-child(3){animation-delay:105ms}main>*:nth-child(4){animation-delay:140ms}main>*:nth-child(5){animation-delay:175ms}main>*:nth-child(6){animation-delay:210ms}main>*:nth-child(7){animation-delay:245ms}main>*:nth-child(8){animation-delay:280ms}main>*:nth-child(9){animation-delay:315ms}
+.sw{appearance:none;-webkit-appearance:none;margin:0;flex-shrink:0;box-sizing:border-box;position:relative;width:60px;height:34px;border-radius:17px;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.2);cursor:pointer;transition:background-color .3s ease,box-shadow .3s ease}
+.sw::before{content:"";position:absolute;top:4px;left:4px;width:24px;height:24px;border-radius:12px;background:#fff;box-shadow:0 2px 6px rgba(0,0,0,.35);transition:transform .38s cubic-bezier(.3,1.4,.5,1),width .2s ease}
+.sw:checked{background:var(--accent);box-shadow:0 0 18px color-mix(in srgb,var(--accent) 55%,transparent)}
+.sw:checked::before{transform:translateX(26px)}
+.sw:active::before{width:30px}.sw:checked:active::before{transform:translateX(20px)}
+.knob{transition:top .45s cubic-bezier(.3,1.3,.5,1)}
+.pp svg{animation:pop .32s cubic-bezier(.2,.8,.2,1)}
+input[type=range]{cursor:pointer}
+@media (prefers-reduced-motion:reduce){*{animation:none !important;transition:none !important}}
+a{color:#C7C9D6}a:hover{color:#E3E4EA}
+input::placeholder{color:#9A9CA5}
+
+
+.pill{transition:left .45s cubic-bezier(.3,1.25,.5,1)}
+.glassicon{filter:drop-shadow(0 10px 14px rgba(4,4,8,.5));transition:transform .3s cubic-bezier(.3,1.4,.5,1)}
+.app:hover .glassicon{transform:translateY(-4px) scale(1.04)}
+.app:active .glassicon{transform:scale(.9)}
+.app:hover{background:rgba(255,255,255,0.05)}
+
+@keyframes wheelspin{to{transform:rotate(360deg)}}
+@keyframes loaderOut{0%,60%{opacity:1;visibility:visible}100%{opacity:0;visibility:hidden}}
+@keyframes wheelIn{from{transform:translateX(-40px) scale(.8);opacity:0}to{transform:none;opacity:1}}
+.loader{position:absolute;inset:0;z-index:50;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:rgba(12,12,16,.45);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);pointer-events:none;animation:loaderOut .75s ease forwards}
+.loader .wheelwrap{animation:wheelIn .3s cubic-bezier(.2,.8,.2,1) both}
+.loader .wheel{animation:wheelspin .55s linear infinite}
+@media (prefers-reduced-motion:reduce){.loader{display:none !important}}
+
+.hscroll{scrollbar-width:none;scrollbar-color:rgba(255,255,255,.28) transparent;-webkit-mask-image:linear-gradient(90deg,transparent 0,#000 40px,#000 calc(100% - 60px),transparent 100%);mask-image:linear-gradient(90deg,transparent 0,#000 40px,#000 calc(100% - 60px),transparent 100%)}
+.hscroll::-webkit-scrollbar{height:0}.hscroll::-webkit-scrollbar-thumb{background:rgba(255,255,255,.28);border-radius:3px}.hscroll::-webkit-scrollbar-track{background:transparent}
+.thumb{transition:left .25s ease,width .25s ease}
+</style>
+</helmet>
+<div style="--accent: {{accent}}; background: {{ground}}; position: relative; width: 1280px; height: 720px; box-sizing: border-box; padding: 28px 40px 24px; color: #F2F3F5; font-family: Manrope, sans-serif; display: flex; flex-direction: column; gap: 22px; overflow: hidden">
+  <div class="loader" role="status" aria-label="Loading">
+    <span class="wheelwrap" style="display: block">
+      <svg class="wheel" width="56" height="56" viewBox="0 0 64 64" aria-hidden="true" style="display: block">
+        <circle cx="32" cy="32" r="28" fill="#1B1C21" stroke="#2E3038" stroke-width="2"></circle>
+        <circle cx="32" cy="32" r="19" fill="none" stroke="#CDCFD6" stroke-width="3"></circle>
+        <path d="M32 15v10M48.2 26.7l-9.5 3.1M42 45.8l-5.9-8.1M22 45.8l5.9-8.1M15.8 26.7l9.5 3.1" stroke="#CDCFD6" stroke-width="4" stroke-linecap="round"></path>
+        <circle cx="32" cy="32" r="6" fill="{{accent}}"></circle>
+      </svg>
+    </span>
+  </div>
+  <svg width="0" height="0" style="position: absolute" aria-hidden="true">
+    <defs>
+      <linearGradient id="gBlue" x1="0" y1="0" x2="0.4" y2="1"><stop offset="0" stop-color="#8FB3FF"></stop><stop offset="1" stop-color="#3D5AFE"></stop></linearGradient>
+      <linearGradient id="gViolet" x1="0" y1="0" x2="0.4" y2="1"><stop offset="0" stop-color="#D4B8FF"></stop><stop offset="1" stop-color="#7C5CFF"></stop></linearGradient>
+      <linearGradient id="gTeal" x1="0" y1="0" x2="0.4" y2="1"><stop offset="0" stop-color="#8FF5DF"></stop><stop offset="1" stop-color="#1FAE9F"></stop></linearGradient>
+      <linearGradient id="gSun" x1="0" y1="0" x2="0.4" y2="1"><stop offset="0" stop-color="#FFE7A0"></stop><stop offset="1" stop-color="#FFB547"></stop></linearGradient>
+      <linearGradient id="gFrost" x1="0" y1="0" x2="0.3" y2="1"><stop offset="0" stop-color="#FFFFFF" stop-opacity="0.88"></stop><stop offset="1" stop-color="#DCD6FF" stop-opacity="0.42"></stop></linearGradient>
+      <linearGradient id="gDot" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#A9FFF0"></stop><stop offset="1" stop-color="#2BC4B4"></stop></linearGradient>
+    </defs>
+  </svg>
+
+  <div class="rise" style="display: flex; flex-direction: row-reverse; align-items: center; gap: 18px">
+    <a href="Main.dc.html" aria-label="Back to home" style="display: flex; align-items: center; justify-content: center; width: 56px; height: 56px; flex-shrink: 0; border-radius: 18px; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.12)">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#F2F3F5" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg>
+    </a>
+    <div style="display: flex; align-items: baseline; gap: 12px">
+      <h1 style="margin: 0; font-family: 'Barlow Semi Condensed', sans-serif; font-size: 38px; font-weight: 600">Apps</h1>
+      <span style="font-size: 16px; color: #B3B5BD">{{countLabel}}</span>
+    </div>
+    <label style="margin-right: auto; display: flex; align-items: center; gap: 12px; width: 360px; height: 56px; box-sizing: border-box; padding: 0 20px; border-radius: 18px; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.12)">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#B3B5BD" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>
+      <span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Search apps</span>
+      <input type="search" placeholder="Search apps" value="{{query}}" onChange="{{search}}" style="all: unset; flex-grow: 1; font-size: 18px; color: #F2F3F5">
+    </label>
+  </div>
+
+  <div class="rise" role="tablist" aria-label="App sections" style="animation-delay: 80ms; position: relative; align-self: flex-end; display: flex; padding: 6px; border-radius: 22px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px)">
+    <div class="pill" style="position: absolute; top: 6px; left: {{pillLeft}}; width: 132px; height: 52px; border-radius: 16px; background: rgba(255,255,255,0.16); border: 1px solid rgba(255,255,255,0.22); box-shadow: inset 0 1px 0 rgba(255,255,255,0.25), 0 6px 18px rgba(4,4,8,0.35)"></div>
+    <sc-for list="{{sections}}" as="sec" hint-placeholder-count="6">
+      <sc-if value="{{sec.active}}" hint-placeholder-val="{{ false }}"><button role="tab" aria-selected="true" onClick="{{sec.pick}}" style="all: unset; cursor: pointer; position: relative; width: 132px; height: 52px; display: flex; align-items: center; justify-content: center; font-size: 17px; font-weight: 600; color: #FFFFFF">{{sec.label}}</button></sc-if>
+      <sc-if value="{{sec.inactive}}" hint-placeholder-val="{{ true }}"><button role="tab" aria-selected="false" onClick="{{sec.pick}}" style="all: unset; cursor: pointer; position: relative; width: 132px; height: 52px; display: flex; align-items: center; justify-content: center; font-size: 17px; color: #B3B5BD">{{sec.label}}</button></sc-if>
+    </sc-for>
+  </div>
+
+  <div class="stagger hscroll" ref="{{gridRef}}" onWheel="{{wheelScroll}}" onScroll="{{onScroll}}" style="display: grid; grid-template-rows: repeat(2, minmax(0, 1fr)); grid-auto-flow: column; grid-auto-columns: 196px; row-gap: 14px; column-gap: 8px; flex-grow: 1; min-height: 0; overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory; scroll-behavior: smooth; padding: 4px 4px 18px; margin: 0 -40px; padding-left: 40px; padding-right: 40px; scroll-padding-left: 40px">
+    <sc-for list="{{apps}}" as="app" hint-placeholder-count="18">
+      <a href="{{app.href}}" class="app" style="scroll-snap-align: start; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 8px 0; border-radius: 24px; text-decoration: none; color: #F2F3F5">
+        <svg class="glassicon" width="108" height="108" viewBox="0 0 64 64" aria-hidden="true">
+          <path d="{{app.back}}" fill="url(#{{app.bg}})"></path>
+          <path d="{{app.front}}" fill="url(#gFrost)" stroke="rgba(255,255,255,0.75)" stroke-width="0.8"></path>
+          <path d="{{app.detail}}" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></path>
+          <path d="{{app.dot}}" fill="url(#{{app.dotFill}})"></path>
+        </svg>
+        <span style="font-size: 18px; font-weight: 600">{{app.label}}</span>
+      </a>
+    </sc-for>
+    <sc-if value="{{empty}}" hint-placeholder-val="{{ false }}">
+      <div style="grid-row: 1 / -1; width: 1100px; padding: 60px 0; text-align: center; font-size: 18px; color: #B3B5BD">No apps match “{{query}}”</div>
+    </sc-if>
+  </div>
+
+  <div class="rise" style="animation-delay: 160ms; display: flex; align-items: center; gap: 18px">
+    <div aria-hidden="true" style="position: relative; flex-grow: 1; height: 8px; border-radius: 4px; background: rgba(255,255,255,0.12)">
+      <div class="thumb" style="position: absolute; top: 0; left: {{thumbLeft}}; width: {{thumbWidth}}; height: 8px; border-radius: 4px; background: {{accent}}; box-shadow: 0 0 12px {{accentGlow}}"></div>
+    </div>
+    <span style="font-size: 15px; color: #B3B5BD; white-space: nowrap">{{pageLabel}}</span>
+    <div style="display: flex; gap: 10px">
+      <button aria-label="Scroll left" onClick="{{scrollLeftBtn}}" style="all: unset; cursor: pointer; width: 60px; height: 60px; display: flex; align-items: center; justify-content: center; border-radius: 18px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.16); opacity: {{leftOpacity}}">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#F2F3F5" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg>
+      </button>
+      <button aria-label="Scroll right" onClick="{{scrollRightBtn}}" style="all: unset; cursor: pointer; width: 60px; height: 60px; display: flex; align-items: center; justify-content: center; border-radius: 18px; background: {{rightBg}}; border: 1px solid rgba(255,255,255,0.16); opacity: {{rightOpacity}}">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6"></path></svg>
+      </button>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["Violet","Ocean","Emerald","Rose"],"default":"Violet"},"$preview":{"width":1280,"height":720}}'>
+class Component extends DCLogic {
+  themeVals() {
+    const T = {
+      Violet: { a: '#7C5CFF', g: ['#3B3368', '#2A2C33', '#1D1E24', '#0E0F12'] },
+      Ocean: { a: '#2563EB', g: ['#1F3D73', '#2A2C33', '#1D1E24', '#0E0F12'] },
+      Emerald: { a: '#047857', g: ['#0F4A3F', '#2A2C33', '#1D1E24', '#0E0F12'] },
+      Rose: { a: '#BE185D', g: ['#5A1F45', '#2A2C33', '#1D1E24', '#0E0F12'] }
+    };
+    const name = (this.state && this.state.theme) || this.props.theme || 'Violet';
+    const t = T[name] || T.Violet;
+    const g = t.g;
+    return {
+      accent: t.a,
+      themeName: name,
+      ground: 'radial-gradient(680px 460px at 10% -12%, ' + g[0] + ' 0%, transparent 62%), radial-gradient(700px 520px at 105% 110%, ' + g[1] + ' 0%, transparent 60%), radial-gradient(520px 380px at 70% 20%, ' + g[2] + ' 0%, transparent 70%), ' + g[3],
+      themes: Object.keys(T).map((n) => ({ label: n, swatch: T[n].a, active: n === name, inactive: n !== name, pick: () => this.setState({ theme: n }) }))
+    };
+  }
+  constructor(props) {
+    super(props);
+    this.state = { section: 'All', query: '', pos: 0, ratio: 1 };
+    this.gridRef = (el) => { this.grid = el; if (el) setTimeout(() => this.measure(), 60); };
+  }
+  icons() {
+    const rr = (x, y, w, h, r) => 'M' + (x + r) + ' ' + y + 'h' + (w - 2 * r) + 'a' + r + ' ' + r + ' 0 0 1 ' + r + ' ' + r + 'v' + (h - 2 * r) + 'a' + r + ' ' + r + ' 0 0 1 -' + r + ' ' + r + 'h-' + (w - 2 * r) + 'a' + r + ' ' + r + ' 0 0 1 -' + r + ' -' + r + 'v-' + (h - 2 * r) + 'a' + r + ' ' + r + ' 0 0 1 ' + r + ' -' + r + 'z';
+    const ci = (cx, cy, r) => 'M' + (cx - r) + ' ' + cy + 'a' + r + ' ' + r + ' 0 1 0 ' + (2 * r) + ' 0a' + r + ' ' + r + ' 0 1 0 -' + (2 * r) + ' 0z';
+    const gear = (() => {
+      const n = 8, ro = 24, ri = 18, pts = [];
+      for (let i = 0; i < n * 4; i++) {
+        const a = (i / (n * 4)) * Math.PI * 2 - Math.PI / 2;
+        const r = (i % 4 === 0 || i % 4 === 1) ? ro : ri;
+        pts.push((32 + r * Math.cos(a)).toFixed(1) + ' ' + (32 + r * Math.sin(a)).toFixed(1));
+      }
+      return 'M' + pts.join('L') + 'z';
+    })();
+    return {
+      maps: { back: 'M8 18l16-7 16 7 16-7v36l-16 7-16-7-16 7z', bg: 'gBlue', front: 'M32 12c-7.7 0-13 5.6-13 12.6C19 34 32 48 32 48s13-14 13-23.4C45 17.6 39.7 12 32 12z', detail: '', dot: ci(32, 25, 4.5), dotFill: 'gDot' },
+      music: { back: ci(32, 32, 23), bg: 'gViolet', front: ci(32, 32, 13), detail: '', dot: ci(32, 32, 4.5), dotFill: 'gDot' },
+      phone: { back: rr(9, 9, 46, 46, 15), bg: 'gTeal', front: 'M22 17c2.4-2.4 5.6-2 6.8 1.2l2 5.2c.8 2.2 0 4.2-2 5.4l-1.6 1c2 4.6 5.6 8.4 10.2 10.4l1-1.6c1.2-2 3.2-2.8 5.4-2l5.2 2c3.2 1.2 3.6 4.4 1.2 6.8l-2.6 2.6c-3.4 3.4-10 1.8-17-5.2s-8.6-13.6-5.2-17z', detail: '', dot: '', dotFill: 'gDot' },
+      radio: { back: rr(7, 19, 50, 36, 11), bg: 'gBlue', front: rr(12, 25, 24, 24, 8), detail: 'M42 30h9M42 37h9M42 44h9M18 19L42 7', dot: ci(24, 37, 5), dotFill: 'gDot' },
+      camera: { back: rr(7, 19, 50, 36, 11) + rr(21, 11, 22, 12, 5), bg: 'gViolet', front: ci(32, 37, 13), detail: '', dot: ci(32, 37, 7.5) + ci(49, 26, 2.5), dotFill: 'gBlue' },
+      link: { back: rr(17, 6, 30, 52, 9), bg: 'gBlue', front: rr(21, 12, 22, 36, 5), detail: '', dot: ci(32, 52.5, 2.6), dotFill: 'gDot' },
+      bt: { back: ci(32, 32, 23), bg: 'gBlue', front: '', detail: 'M24 24l16 16-8 7V17l8 7-16 16', dot: '', dotFill: 'gDot' },
+      video: { back: rr(7, 13, 50, 38, 11), bg: 'gViolet', front: 'M27 22.5c0-2 2.2-3.2 3.8-2.1l11 7.4c1.5 1 1.5 3.2 0 4.2l-11 7.4c-1.6 1.1-3.8-.1-3.8-2.1z', detail: '', dot: '', dotFill: 'gDot' },
+      gallery: { back: rr(16, 7, 40, 40, 11), bg: 'gTeal', front: rr(8, 16, 40, 40, 11), detail: 'M14 49l9-11 7 7 5-5 8 9', dot: ci(36, 28, 4.5), dotFill: 'gSun' },
+      files: { back: 'M7 18a7 7 0 0 1 7-7h11l6 6h19a7 7 0 0 1 7 7v24a7 7 0 0 1-7 7H14a7 7 0 0 1-7-7z', bg: 'gBlue', front: 'M12 28a5 5 0 0 1 5-5h36a4 4 0 0 1 4 4.8l-3.8 21.4A6 6 0 0 1 47.3 54H11.5a4 4 0 0 1-4-4.8z', detail: '', dot: '', dotFill: 'gDot' },
+      browser: { back: ci(32, 32, 23), bg: 'gBlue', front: '', detail: 'M10 32h44M32 10c-8 7-8 37 0 44M32 10c8 7 8 37 0 44M14 21h36M14 43h36', dot: '', dotFill: 'gDot' },
+      store: { back: rr(9, 20, 46, 36, 11), bg: 'gViolet', front: rr(16, 30, 32, 18, 7), detail: 'M22 22v-4a10 10 0 0 1 20 0v4', dot: ci(47, 24, 5), dotFill: 'gDot' },
+      eq: { back: rr(9, 9, 46, 46, 15), bg: 'gViolet', front: '', detail: 'M21 18v28M32 18v28M43 18v28', dot: ci(21, 38, 5) + ci(32, 24, 5) + ci(43, 34, 5), dotFill: 'gDot' },
+      weather: { back: ci(40, 24, 13), bg: 'gSun', front: 'M17 52h31a10 10 0 0 0 0-20 14 14 0 0 0-26.6 3.4A8.4 8.4 0 0 0 17 52z', detail: '', dot: '', dotFill: 'gDot' },
+      calc: { back: rr(13, 6, 38, 52, 11), bg: 'gBlue', front: rr(18, 11, 28, 12, 5), detail: '', dot: ci(23, 31, 3) + ci(32, 31, 3) + ci(41, 31, 3) + ci(23, 40, 3) + ci(32, 40, 3) + ci(41, 40, 3) + ci(23, 49, 3) + ci(32, 49, 3) + ci(41, 49, 3), dotFill: 'gFrost' },
+      clock: { back: ci(32, 32, 23), bg: 'gBlue', front: ci(32, 32, 17), detail: 'M32 22v10l7 5', dot: '', dotFill: 'gDot' },
+      settings: { back: gear, bg: 'gViolet', front: ci(32, 32, 10), detail: '', dot: ci(32, 32, 5.5), dotFill: 'gDot' },
+      car: { back: 'M8 40l4.5-12.5C14 23.5 17 21 21 21h22c4 0 7 2.5 8.5 6.5L56 40v9a3 3 0 0 1-3 3H11a3 3 0 0 1-3-3z', bg: 'gBlue', front: 'M17 31l2.4-5.2c.6-1.3 1.8-2 3.2-2h18.8c1.4 0 2.6.7 3.2 2L47 31z', detail: '', dot: ci(19, 50, 5) + ci(45, 50, 5), dotFill: 'gDot' }
+    };
+  }
+  measure() {
+    const g = this.grid; if (!g) return;
+    const max = g.scrollWidth - g.clientWidth;
+    const ratio = g.scrollWidth ? Math.min(1, g.clientWidth / g.scrollWidth) : 1;
+    const pos = max > 0 ? g.scrollLeft / max : 0;
+    if (Math.abs(pos - this.state.pos) > 0.005 || Math.abs(ratio - this.state.ratio) > 0.005) this.setState({ pos, ratio });
+  }
+  componentDidUpdate() { this.measure(); }
+  renderVals() {
+    const tv = this.themeVals();
+    const s = this.state;
+    const I = this.icons();
+    const all = [
+      ['Maps', 'maps', 'Drive', '#'], ['Music', 'music', 'Media', 'Media.dc.html'], ['Phone', 'phone', 'Connect', '#'],
+      ['Radio', 'radio', 'Media', '#'], ['Camera', 'camera', 'Media', '#'], ['CarPlay / AA', 'link', 'Connect', '#'],
+      ['Bluetooth', 'bt', 'Connect', '#'], ['Video', 'video', 'Media', '#'], ['Gallery', 'gallery', 'Media', '#'],
+      ['Files', 'files', 'Tools', '#'], ['Browser', 'browser', 'Tools', '#'], ['App store', 'store', 'Tools', '#'],
+      ['Equalizer', 'eq', 'System', 'CarSettings.dc.html'], ['Weather', 'weather', 'Drive', '#'], ['Calculator', 'calc', 'Tools', '#'],
+      ['Clock', 'clock', 'Tools', '#'], ['Settings', 'settings', 'System', 'Settings.dc.html'], ['Car settings', 'car', 'System', 'CarSettings.dc.html']
+    ];
+    const names = ['All', 'Drive', 'Media', 'Connect', 'Tools', 'System'];
+    const q = s.query.trim().toLowerCase();
+    const list = all
+      .filter((a) => s.section === 'All' || a[2] === s.section)
+      .filter((a) => !q || a[0].toLowerCase().includes(q))
+      .map(([label, key, sec, href]) => ({ label, href, ...I[key] }));
+    const idx = names.indexOf(s.section);
+    return {
+      ...tv,
+      apps: list,
+      empty: list.length === 0,
+      query: s.query,
+      countLabel: list.length + (list.length === 1 ? ' app' : ' apps'),
+      search: (e) => this.setState({ query: e.target.value }),
+      pillLeft: (6 + idx * 132) + 'px',
+      accentGlow: tv.accent + '88',
+      gridRef: this.gridRef,
+      onScroll: () => this.measure(),
+      thumbWidth: (s.ratio * 100).toFixed(1) + '%',
+      thumbLeft: ((1 - s.ratio) * s.pos * 100).toFixed(1) + '%',
+      pageLabel: s.ratio >= 0.999 ? 'All apps shown' : (s.pos < 0.02 ? 'Swipe for more' : s.pos > 0.98 ? 'End of list' : Math.round(s.pos * 100) + '%'),
+      leftOpacity: s.pos < 0.02 ? 0.4 : 1,
+      rightOpacity: s.pos > 0.98 || s.ratio >= 0.999 ? 0.4 : 1,
+      rightBg: s.pos > 0.98 || s.ratio >= 0.999 ? 'rgba(255,255,255,0.08)' : tv.accent,
+      scrollLeftBtn: () => { if (this.grid) this.grid.scrollBy({ left: -this.grid.clientWidth * 0.8, behavior: 'smooth' }); },
+      scrollRightBtn: () => { if (this.grid) this.grid.scrollBy({ left: this.grid.clientWidth * 0.8, behavior: 'smooth' }); },
+      wheelScroll: (e) => { if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) { e.currentTarget.scrollLeft += e.deltaY; } },
+      sections: names.map((n) => ({ label: n, active: n === s.section, inactive: n !== s.section, pick: () => { this.setState({ section: n }); if (this.grid) this.grid.scrollLeft = 0; } }))
+    };
+  }
+}
+</script>
+</body>
+</html>
