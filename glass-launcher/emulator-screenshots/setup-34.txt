@@ -8,8 +8,9 @@ Screen:    1280x720 · density 160
   ✔ ACCESS_COARSE_LOCATION granted (weather)
   ✔ ACCESS_FINE_LOCATION granted (weather)
   ✔ Nearby devices granted (phone status)
+  ✔ Pull-down panel colour permission granted
 3. Now-playing access (notification listener)
-  – Now-playing access (left as is: firmware blocks it; allow it once from the music bar)
+  ✔ Now-playing access on
 4. Keep running in the background
   ✔ Battery optimisation off for the launcher
 5. Default home app
@@ -17,9 +18,10 @@ Screen:    1280x720 · density 160
 6. Theme
   ✔ Launcher theme set to Violet, home layout dashboard
   ✔ System wallpaper matched to Violet (the launcher shows what it could change)
+  ✔ Pull-down panel colour matched to Violet
   ✔ System dark mode on
   – Other apps' colours, icons and fonts (left as is: Android doesn't allow this without root)
   – Boot logo, button backlight, steering keys, EQ (left as is: vendor settings; open Car settings in the launcher)
 
-Done. Changed 9 item(s); left 3 as is.
+Done. Changed 12 item(s); left 2 as is.
 To go back to the stock launcher: Android Settings › Apps › Default apps › Home app.

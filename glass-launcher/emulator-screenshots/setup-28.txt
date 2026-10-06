@@ -16,9 +16,10 @@ Screen:    1280x720 · density 160
 6. Theme
   ✔ Launcher theme set to Violet, home layout dashboard
   ✔ System wallpaper matched to Violet (the launcher shows what it could change)
+  – Pull-down panel colour (left as is: Android 9 can't recolour it (needs 12+))
   – Dark mode (left as is: Android 9 has no system dark mode)
   – Other apps' colours, icons and fonts (left as is: Android doesn't allow this without root)
   – Boot logo, button backlight, steering keys, EQ (left as is: vendor settings; open Car settings in the launcher)
 
-Done. Changed 8 item(s); left 3 as is.
+Done. Changed 8 item(s); left 4 as is.
 To go back to the stock launcher: Android Settings › Apps › Default apps › Home app.
