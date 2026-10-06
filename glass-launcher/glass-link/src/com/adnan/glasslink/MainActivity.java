@@ -33,7 +33,7 @@ import java.util.List;
 
 /** Set-up screen: permissions, navigation access, which car to use, on/off. */
 public final class MainActivity extends Activity {
-    private static final int REQ = 1;
+    private static final int REQ = 1, PICK = 2;
     private static MainActivity shown;
     private static final Handler MAIN = new Handler(Looper.getMainLooper());
 
@@ -41,6 +41,11 @@ public final class MainActivity extends Activity {
     private TextView status, permState, navState, carState, detail;
     private Button permBtn, navBtn, startBtn;
     private Switch hotspot;
+    private TextView updState;
+    private Button sendBundled;
+    private java.io.File bundled;
+    private String bundledVersion;
+    private int bundledCode;
 
     static void refreshSoon() {
         MAIN.post(new Runnable() {
@@ -124,6 +129,26 @@ public final class MainActivity extends Activity {
         col.addView(text("Use this when the head unit joins your phone's hotspot for internet. Only turn it on for the "
                 + "car's hotspot: while on, any device on the same Wi-Fi network as this phone could connect.", 13, false));
 
+        col.addView(text("4. Update the car app", 18, true), margins(0, dp(24)));
+        updState = text("", 14, false);
+        col.addView(updState);
+        sendBundled = button("Send update to car", new View.OnClickListener() {
+            @Override
+            public void onClick(View v) { if (bundled != null) confirmSend(bundled, bundledVersion); }
+        });
+        col.addView(sendBundled, margins(0, dp(6)));
+        col.addView(button("Choose an APK file…", new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent i = new Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("*/*");
+                try { startActivityForResult(i, PICK); } catch (Throwable t) { updateMsg("No file picker on this phone"); }
+            }
+        }), margins(0, dp(6)));
+        col.addView(text("The car app is sent over the connection above, then the car asks you to confirm the install "
+                + "(the first time, Android also asks to allow installs from Glass Launcher). Only Glass Launcher "
+                + "signed with the same key and not older than the installed one is accepted, so settings are kept.", 13, false));
+        prepareBundled();
+
         startBtn = button("Start", new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -190,6 +215,120 @@ public final class MainActivity extends Activity {
         detail.setText(d.toString());
         detail.setVisibility(d.length() > 0 ? View.VISIBLE : View.GONE);
         startBtn.setText(running ? "Stop" : "Start");
+
+        StringBuilder u = new StringBuilder();
+        u.append("Car app: ").append(LinkService.carVersion != null ? "Glass Launcher " + LinkService.carVersion
+                : LinkService.linkedTo != null ? "unknown version" : "not connected");
+        if (bundledVersion != null) u.append("\nIncluded in this app: Glass Launcher ").append(bundledVersion);
+        String st = pickedNote != null ? pickedNote : LinkService.updateStatus;
+        if (st != null) u.append("\n").append(st);
+        updState.setText(u.toString());
+        boolean newer = bundled != null && (LinkService.carVersion == null || bundledCode > LinkService.carCode);
+        sendBundled.setVisibility(bundled != null ? View.VISIBLE : View.GONE);
+        sendBundled.setEnabled(!LinkService.updating && LinkService.linkedTo != null);
+        sendBundled.setText(newer ? "Send update to car (" + bundledVersion + ")" : "Send " + bundledVersion + " to car again");
+    }
+
+    // ---- Update the car app ------------------------------------------------------------------
+    private String pickedNote;
+
+    private void updateMsg(String m) {
+        pickedNote = m;
+        refresh();
+    }
+
+    /** Copies the car app shipped inside Glass Link (if any) to a file and reads its version. */
+    private void prepareBundled() {
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    java.io.File f = new java.io.File(getCacheDir(), "car-bundled.apk");
+                    java.io.InputStream in = getAssets().open("car/GlassLauncher.apk");
+                    java.io.OutputStream o = new java.io.FileOutputStream(f);
+                    byte[] b = new byte[65536];
+                    int n;
+                    while ((n = in.read(b)) > 0) o.write(b, 0, n);
+                    in.close();
+                    o.close();
+                    android.content.pm.PackageInfo pi = getPackageManager().getPackageArchiveInfo(f.getAbsolutePath(), 0);
+                    if (pi != null) {
+                        bundled = f;
+                        bundledVersion = pi.versionName;
+                        bundledCode = pi.versionCode;
+                    }
+                } catch (Throwable ignored) {}
+                refreshSoon();
+            }
+        }).start();
+    }
+
+    @Override
+    protected void onActivityResult(int code, int result, Intent data) {
+        if (code != PICK || result != RESULT_OK || data == null || data.getData() == null) return;
+        final android.net.Uri uri = data.getData();
+        updateMsg("Reading the file…");
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    java.io.File f = new java.io.File(getCacheDir(), "car-picked.apk");
+                    java.io.InputStream in = getContentResolver().openInputStream(uri);
+                    java.io.OutputStream o = new java.io.FileOutputStream(f);
+                    byte[] b = new byte[65536];
+                    int n;
+                    long total = 0;
+                    while ((n = in.read(b)) > 0) {
+                        o.write(b, 0, n);
+                        total += n;
+                        if (total > 100L * 1024 * 1024) throw new Exception("too large");
+                    }
+                    in.close();
+                    o.close();
+                    final android.content.pm.PackageInfo pi = getPackageManager().getPackageArchiveInfo(f.getAbsolutePath(), 0);
+                    if (pi == null || !"com.adnan.glasslauncher".equals(pi.packageName)) {
+                        MAIN.post(new Runnable() { @Override public void run() { updateMsg("That file isn't a Glass Launcher APK."); } });
+                        return;
+                    }
+                    final java.io.File ff = f;
+                    MAIN.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            pickedNote = null;
+                            confirmSend(ff, pi.versionName);
+                        }
+                    });
+                } catch (Throwable t) {
+                    MAIN.post(new Runnable() { @Override public void run() { updateMsg("Couldn't read that file."); } });
+                }
+            }
+        }).start();
+    }
+
+    private void confirmSend(final java.io.File apk, String version) {
+        if (LinkService.linkedTo == null) {
+            updateMsg("Connect to the car first (tap Start, see the status at the top).");
+            return;
+        }
+        if (!LinkService.carUpdates) {
+            updateMsg("The car app is too old to receive updates this way. Install this version once from a USB stick; "
+                    + "after that, updates can come from the phone.");
+            return;
+        }
+        new AlertDialog.Builder(this)
+                .setTitle("Send Glass Launcher " + version + " to the car?")
+                .setMessage("The car has " + (LinkService.carVersion != null ? LinkService.carVersion : "an unknown version")
+                        + ". Sending takes about a minute over Bluetooth. Keep the phone near the car.")
+                .setNegativeButton("Cancel", null)
+                .setPositiveButton("Send", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface d, int w) {
+                        pickedNote = null;
+                        LinkService.sendUpdate(apk);
+                        refresh();
+                    }
+                })
+                .show();
     }
 
     private boolean hasBluetooth() {

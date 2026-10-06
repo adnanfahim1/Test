@@ -517,6 +517,9 @@ final class SettingsScreen extends SidebarScreen {
         nav(out, "Build", null, Build.DISPLAY, null);
         nav(out, "Screen", null, dm.widthPixels + " × " + dm.heightPixels + " px · " + dm.densityDpi + " dpi", null);
         nav(out, "Launcher", null, "Glass Launcher " + a.versionName(), null);
+        nav(out, "Update from your phone", a.bridge() != null && a.bridge().connected()
+                ? "Phone connected: in Glass Link, tap “Send update to car”"
+                : "Connect the Glass Link phone app, then tap “Send update to car” in it", null, null);
         nav(out, "Layout scale", "The 1280×720 design fitted to this screen", String.format(java.util.Locale.US, "%.2f×", Ui.scale), null);
         label(out, "Diagnostics");
         toggle(out, "Compatibility mode", "Simpler drawing without animations, for head units whose graphics drivers have problems. "

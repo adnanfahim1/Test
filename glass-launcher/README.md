@@ -3,8 +3,17 @@
 An Android home-screen launcher for Nakamichi Android car players, built from the "NAM5240T
 Glass Launcher" design handoff (`design-source/`).
 
-**Download:** [`dist/GlassLauncher.apk`](dist/GlassLauncher.apk) (about 3 MB, version 1.4.0) for the head unit, and
-[`dist/GlassLink.apk`](dist/GlassLink.apk) (optional, about 70 KB) for your Android phone.
+**Download:** [`dist/GlassLauncher.apk`](dist/GlassLauncher.apk) (about 3 MB, version 1.5.0) for the head unit, and
+[`dist/GlassLink.apk`](dist/GlassLink.apk) (optional, about 3 MB, version 1.1.0) for your Android phone.
+
+## New in 1.5
+
+- **Update the car from your phone.** Glass Link carries the latest Glass Launcher inside it. In Glass Link,
+  tap **Send update to car** (or **Choose an APK file…**). It's sent over the phone link and checked
+  (complete, same app, same signing key, not older), then the head unit asks you to confirm the install.
+  The first time, Android also asks you to allow installs from Glass Launcher. Settings are kept.
+  This works from 1.5.0 on: install 1.5.0 on the head unit once from USB.
+- **New icons:** the liquid wheel for Glass Launcher, the wheel with a plus for Glass Link.
 
 ## New in 1.4
 

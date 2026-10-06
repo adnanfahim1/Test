@@ -43,7 +43,8 @@ w.writeframes(b"".join(struct.pack("<h", int(9000 * math.sin(2 * math.pi * 440 *
 w.close()
 PY
 adb shell mkdir -p /sdcard/Music >/dev/null 2>&1
-adb push "$OUT/Glass Test Tone.wav" "/sdcard/Music/Glass Test Tone.wav" >/dev/null
+adb push "$OUT/Glass Test Tone.wav" "/sdcard/Music/Glass Test Tone.wav" 2>&1 | tail -1
+adb shell ls -l /sdcard/Music/ 2>&1 | head -3
 adb shell pm grant $PKG android.permission.READ_MEDIA_AUDIO >/dev/null 2>&1 || true
 adb shell pm grant $PKG android.permission.READ_EXTERNAL_STORAGE >/dev/null 2>&1 || true
 adb shell am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d "file:///sdcard/Music/Glass%20Test%20Tone.wav" >/dev/null 2>&1 || true

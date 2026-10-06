@@ -60,6 +60,13 @@ public final class LinkService extends Service {
     static volatile String linkedTo;
     static volatile long lastWeatherAt;
     static volatile LinkService running;
+    // The car app's version (from its hello) and the state of an update being sent.
+    static volatile String carVersion;
+    static volatile int carCode;
+    static volatile boolean carUpdates;
+    static volatile String updateStatus;
+    static volatile boolean updating;
+    private final java.util.concurrent.LinkedBlockingQueue<JSONObject> updateReplies = new java.util.concurrent.LinkedBlockingQueue<JSONObject>();
 
     private final Handler main = new Handler(Looper.getMainLooper());
     private final ExecutorService writer = Executors.newSingleThreadExecutor();
@@ -287,6 +294,19 @@ public final class LinkService extends Service {
                 if (line.length() > 64 * 1024) continue;
                 try {
                     JSONObject m = new JSONObject(line);
+                    String type = m.optString("t");
+                    if ("hello".equals(type)) {
+                        carVersion = m.optString("version", null);
+                        carCode = m.optInt("code", 0);
+                        carUpdates = m.optBoolean("updates", false);
+                        MainActivity.refreshSoon();
+                    } else if (type.startsWith("apk_")) {
+                        updateReplies.offer(m);
+                        if ("apk_error".equals(type) && !updating) {
+                            updateStatus = "Car: " + m.optString("msg", "update failed");
+                            MainActivity.refreshSoon();
+                        }
+                    }
                     if ("req".equals(m.optString("t")) && "weather".equals(m.optString("what"))) {
                         final String place = m.has("place") ? m.optString("place") : null;
                         final double lat = m.optDouble("lat", Double.NaN), lon = m.optDouble("lon", Double.NaN);
@@ -304,6 +324,8 @@ public final class LinkService extends Service {
             }
             close(c);
             linkedTo = null;
+            carVersion = null;
+            carUpdates = false;
             status = active ? "Looking for the head unit…" : "Stopped";
             updateNote();
         }
@@ -323,6 +345,98 @@ public final class LinkService extends Service {
                 }
             }
         });
+    }
+
+    // ---- Update the car app over the link -------------------------------------------------------
+    private static final int CHUNK = 48 * 1024;
+
+    /** Sends {@code apk} to the car in acknowledged chunks. Runs on its own thread. */
+    static void sendUpdate(final java.io.File apk) {
+        final LinkService s = running;
+        if (s == null || s.out == null) {
+            updateStatus = "Not connected to the car";
+            MainActivity.refreshSoon();
+            return;
+        }
+        if (updating) return;
+        updating = true;
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    s.transfer(apk);
+                } catch (Throwable t) {
+                    updateStatus = t.getMessage() != null ? t.getMessage() : "Update failed";
+                    s.send("{\"t\":\"apk_cancel\"}");
+                } finally {
+                    updating = false;
+                    MainActivity.refreshSoon();
+                }
+            }
+        }, "send-update").start();
+    }
+
+    private void transfer(java.io.File apk) throws Exception {
+        long size = apk.length();
+        status("Checking the file…");
+        java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA-256");
+        java.io.InputStream in = new java.io.FileInputStream(apk);
+        byte[] buf = new byte[CHUNK];
+        int n;
+        try {
+            while ((n = in.read(buf)) > 0) md.update(buf, 0, n);
+        } finally {
+            in.close();
+        }
+        StringBuilder sha = new StringBuilder();
+        for (byte b : md.digest()) sha.append(String.format("%02x", b & 0xFF));
+        updateReplies.clear();
+        send(new JSONObject().put("t", "apk_begin").put("size", size).put("sha256", sha.toString()).toString());
+        expect(-1);
+        in = new java.io.FileInputStream(apk);
+        long sent = 0;
+        int seq = 0;
+        try {
+            while ((n = in.read(buf)) > 0) {
+                String data = android.util.Base64.encodeToString(buf, 0, n, android.util.Base64.NO_WRAP);
+                send(new JSONObject().put("t", "apk_chunk").put("seq", seq).put("data", data).toString());
+                expect(seq);
+                seq++;
+                sent += n;
+                status("Sending to the car… " + (sent * 100 / size) + "%");
+            }
+        } finally {
+            in.close();
+        }
+        send("{\"t\":\"apk_end\"}");
+        JSONObject r = next(60000);
+        if ("apk_done".equals(r.optString("t"))) {
+            status("Sent. Tap Install on the car screen to finish.");
+        } else {
+            throw new Exception("Car: " + r.optString("msg", "the update was refused"));
+        }
+    }
+
+    private void status(String s) {
+        updateStatus = s;
+        MainActivity.refreshSoon();
+    }
+
+    /** Waits for the car to confirm chunk {@code seq} (-1 for the start). */
+    private void expect(int seq) throws Exception {
+        JSONObject r = next(30000);
+        String t = r.optString("t");
+        if ("apk_error".equals(t)) throw new Exception("Car: " + r.optString("msg", "error"));
+        if (!"apk_ack".equals(t) || r.optInt("seq", -1) != seq) throw new Exception("The car didn't answer as expected; try again");
+    }
+
+    private JSONObject next(long timeoutMs) throws Exception {
+        JSONObject r = updateReplies.poll(timeoutMs, java.util.concurrent.TimeUnit.MILLISECONDS);
+        if (r == null) {
+            if (out == null) throw new Exception("Connection to the car lost");
+            throw new Exception("The car stopped answering; try again");
+        }
+        return r;
     }
 
     /** Called by NavListener for every change of the maps app's navigation notification. */

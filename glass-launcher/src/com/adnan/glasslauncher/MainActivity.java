@@ -97,7 +97,9 @@ public class MainActivity extends Activity implements MediaHub.Listener {
         CrashGuard.stage(this, "create");
         requestWindowFeature(Window.FEATURE_NO_TITLE);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
-        getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_NOTHING);
+        // The keyboard only opens when a search field is tapped, never by itself.
+        getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_NOTHING
+                | WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN);
         prefs = new Prefs(this);
         Ui.init(this);
         Ui.loadFonts(this);
@@ -131,6 +133,20 @@ public class MainActivity extends Activity implements MediaHub.Listener {
                 updatePhone();
                 weatherChanged();
             }
+
+            @Override
+            public void onUpdateProgress(int pct) {
+                if (pct == 0 || pct == 100 || pct / 10 != lastUpdateToast / 10) {
+                    lastUpdateToast = pct;
+                    toast("Receiving update from your phone · " + pct + "%");
+                }
+            }
+
+            @Override
+            public void onUpdateReady(Updater.Ready r) { confirmUpdate(r); }
+
+            @Override
+            public void onUpdateFailed(String message) { toast(message); }
         });
         weather = Weather.Data.fromJson(prefs.weatherCache());
         if (weather != null) weatherState = W_OK;
@@ -1138,6 +1154,44 @@ public class MainActivity extends Activity implements MediaHub.Listener {
         } else {
             toast("Without location, set a city in Settings › Weather");
         }
+    }
+
+    // ---- Update from the phone ------------------------------------------------------------------
+    private int lastUpdateToast = -1;
+
+    private void confirmUpdate(final Updater.Ready r) {
+        try {
+            new AlertDialog.Builder(this, AlertDialog.THEME_DEVICE_DEFAULT_DARK)
+                    .setTitle("Update Glass Launcher?")
+                    .setMessage("Your phone sent version " + r.versionName + " (installed: " + versionName() + ").\n\n"
+                            + "The launcher restarts after the update. Your settings are kept. "
+                            + "Android may ask you to allow installs from Glass Launcher the first time.")
+                    .setNegativeButton("Not now", null)
+                    .setPositiveButton("Install", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface d, int w) { installUpdate(r); }
+                    })
+                    .show();
+        } catch (Throwable t) {
+            CrashGuard.report(this, "update dialog", t);
+        }
+    }
+
+    private void installUpdate(final Updater.Ready r) {
+        toast("Installing update…");
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    Updater.install(MainActivity.this, r.file);
+                } catch (final Throwable t) {
+                    main.post(new Runnable() {
+                        @Override
+                        public void run() { toast("Couldn't start the update: " + t.getMessage()); }
+                    });
+                }
+            }
+        }, "install-update").start();
     }
 
     // ---- Phone link (Glass Link app) --------------------------------------------------------

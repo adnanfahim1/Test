@@ -44,6 +44,10 @@ final class PhoneBridge {
         void onPhoneWeather(Weather.Data d);
         void onPhoneNav(Nav n);
         void onPhoneLink();
+        /** Update from the phone: progress 0-100, or ready to install, or failed. */
+        void onUpdateProgress(int percent);
+        void onUpdateReady(Updater.Ready r);
+        void onUpdateFailed(String message);
     }
 
     static final class Nav {
@@ -67,8 +71,13 @@ final class PhoneBridge {
     private volatile Closeable conn;
     private volatile BluetoothServerSocket server;
     private volatile String via;
+    private final Updater updater;
+    private int lastPct = -1;
 
-    PhoneBridge(Context c) { ctx = c.getApplicationContext(); }
+    PhoneBridge(Context c) {
+        ctx = c.getApplicationContext();
+        updater = new Updater(ctx);
+    }
 
     void setListener(Listener l) { listener = l; }
 
@@ -205,7 +214,7 @@ final class PhoneBridge {
             via = how;
         }
         post(new Runnable() { @Override public void run() { if (listener != null) listener.onPhoneLink(); } });
-        send("{\"t\":\"hello\",\"app\":\"Glass Launcher\",\"v\":1}");
+        send(hello());
         send(weatherAsk);
         try {
             BufferedReader r = new BufferedReader(new InputStreamReader(in, "UTF-8"));
@@ -225,6 +234,10 @@ final class PhoneBridge {
                 out = null;
                 conn = null;
             }
+            if (updater.receiving()) {
+                updater.abort();
+                post(new Runnable() { @Override public void run() { if (listener != null) listener.onUpdateFailed("Connection to the phone lost during the update"); } });
+            }
             close(c);
             final Nav ended = new Nav();
             post(new Runnable() {
@@ -238,10 +251,77 @@ final class PhoneBridge {
         }
     }
 
+    private String hello() {
+        try {
+            android.content.pm.PackageInfo pi = ctx.getPackageManager().getPackageInfo(ctx.getPackageName(), 0);
+            return new JSONObject().put("t", "hello").put("app", "Glass Launcher").put("v", 2)
+                    .put("version", pi.versionName).put("code", pi.versionCode)
+                    .put("android", android.os.Build.VERSION.SDK_INT).put("updates", true).toString();
+        } catch (Throwable t) {
+            return "{\"t\":\"hello\",\"app\":\"Glass Launcher\",\"v\":2}";
+        }
+    }
+
+    // ---- Update from the phone (runs on the reader thread; file work stays off the UI) ------------
+    private void updateMessage(String t, final JSONObject o) {
+        String err = null;
+        if ("apk_begin".equals(t)) {
+            lastPct = -1;
+            err = updater.begin(o.optLong("size", -1), o.optString("sha256", null));
+            if (err == null) {
+                reply("apk_ack", -1, null);
+                progress(0);
+            }
+        } else if ("apk_chunk".equals(t)) {
+            int seq = o.optInt("seq", -1);
+            err = updater.chunk(seq, o.optString("data", ""));
+            if (err == null) {
+                reply("apk_ack", seq, null);
+                progress(updater.percent());
+            }
+        } else if ("apk_end".equals(t)) {
+            try {
+                final Updater.Ready r = updater.finish();
+                reply("apk_done", -1, "Confirm the update on the car screen");
+                post(new Runnable() { @Override public void run() { if (listener != null) listener.onUpdateReady(r); } });
+            } catch (Exception e) {
+                err = e.getMessage();
+                updater.abort();
+            }
+        } else if ("apk_cancel".equals(t)) {
+            updater.abort();
+            err = "Update cancelled on the phone";
+        }
+        if (err != null) {
+            final String msg = err;
+            reply("apk_error", -1, msg);
+            post(new Runnable() { @Override public void run() { if (listener != null) listener.onUpdateFailed(msg); } });
+        }
+    }
+
+    private void reply(String type, int seq, String msg) {
+        try {
+            JSONObject r = new JSONObject().put("t", type);
+            if (seq >= 0) r.put("seq", seq);
+            if (msg != null) r.put("msg", msg);
+            send(r.toString());
+        } catch (Throwable ignored) {}
+    }
+
+    private void progress(final int pct) {
+        if (pct == lastPct) return;
+        lastPct = pct;
+        post(new Runnable() { @Override public void run() { if (listener != null) listener.onUpdateProgress(pct); } });
+    }
+
     private void handle(String line) {
         try {
             JSONObject o = new JSONObject(line);
             String t = o.optString("t");
+            if (t.startsWith("apk_")) {
+                updateMessage(t, o);
+                return;
+            }
             if ("hello".equals(t)) {
                 String n = o.optString("name", null);
                 if (n != null && n.length() > 0) phone = n;

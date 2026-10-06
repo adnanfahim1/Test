@@ -63,6 +63,11 @@ final class NewApi {
         return SDK >= 23 ? flags | android.app.PendingIntent.FLAG_IMMUTABLE : flags;
     }
 
+    /** PendingIntent flags with FLAG_MUTABLE (Android 12+ needs it when the system adds extras). */
+    static int mutable(int flags) {
+        return SDK >= 31 ? flags | android.app.PendingIntent.FLAG_MUTABLE : flags;
+    }
+
     // ---- API 24 (Android 7.0) -------------------------------------------------------------
     /** "SD card", "USB drive" etc. for the storage volume holding {@code f}, or null. */
     static String volumeDescription(Context c, java.io.File f) {

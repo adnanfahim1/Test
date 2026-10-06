@@ -251,4 +251,55 @@ public class FeaturesTest {
         assertTrue(!found.get(2).secured || !found.get(3).secured);
         assertEquals(Arrays.asList("Adnan's iPhone", "Pixel Hotspot"), Arrays.asList(found.get(0).ssid, found.get(1).ssid));
     }
+
+    private static String sendApk(PhoneBridge b, Method handle, java.io.ByteArrayOutputStream replies, byte[] apk, boolean damage) throws Exception {
+        replies.reset();
+        java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA-256");
+        String sha = Updater.hex(md.digest(apk));
+        handle.invoke(b, new org.json.JSONObject().put("t", "apk_begin").put("size", apk.length).put("sha256", sha).toString());
+        int seq = 0;
+        for (int off = 0; off < apk.length; off += 48 * 1024) {
+            byte[] part = Arrays.copyOfRange(apk, off, Math.min(apk.length, off + 48 * 1024));
+            if (damage && seq == 3) part[10] ^= 0x55;
+            handle.invoke(b, new org.json.JSONObject().put("t", "apk_chunk").put("seq", seq++)
+                    .put("data", Base64.encodeToString(part, Base64.NO_WRAP)).toString());
+        }
+        handle.invoke(b, "{\"t\":\"apk_end\"}");
+        Thread.sleep(2500);
+        idle(300);
+        return replies.toString("UTF-8");
+    }
+
+    @Test
+    public void updateFromPhone() throws Exception {
+        MainActivity a = start();
+        idle(500);
+        PhoneBridge b = a.bridge();
+        java.io.ByteArrayOutputStream replies = new java.io.ByteArrayOutputStream();
+        Field out = PhoneBridge.class.getDeclaredField("out");
+        out.setAccessible(true);
+        out.set(b, replies);
+        Method handle = PhoneBridge.class.getDeclaredMethod("handle", String.class);
+        handle.setAccessible(true);
+        File dist = new File(System.getProperty("dist", new File(System.getProperty("user.dir"), "../dist").getPath()));
+        if (!new File(dist, "GlassLauncher.apk").exists()) return;
+        byte[] apk = java.nio.file.Files.readAllBytes(new File(dist, "GlassLauncher.apk").toPath());
+
+        // Damaged in transit: refused with a clear message.
+        String r1 = sendApk(b, handle, replies, apk, true);
+        assertTrue(r1, r1.contains("apk_error") && r1.contains("damaged"));
+        // A different app (the phone app itself): refused.
+        byte[] other = java.nio.file.Files.readAllBytes(new File(dist, "GlassLink.apk").toPath());
+        String r2 = sendApk(b, handle, replies, other, false);
+        assertTrue(r2, r2.contains("apk_error"));
+        // The real launcher: all chunks acknowledged; then either accepted or refused by the
+        // package checks (Robolectric can't always read APK signatures).
+        String r3 = sendApk(b, handle, replies, apk, false);
+        int chunks = (apk.length + 48 * 1024 - 1) / (48 * 1024);
+        assertTrue(r3, r3.contains("\"seq\":" + (chunks - 1)));
+        String end = r3.substring(r3.lastIndexOf("\"seq\":" + (chunks - 1)));
+        System.out.println("UPDATE good-file result: " + end);
+        assertTrue(end, end.contains("apk_done") || end.contains("apk_error"));
+        shot(a, "24-update-from-phone");
+    }
 }

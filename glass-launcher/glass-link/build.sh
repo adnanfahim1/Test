@@ -10,8 +10,12 @@ rm -rf "$B"
 mkdir -p "$B/gen" "$B/classes" "$B/signer" "$ROOT/dist"
 
 echo "1/5 Resources"
+# The current car app travels inside Glass Link, so the phone can update the car over Bluetooth.
+mkdir -p "$B/assets/car"
+if [ -f "$ROOT/dist/GlassLauncher.apk" ]; then cp "$ROOT/dist/GlassLauncher.apk" "$B/assets/car/GlassLauncher.apk"
+else echo "   (no ../dist/GlassLauncher.apk: build the launcher first to include it)"; fi
 "$T/aapt2" compile --dir res -o "$B/res.zip"
-"$T/aapt2" link -I "$T/android-framework.jar" --manifest AndroidManifest.xml \
+"$T/aapt2" link -I "$T/android-framework.jar" --manifest AndroidManifest.xml -A "$B/assets" -0 apk \
   --min-sdk-version 23 --target-sdk-version 35 --java "$B/gen" -o "$B/base.apk" "$B/res.zip"
 
 echo "2/5 Java"

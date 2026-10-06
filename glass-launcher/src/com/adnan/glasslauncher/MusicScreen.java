@@ -329,7 +329,8 @@ final class MusicScreen extends Screen {
         col.addView(body, Ui.margins(Ui.lpw(Ui.MATCH, 0, 1), 0, 16, 0, 0));
         emptyNote = Ui.multiline(c, "", 17, Ui.MUTED, Ui.body(400));
         LocalPlayer lp = LocalPlayer.peek();
-        boolean otherPlaying = a.media().hasSession() && !a.media().isLocal();
+        // Open on My songs unless another app is actually playing right now.
+        boolean otherPlaying = a.media().hasSession() && !a.media().isLocal() && a.media().isPlaying();
         selectTab(otherPlaying && (lp == null || !lp.hasTrack()) ? T_QUEUE : tab, false);
         return col;
     }
