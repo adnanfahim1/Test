@@ -1,0 +1,212 @@
+:Monkey: seed=42 count=800
+:AllowPackage: com.adnan.glasslauncher
+:IncludeCategory: android.intent.category.LAUNCHER
+:IncludeCategory: android.intent.category.MONKEY
+// Event percentages:
+//   0: 15.306122%
+//   1: 10.204082%
+//   2: 2.0408163%
+//   3: 15.306122%
+//   4: -0.0%
+//   5: 25.510204%
+//   6: 15.306122%
+//   7: -0.0%
+//   8: 2.0408163%
+//   9: 1.0204082%
+//   10: 13.265306%
+:Switch: #Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;launchFlags=0x10200000;component=com.adnan.glasslauncher/.MainActivity;end
+    // Allowing start of Intent { act=android.intent.action.MAIN cat=[android.intent.category.LAUNCHER] cmp=com.adnan.glasslauncher/.MainActivity } in package com.adnan.glasslauncher
+    // activityResuming(com.adnan.glasslauncher)
+:Sending Touch (ACTION_DOWN): 0:(1008.0,404.0)
+:Sending Touch (ACTION_UP): 0:(1005.35004,419.643)
+:Sending Trackball (ACTION_MOVE): 0:(-3.0,1.0)
+:Sending Touch (ACTION_DOWN): 0:(253.0,313.0)
+:Sending Touch (ACTION_UP): 0:(217.87581,331.7989)
+:Sending Trackball (ACTION_MOVE): 0:(-5.0,-2.0)
+:Sending Touch (ACTION_DOWN): 0:(1233.0,669.0)
+:Sending Touch (ACTION_UP): 0:(1243.9854,668.4432)
+:Sending Trackball (ACTION_MOVE): 0:(4.0,-2.0)
+:Sending Touch (ACTION_DOWN): 0:(6.0,115.0)
+:Sending Touch (ACTION_UP): 0:(0.0,40.8555)
+    // Rejecting start of Intent { act=android.settings.BLUETOOTH_SETTINGS cmp=com.android.settings/.Settings$BluetoothSettingsActivity } in package com.android.settings
+:Sending Touch (ACTION_DOWN): 0:(93.0,707.0)
+:Sending Touch (ACTION_UP): 0:(92.13772,710.99677)
+:Sending Trackball (ACTION_MOVE): 0:(0.0,-4.0)
+:Sending Trackball (ACTION_MOVE): 0:(-4.0,-3.0)
+:Sending Touch (ACTION_DOWN): 0:(583.0,673.0)
+:Sending Touch (ACTION_UP): 0:(578.01697,662.46387)
+    //[calendar_time:2026-10-06 10:06:35.092  system_uptime:68558]
+    // Sending event #100
+    //[calendar_time:2026-10-06 10:06:35.249  system_uptime:68709]
+    // Sending event #100
+:Sending Touch (ACTION_DOWN): 0:(710.0,493.0)
+:Sending Touch (ACTION_UP): 0:(710.8976,487.48795)
+:Sending Touch (ACTION_DOWN): 0:(643.0,273.0)
+:Sending Touch (ACTION_UP): 0:(624.16754,285.37735)
+:Sending Touch (ACTION_DOWN): 0:(627.0,510.0)
+:Sending Touch (ACTION_UP): 0:(636.1878,515.82935)
+:Sending Touch (ACTION_DOWN): 0:(1161.0,421.0)
+:Sending Touch (ACTION_UP): 0:(1249.7354,450.57248)
+:Switch: #Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;launchFlags=0x10200000;component=com.adnan.glasslauncher/.MainActivity;end
+    // Allowing start of Intent { act=android.intent.action.MAIN cat=[android.intent.category.LAUNCHER] cmp=com.adnan.glasslauncher/.MainActivity } in package com.adnan.glasslauncher
+:Sending Touch (ACTION_DOWN): 0:(1258.0,139.0)
+:Sending Touch (ACTION_UP): 0:(1254.5878,139.32738)
+    // Rejecting start of Intent { act=android.settings.BLUETOOTH_SETTINGS cmp=com.android.settings/.Settings$BluetoothSettingsActivity } in package com.android.settings
+:Sending Trackball (ACTION_MOVE): 0:(-2.0,1.0)
+:Sending Touch (ACTION_DOWN): 0:(1273.0,101.0)
+:Sending Touch (ACTION_UP): 0:(1168.7969,111.9858)
+:Sending Trackball (ACTION_MOVE): 0:(1.0,-5.0)
+:Sending Trackball (ACTION_MOVE): 0:(1.0,4.0)
+:Sending Touch (ACTION_DOWN): 0:(140.0,613.0)
+:Sending Touch (ACTION_UP): 0:(130.07915,604.9398)
+    //[calendar_time:2026-10-06 10:06:40.596  system_uptime:74057]
+    // Sending event #200
+    //[calendar_time:2026-10-06 10:06:40.749  system_uptime:74209]
+    // Sending event #200
+:Sending Touch (ACTION_DOWN): 0:(1148.0,347.0)
+:Sending Touch (ACTION_UP): 0:(1136.4921,336.0257)
+:Sending Trackball (ACTION_MOVE): 0:(3.0,-1.0)
+:Sending Trackball (ACTION_MOVE): 0:(3.0,-5.0)
+:Sending Trackball (ACTION_MOVE): 0:(1.0,1.0)
+:Sending Touch (ACTION_DOWN): 0:(201.0,274.0)
+:Sending Touch (ACTION_UP): 0:(190.87096,264.39154)
+:Sending Touch (ACTION_DOWN): 0:(11.0,23.0)
+:Sending Touch (ACTION_UP): 0:(18.609764,23.06163)
+:Switch: #Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;launchFlags=0x10200000;component=com.adnan.glasslauncher/.MainActivity;end
+    // Allowing start of Intent { act=android.intent.action.MAIN cat=[android.intent.category.LAUNCHER] cmp=com.adnan.glasslauncher/.MainActivity } in package com.adnan.glasslauncher
+:Sending Trackball (ACTION_MOVE): 0:(-1.0,-4.0)
+:Sending Trackball (ACTION_UP): 0:(0.0,0.0)
+    // Rejecting start of Intent { act=android.settings.BLUETOOTH_SETTINGS cmp=com.android.settings/.Settings$BluetoothSettingsActivity } in package com.android.settings
+:Sending Trackball (ACTION_MOVE): 0:(0.0,-5.0)
+:Sending Touch (ACTION_DOWN): 0:(687.0,151.0)
+:Sending Touch (ACTION_UP): 0:(690.75507,155.20836)
+:Sending Trackball (ACTION_MOVE): 0:(2.0,-2.0)
+:Sending Touch (ACTION_DOWN): 0:(76.0,343.0)
+:Sending Touch (ACTION_UP): 0:(69.03529,332.35153)
+:Sending Touch (ACTION_DOWN): 0:(1213.0,2.0)
+:Sending Touch (ACTION_UP): 0:(1190.8182,0.0)
+:Sending Touch (ACTION_DOWN): 0:(445.0,455.0)
+    //[calendar_time:2026-10-06 10:06:43.920  system_uptime:77380]
+    // Sending event #300
+:Sending Touch (ACTION_UP): 0:(507.69513,385.3596)
+:Sending Trackball (ACTION_MOVE): 0:(-4.0,2.0)
+:Sending Touch (ACTION_DOWN): 0:(1164.0,49.0)
+:Sending Touch (ACTION_UP): 0:(1151.7362,165.5864)
+:Sending Touch (ACTION_DOWN): 0:(1229.0,679.0)
+:Sending Touch (ACTION_UP): 0:(1231.9808,693.00824)
+:Sending Trackball (ACTION_MOVE): 0:(1.0,3.0)
+:Sending Touch (ACTION_DOWN): 0:(901.0,401.0)
+:Sending Touch (ACTION_UP): 0:(902.5406,404.87976)
+:Sending Touch (ACTION_DOWN): 0:(178.0,228.0)
+:Sending Touch (ACTION_UP): 0:(178.859,227.40765)
+:Sending Touch (ACTION_DOWN): 0:(471.0,168.0)
+:Sending Touch (ACTION_UP): 0:(446.07547,201.4201)
+:Sending Trackball (ACTION_MOVE): 0:(3.0,4.0)
+:Sending Touch (ACTION_DOWN): 0:(299.0,410.0)
+:Sending Touch (ACTION_UP): 0:(298.27316,405.94788)
+:Sending Trackball (ACTION_MOVE): 0:(-5.0,2.0)
+:Sending Trackball (ACTION_MOVE): 0:(-5.0,-4.0)
+:Sending Touch (ACTION_DOWN): 0:(441.0,28.0)
+:Sending Touch (ACTION_UP): 0:(456.4128,42.739956)
+    //[calendar_time:2026-10-06 10:06:46.799  system_uptime:80260]
+    // Sending event #400
+    //[calendar_time:2026-10-06 10:06:46.954  system_uptime:80414]
+    // Sending event #400
+:Sending Trackball (ACTION_MOVE): 0:(4.0,3.0)
+:Sending Touch (ACTION_DOWN): 0:(571.0,552.0)
+:Sending Touch (ACTION_UP): 0:(550.7931,528.9786)
+:Sending Touch (ACTION_DOWN): 0:(66.0,284.0)
+:Sending Touch (ACTION_UP): 0:(61.03625,301.36945)
+:Sending Trackball (ACTION_MOVE): 0:(-2.0,1.0)
+:Sending Touch (ACTION_DOWN): 0:(1119.0,113.0)
+:Sending Touch (ACTION_UP): 0:(1125.3868,115.4997)
+:Sending Touch (ACTION_DOWN): 0:(682.0,130.0)
+:Sending Touch (ACTION_UP): 0:(677.8108,125.24215)
+:Sending Touch (ACTION_DOWN): 0:(366.0,18.0)
+:Sending Touch (ACTION_UP): 0:(377.45807,14.411109)
+:Sending Trackball (ACTION_MOVE): 0:(-4.0,0.0)
+:Sending Trackball (ACTION_MOVE): 0:(3.0,0.0)
+:Switch: #Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;launchFlags=0x10200000;component=com.adnan.glasslauncher/.MainActivity;end
+    // Allowing start of Intent { act=android.intent.action.MAIN cat=[android.intent.category.LAUNCHER] cmp=com.adnan.glasslauncher/.MainActivity } in package com.adnan.glasslauncher
+:Sending Trackball (ACTION_MOVE): 0:(3.0,3.0)
+:Sending Touch (ACTION_DOWN): 0:(251.0,584.0)
+:Sending Touch (ACTION_UP): 0:(237.23087,583.0673)
+:Sending Touch (ACTION_DOWN): 0:(4.0,68.0)
+:Sending Touch (ACTION_UP): 0:(11.141901,72.56054)
+:Sending Trackball (ACTION_MOVE): 0:(2.0,-3.0)
+    //[calendar_time:2026-10-06 10:06:50.453  system_uptime:83913]
+    // Sending event #500
+:Sending Trackball (ACTION_MOVE): 0:(2.0,-1.0)
+:Sending Trackball (ACTION_MOVE): 0:(-1.0,-4.0)
+:Sending Trackball (ACTION_MOVE): 0:(-1.0,-4.0)
+:Sending Trackball (ACTION_MOVE): 0:(3.0,1.0)
+:Sending Touch (ACTION_DOWN): 0:(1079.0,427.0)
+:Sending Touch (ACTION_UP): 0:(1004.24396,483.741)
+:Sending Touch (ACTION_DOWN): 0:(555.0,203.0)
+:Sending Touch (ACTION_UP): 0:(431.9242,324.08878)
+:Sending Trackball (ACTION_MOVE): 0:(2.0,-4.0)
+:Sending Trackball (ACTION_MOVE): 0:(-2.0,0.0)
+:Sending Trackball (ACTION_MOVE): 0:(-4.0,-4.0)
+    //[calendar_time:2026-10-06 10:06:53.017  system_uptime:86477]
+    // Sending event #600
+:Sending Touch (ACTION_DOWN): 0:(1246.0,156.0)
+:Sending Touch (ACTION_UP): 0:(1239.3988,150.7758)
+:Sending Trackball (ACTION_MOVE): 0:(2.0,3.0)
+:Sending Trackball (ACTION_MOVE): 0:(-5.0,-1.0)
+:Sending Touch (ACTION_DOWN): 0:(1168.0,79.0)
+:Sending Touch (ACTION_UP): 0:(1165.9655,75.195274)
+:Sending Trackball (ACTION_MOVE): 0:(-5.0,0.0)
+:Switch: #Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;launchFlags=0x10200000;component=com.adnan.glasslauncher/.MainActivity;end
+    // Allowing start of Intent { act=android.intent.action.MAIN cat=[android.intent.category.LAUNCHER] cmp=com.adnan.glasslauncher/.MainActivity } in package com.adnan.glasslauncher
+:Sending Touch (ACTION_DOWN): 0:(499.0,282.0)
+:Sending Touch (ACTION_UP): 0:(532.7772,282.14728)
+    // Rejecting start of Intent { act=android.settings.BLUETOOTH_SETTINGS cmp=com.android.settings/.Settings$BluetoothSettingsActivity } in package com.android.settings
+:Sending Trackball (ACTION_MOVE): 0:(-3.0,-4.0)
+:Sending Touch (ACTION_DOWN): 0:(749.0,569.0)
+:Sending Touch (ACTION_UP): 0:(609.4988,506.56155)
+:Switch: #Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;launchFlags=0x10200000;component=com.adnan.glasslauncher/.MainActivity;end
+    // Allowing start of Intent { act=android.intent.action.MAIN cat=[android.intent.category.LAUNCHER] cmp=com.adnan.glasslauncher/.MainActivity } in package com.adnan.glasslauncher
+:Sending Touch (ACTION_DOWN): 0:(217.0,511.0)
+:Sending Touch (ACTION_UP): 0:(217.94987,491.42538)
+    // Rejecting start of Intent { act=android.settings.BLUETOOTH_SETTINGS cmp=com.android.settings/.Settings$BluetoothSettingsActivity } in package com.android.settings
+    //[calendar_time:2026-10-06 10:06:57.009  system_uptime:90469]
+    // Sending event #700
+    //[calendar_time:2026-10-06 10:06:57.159  system_uptime:90620]
+    // Sending event #700
+:Sending Trackball (ACTION_MOVE): 0:(-3.0,-4.0)
+:Sending Trackball (ACTION_UP): 0:(0.0,0.0)
+:Sending Touch (ACTION_DOWN): 0:(431.0,487.0)
+:Sending Touch (ACTION_UP): 0:(435.43582,484.01074)
+:Sending Touch (ACTION_DOWN): 0:(1258.0,397.0)
+:Sending Touch (ACTION_UP): 0:(1266.9797,408.51468)
+:Sending Touch (ACTION_DOWN): 0:(1266.0,137.0)
+:Sending Touch (ACTION_UP): 0:(1280.0,96.04546)
+    // Rejecting start of Intent { act=android.settings.BLUETOOTH_SETTINGS cmp=com.android.settings/.Settings$BluetoothSettingsActivity } in package com.android.settings
+:Sending Touch (ACTION_DOWN): 0:(1061.0,645.0)
+:Sending Touch (ACTION_UP): 0:(1047.533,660.5196)
+:Sending Trackball (ACTION_MOVE): 0:(0.0,-2.0)
+:Sending Trackball (ACTION_MOVE): 0:(-2.0,3.0)
+:Sending Touch (ACTION_DOWN): 0:(786.0,693.0)
+:Sending Touch (ACTION_UP): 0:(826.3508,677.28406)
+:Sending Trackball (ACTION_MOVE): 0:(-4.0,0.0)
+:Sending Touch (ACTION_DOWN): 0:(1246.0,142.0)
+:Sending Touch (ACTION_UP): 0:(1239.028,145.44113)
+:Sending Touch (ACTION_DOWN): 0:(907.0,216.0)
+:Sending Touch (ACTION_UP): 0:(833.9916,178.16327)
+:Sending Touch (ACTION_DOWN): 0:(1097.0,286.0)
+:Sending Touch (ACTION_UP): 0:(1083.4495,261.97247)
+:Sending Touch (ACTION_DOWN): 0:(159.0,238.0)
+:Sending Touch (ACTION_UP): 0:(161.38113,247.4042)
+:Sending Touch (ACTION_DOWN): 0:(560.0,440.0)
+:Sending Touch (ACTION_UP): 0:(567.8953,426.6128)
+:Switch: #Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;launchFlags=0x10200000;component=com.adnan.glasslauncher/.MainActivity;end
+    // Allowing start of Intent { act=android.intent.action.MAIN cat=[android.intent.category.LAUNCHER] cmp=com.adnan.glasslauncher/.MainActivity } in package com.adnan.glasslauncher
+:Sending Touch (ACTION_DOWN): 0:(1005.0,123.0)
+:Sending Touch (ACTION_UP): 0:(1004.61096,111.220055)
+:Sending Touch (ACTION_DOWN): 0:(411.0,78.0)
+:Sending Touch (ACTION_UP): 0:(407.02402,70.11042)
+Events injected: 800
+:Sending rotation degree=0, persist=false
+:Dropped: keys=0 pointers=0 trackballs=0 flips=0 rotations=0
+## Network stats: elapsed time=29228ms (0ms mobile, 0ms wifi, 29228ms not connected)
+// Monkey finished

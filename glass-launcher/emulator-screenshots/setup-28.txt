@@ -1,0 +1,24 @@
+Head unit: unknown Android SDK built for x86_64
+Android:   9 (API 28) · build sdk_phone_x86_64-userdebug 9 PSR1.180720.012 4923214 test-keys
+Screen:    1280x720 · density 160
+
+1. Install / update
+  ✔ Glass Launcher installed/updated
+2. Permissions
+  ✔ ACCESS_COARSE_LOCATION granted (weather)
+  ✔ ACCESS_FINE_LOCATION granted (weather)
+3. Now-playing access (notification listener)
+  ✔ Now-playing access on
+4. Keep running in the background
+  ✔ Battery optimisation off for the launcher
+5. Default home app
+  ✔ Glass Launcher is the default home
+6. Theme
+  ✔ Launcher theme set to Violet, home layout dashboard
+  ✔ System wallpaper matched to Violet (the launcher shows what it could change)
+  – Dark mode (left as is: Android 9 has no system dark mode)
+  – Other apps' colours, icons and fonts (left as is: Android doesn't allow this without root)
+  – Boot logo, button backlight, steering keys, EQ (left as is: vendor settings; open Car settings in the launcher)
+
+Done. Changed 8 item(s); left 3 as is.
+To go back to the stock launcher: Android Settings › Apps › Default apps › Home app.
