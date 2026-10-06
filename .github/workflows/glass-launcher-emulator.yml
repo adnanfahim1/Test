@@ -1,12 +1,15 @@
-# Builds Glass Launcher and runs it on real Android emulators (Android 5.0, 8.0, 11, 14):
+# Builds Glass Launcher and runs it on real Android emulators (Android 5.0 to 14):
 # installs it, makes it the home app, runs the head-unit setup script against the emulator,
-# opens every screen, stress-taps it with the Android monkey tool, fails on any crash and
-# uploads screenshots + logs as the "emulator-<api>" artifacts.
+# opens every screen, stress-taps it with the Android monkey tool and fails on any crash.
+# Screenshots + logs are uploaded as "emulator-<api>" artifacts, and small copies of the
+# screenshots are committed to glass-launcher/emulator-screenshots/ on the same branch.
 name: Glass Launcher on Android emulators
 
 on:
   push:
-    paths: ['glass-launcher/**', '.github/workflows/glass-launcher-emulator.yml']
+    paths: ['glass-launcher/src/**', 'glass-launcher/res/**', 'glass-launcher/assets/**',
+            'glass-launcher/AndroidManifest.xml', 'glass-launcher/build.sh', 'glass-launcher/tools/**',
+            '.github/workflows/glass-launcher-emulator.yml']
   workflow_dispatch:
 
 jobs:
@@ -16,7 +19,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        api: [21, 26, 30, 34]
+        api: [21, 26, 27, 28, 30, 34]
     steps:
       - uses: actions/checkout@v4
 
@@ -52,3 +55,30 @@ jobs:
         with:
           name: emulator-${{ matrix.api }}
           path: glass-launcher/emulator-out/
+
+  screenshots:
+    needs: emulator
+    if: always()
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - name: Commit small screenshot copies
+        run: |
+          mkdir -p glass-launcher/emulator-screenshots
+          rm -f glass-launcher/emulator-screenshots/*
+          for f in artifacts/*/*.png; do
+            convert "$f" -resize 800x -quality 70 "glass-launcher/emulator-screenshots/$(basename "${f%.png}").jpg"
+          done
+          for f in artifacts/*/setup-*.txt artifacts/*/monkey-*.txt; do [ -f "$f" ] && cp "$f" glass-launcher/emulator-screenshots/; done
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add glass-launcher/emulator-screenshots
+          git commit -m "Emulator screenshots from run ${{ github.run_id }} [skip ci]" || exit 0
+          for i in 1 2 3; do git pull --rebase && git push && break; sleep 5; done

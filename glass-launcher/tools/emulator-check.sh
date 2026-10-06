@@ -18,13 +18,12 @@ bash tools/setup-headunit.sh --theme Violet --layout dashboard 2>&1 | tee "$OUT/
 shot() {
   sleep "${2:-5}"
   adb exec-out screencap -p > "$OUT/$LABEL-$1.png"
-  # Small inline copy (base64 JPEG) so the screens can be viewed straight from the job log.
-  if command -v convert >/dev/null; then
-    echo "SHOT-BEGIN $LABEL-$1"
-    convert "$OUT/$LABEL-$1.png" -resize 640x -quality 55 jpg:- | base64 -w 0; echo
-    echo "SHOT-END $LABEL-$1"
-  fi
 }
+
+if ! adb shell pm list packages | grep -q "$PKG"; then
+  echo "== Install failed; Android package manager log:"
+  adb logcat -d | grep -i -E -A25 "PackageParser|PackageManager.*(xception|ail)|vmdl|AndroidManifest" | head -120
+fi
 
 echo "== Screens"
 adb shell input keyevent KEYCODE_HOME; shot home-dashboard 6
