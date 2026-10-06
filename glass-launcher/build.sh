@@ -62,4 +62,5 @@ javac -nowarn -cp "$T/apksig.jar" -d "$B/signer" tools/SignApk.java
 java --add-exports java.base/sun.security.x509=ALL-UNNAMED -cp "$T/apksig.jar:$B/signer" SignApk \
   "$B/v1-aligned.apk" dist/GlassLauncher.apk "$KS" "$PASS" "$ALIAS"
 java --add-exports java.base/sun.security.x509=ALL-UNNAMED --add-exports java.base/sun.security.pkcs=ALL-UNNAMED --add-exports java.base/sun.security.util=ALL-UNNAMED -cp "$T/apksig.jar:$B/signer" SignApk --verify dist/GlassLauncher.apk
+python3 tools/zipalign.py --check dist/GlassLauncher.apk
 ls -la dist/GlassLauncher.apk

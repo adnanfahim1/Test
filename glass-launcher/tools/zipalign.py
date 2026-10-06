@@ -39,6 +39,10 @@ def align(src, dst, boundary=4):
         struct.pack_into('<H', head, 28, pad)
         out += head + name + b'\0' * pad + body
         struct.pack_into('<I', rec, 42, new_off)
+        # Keep the central record's flags identical to the local header's. Android 8.0's
+        # zip reader rejects entries whose local and central flags differ.
+        cflag, = struct.unpack('<H', rec[8:10])
+        struct.pack_into('<H', rec, 8, cflag & ~0x08)
         central += rec
     new_cd = len(out)
     out += central
@@ -46,5 +50,29 @@ def align(src, dst, boundary=4):
     open(dst, 'wb').write(out)
 
 
+def check(path):
+    """Fails if any entry's local and central flags/sizes disagree (Android 8.0 is strict)."""
+    data = open(path, 'rb').read()
+    eocd = data.rfind(struct.pack('<I', EOCD))
+    count, cd_size, cd_off = struct.unpack('<HII', data[eocd + 10:eocd + 20])
+    pos, bad = cd_off, 0
+    for _ in range(count):
+        cflag, = struct.unpack('<H', data[pos + 8:pos + 10])
+        ccrc, ccs, cus, nlen, elen, clen = struct.unpack('<IIIHHH', data[pos + 16:pos + 34])
+        lo, = struct.unpack('<I', data[pos + 42:pos + 46])
+        name = data[pos + 46:pos + 46 + nlen].decode()
+        lflag, = struct.unpack('<H', data[lo + 6:lo + 8])
+        lcrc, lcs, lus = struct.unpack('<III', data[lo + 14:lo + 26])
+        if lflag != cflag or (lcrc, lcs, lus) != (ccrc, ccs, cus):
+            print('   zip mismatch:', name, hex(lflag), hex(cflag)); bad += 1
+        pos += 46 + nlen + elen + clen
+    if bad:
+        sys.exit('   zip check FAILED: %d inconsistent entries' % bad)
+    print('   zip check: %d entries consistent (Android 8.0-safe)' % count)
+
+
 if __name__ == '__main__':
-    align(sys.argv[1], sys.argv[2])
+    if sys.argv[1] == '--check':
+        check(sys.argv[2])
+    else:
+        align(sys.argv[1], sys.argv[2])
