@@ -138,6 +138,7 @@ public class SmokeTest {
         Ui.setArea(1280, 720);
         a.rebuildAll(); idle();
 
+        assertEquals("no recovered errors", null, a.prefs().lastError());
         ctl.pause().stop().destroy();
     }
 

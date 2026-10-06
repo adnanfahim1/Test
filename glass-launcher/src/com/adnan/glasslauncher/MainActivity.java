@@ -293,6 +293,15 @@ public class MainActivity extends Activity implements MediaHub.Listener {
             CrashGuard.report(this, "intent", t);
         }
         if (changed && !safeMode) rebuildAll();
+        // --es screen home|music|apps|settings|car  (automation / testing)
+        String screen = i.getStringExtra("screen");
+        if (screen != null && !safeMode) {
+            String sc = screen.trim().toLowerCase(Locale.US);
+            int target = "music".equals(sc) ? MUSIC : "apps".equals(sc) ? APPS : "settings".equals(sc) ? SETTINGS
+                    : "car".equals(sc) ? CAR : HOME;
+            show(target, false);
+            return true;
+        }
         return changed;
     }
 
