@@ -113,6 +113,7 @@ final class Widgets {
             on = initial;
             pos = on ? 1 : 0;
             setClickable(true);
+            Ui.focusable(this);
             setOnClickListener(new OnClickListener() {
                 @Override
                 public void onClick(View v) { setChecked(!on, true); }
@@ -193,6 +194,7 @@ final class Widgets {
 
         Slider(Context c, int max, int value) {
             super(c);
+            Ui.focusable(this);
             this.max = Math.max(1, max);
             this.value = value;
         }
@@ -211,6 +213,24 @@ final class Widgets {
         }
 
         int value() { return value; }
+
+        /** Rotary knob / D-pad: left/right (or up/down) step the value. */
+        @Override
+        public boolean onKeyDown(int keyCode, android.view.KeyEvent e) {
+            int step = Math.max(1, max / 20);
+            int v = value;
+            if (keyCode == android.view.KeyEvent.KEYCODE_DPAD_RIGHT || keyCode == android.view.KeyEvent.KEYCODE_DPAD_UP) v += step;
+            else if (keyCode == android.view.KeyEvent.KEYCODE_DPAD_LEFT || keyCode == android.view.KeyEvent.KEYCODE_DPAD_DOWN) v -= step;
+            else return super.onKeyDown(keyCode, e);
+            v = Math.max(0, Math.min(max, v));
+            if (v != value) {
+                value = v;
+                invalidate();
+                if (listener != null) listener.changed(v, true);
+                if (release != null) release.released(v);
+            }
+            return true;
+        }
 
         @Override
         public boolean onTouchEvent(MotionEvent e) {

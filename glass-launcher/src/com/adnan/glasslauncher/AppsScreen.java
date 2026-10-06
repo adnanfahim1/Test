@@ -114,9 +114,9 @@ final class AppsScreen extends Screen {
         scroller.setFillViewport(true);
         grid = new Grid(c);
         scroller.addView(grid, new FrameLayout.LayoutParams(Ui.WRAP, Ui.MATCH));
-        scroller.setOnScrollChangeListener(new View.OnScrollChangeListener() {
+        scroller.getViewTreeObserver().addOnScrollChangedListener(new android.view.ViewTreeObserver.OnScrollChangedListener() {
             @Override
-            public void onScrollChange(View v, int x, int y, int ox, int oy) { updateScrollbar(); }
+            public void onScrollChanged() { updateScrollbar(); }
         });
         gridBox.addView(scroller, new FrameLayout.LayoutParams(Ui.MATCH, Ui.MATCH));
         empty = Ui.text(c, "", 18, Ui.MUTED, Ui.body(400));

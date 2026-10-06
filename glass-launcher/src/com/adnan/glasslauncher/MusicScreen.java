@@ -295,7 +295,7 @@ final class MusicScreen extends Screen {
         e.setHintTextColor(Ui.FAINT);
         e.setTextColor(Ui.TEXT);
         e.setTypeface(Ui.body(400));
-        e.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, Ui.uf(size) * Ui.fontScale);
+        e.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, Ui.uf(size) * Ui.textScale());
         e.setSingleLine(true);
         e.setPadding(0, 0, 0, 0);
         e.setImeOptions(android.view.inputmethod.EditorInfo.IME_ACTION_DONE | android.view.inputmethod.EditorInfo.IME_FLAG_NO_EXTRACT_UI);

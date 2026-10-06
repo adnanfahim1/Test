@@ -32,4 +32,12 @@ if [ ! -f android.jar ]; then
   (cd aj && zip -q -r ../android.jar .)
   rm -rf aj android-all.jar
 fi
+# Android 5.0 (API 21) framework, used only to prove the code runs on old head units.
+if [ ! -f android-21.jar ]; then
+  get org/robolectric android-all 5.0.2_r3-robolectric-r0 android-all-21.jar
+  rm -rf aj && mkdir aj
+  unzip -q android-all-21.jar 'android/*' 'dalvik/*' 'org/json/*' 'org/xmlpull/*' 'com/android/internal/*' -d aj
+  (cd aj && zip -q -r ../android-21.jar .)
+  rm -rf aj android-all-21.jar
+fi
 echo "Tools ready in $OUT"

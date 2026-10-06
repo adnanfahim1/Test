@@ -128,7 +128,8 @@ final class Parts {
             clock.setText(time());
             String phone = a.phoneName();
             boolean on = phone != null;
-            chipText.setText(on ? phone + " connected" : "No phone");
+            boolean needPerm = a.phoneLink().needsPermission();
+            chipText.setText(on ? phone + " connected" : needPerm ? "Allow Bluetooth" : "No phone");
             dot.set(on ? Ui.SUCCESS : Ui.FAINT, false);
             chip.setBackground(Ui.fill(on ? Ui.white(0.14f) : Ui.white(0.06f), Ui.white(0.18f), 999));
             chip.setContentDescription(on ? "Phone connected. Opens Bluetooth settings" : "No phone connected. Opens Bluetooth settings");

@@ -34,6 +34,7 @@ final class MediaHub implements MediaSessionManager.OnActiveSessionsChangedListe
     private MediaController controller;
     private Listener listener;
     private boolean registered;
+    private int savedVolume;
 
     private final MediaController.Callback cb = new MediaController.Callback() {
         @Override public void onPlaybackStateChanged(PlaybackState state) { notifyChanged(); }
@@ -233,18 +234,24 @@ final class MediaHub implements MediaSessionManager.OnActiveSessionsChangedListe
 
     boolean isMuted() {
         if (audio == null) return false;
-        return audio.isStreamMute(AudioManager.STREAM_MUSIC) || volume() == 0;
+        return NewApi.isStreamMute(audio, AudioManager.STREAM_MUSIC) || volume() == 0;
     }
 
     void toggleMute() {
         if (audio == null) return;
         try {
-            if (volume() == 0 && !audio.isStreamMute(AudioManager.STREAM_MUSIC)) {
+            if (volume() == 0 && !NewApi.isStreamMute(audio, AudioManager.STREAM_MUSIC)) {
                 setVolume(Math.max(1, maxVolume() / 3));
-            } else {
-                audio.adjustStreamVolume(AudioManager.STREAM_MUSIC, AudioManager.ADJUST_TOGGLE_MUTE, 0);
+            } else if (!NewApi.toggleMute(audio, AudioManager.STREAM_MUSIC)) {
+                // Android 5.x: remember the level and drop to 0, restore on the next tap.
+                if (volume() > 0) {
+                    savedVolume = volume();
+                    setVolume(0);
+                } else {
+                    setVolume(savedVolume > 0 ? savedVolume : Math.max(1, maxVolume() / 3));
+                }
             }
-        } catch (SecurityException ignored) {
+        } catch (Throwable ignored) {
         }
     }
 }

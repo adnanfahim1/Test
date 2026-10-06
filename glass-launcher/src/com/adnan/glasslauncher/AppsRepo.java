@@ -3,11 +3,9 @@ package com.adnan.glasslauncher;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
-import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.graphics.drawable.Drawable;
-import android.os.Build;
 
 import java.text.Collator;
 import java.util.ArrayList;
@@ -73,14 +71,12 @@ final class AppsRepo {
     static String guessSection(App a) {
         String p = a.pkg.toLowerCase(Locale.US);
         String l = a.label.toLowerCase(Locale.US);
-        if (Build.VERSION.SDK_INT >= 26) {
-            int cat = a.info.activityInfo.applicationInfo.category;
-            if (cat == ApplicationInfo.CATEGORY_MAPS) return "Drive";
-            if (cat == ApplicationInfo.CATEGORY_AUDIO || cat == ApplicationInfo.CATEGORY_VIDEO
-                    || cat == ApplicationInfo.CATEGORY_IMAGE) return "Media";
-            if (cat == ApplicationInfo.CATEGORY_SOCIAL) return "Connect";
-            if (cat == ApplicationInfo.CATEGORY_PRODUCTIVITY) return "Tools";
-        }
+        // ApplicationInfo.CATEGORY_* values (API 26), as literals so older units compile/run.
+        int cat = NewApi.appCategory(a.info.activityInfo.applicationInfo);
+        if (cat == 6) return "Drive";                       // MAPS
+        if (cat == 1 || cat == 2 || cat == 3) return "Media"; // AUDIO, VIDEO, IMAGE
+        if (cat == 4) return "Connect";                     // SOCIAL
+        if (cat == 7) return "Tools";                       // PRODUCTIVITY
         if (has(p, l, "map", "navi", "waze", "gps", "weather", "sygic", "here.", "osmand", "barikoi", "pathao")) return "Drive";
         if (has(p, l, "music", "spotify", "radio", "fm", "video", "youtube", "player", "gallery", "photo",
                 "camera", "dvr", "media", "audio", "podcast", "netflix", "vlc", "mx", "tv", "avin", "aux")) return "Media";

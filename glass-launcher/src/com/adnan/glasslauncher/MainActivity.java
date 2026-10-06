@@ -13,23 +13,28 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
+import android.content.res.Configuration;
 import android.location.Address;
 import android.location.Geocoder;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
+import android.media.AudioManager;
 import android.media.audiofx.AudioEffect;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.provider.Settings;
 import android.text.InputType;
 import android.view.Gravity;
+import android.view.KeyEvent;
 import android.view.View;
 import android.view.Window;
+import android.view.WindowInsets;
 import android.view.WindowManager;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
@@ -37,25 +42,26 @@ import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
-import java.lang.reflect.Method;
 import java.text.Collator;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
-import java.util.Set;
 
 /** Single HOME activity hosting every screen. */
 public class MainActivity extends Activity implements MediaHub.Listener {
     static final int HOME = 0, MUSIC = 1, APPS = 2, SETTINGS = 3, CAR = 4;
     static final int W_LOADING = 0, W_OK = 1, W_NEED_PERMISSION = 2, W_NO_LOCATION = 3, W_OFFLINE = 4, W_ERROR = 5;
-    private static final int REQ_LOCATION = 7;
+    private static final int REQ_LOCATION = 7, REQ_BLUETOOTH = 8;
     private static final long WEATHER_EVERY_MS = 30 * 60 * 1000L;
+    static final String NOTIFICATION_LISTENER_SETTINGS = "android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS";
 
     private Prefs prefs;
     private MediaHub media;
+    private PhoneLink phone;
     private Widgets.Background background;
+    private FrameLayout root;
     private FrameLayout host;
     private Widgets.WheelLoader loader;
     private LinearLayout toast;
@@ -64,6 +70,8 @@ public class MainActivity extends Activity implements MediaHub.Listener {
     private final Screen[] screens = new Screen[5];
     private int current = HOME;
     private boolean started;
+    private boolean safeMode;
+    private int laidOutW, laidOutH;
 
     private String phoneName;
     private boolean online;
@@ -79,6 +87,7 @@ public class MainActivity extends Activity implements MediaHub.Listener {
     @Override
     protected void onCreate(Bundle state) {
         super.onCreate(state);
+        CrashGuard.install(this);
         requestWindowFeature(Window.FEATURE_NO_TITLE);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
         getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_NOTHING);
@@ -89,10 +98,16 @@ public class MainActivity extends Activity implements MediaHub.Listener {
         Ui.fontScale = Prefs.FONT_SCALES[prefs.fontSize()];
         media = new MediaHub(this);
         media.setListener(this);
+        phone = new PhoneLink(this);
+        phone.setOnChange(new Runnable() {
+            @Override
+            public void run() { updatePhone(); }
+        });
         weather = Weather.Data.fromJson(prefs.weatherCache());
         if (weather != null) weatherState = W_OK;
+        safeMode = CrashGuard.shouldUseSafeMode(this);
 
-        FrameLayout root = new FrameLayout(this);
+        root = new FrameLayout(this);
         background = new Widgets.Background(this);
         root.addView(background, new FrameLayout.LayoutParams(Ui.MATCH, Ui.MATCH));
         host = new FrameLayout(this);
@@ -100,13 +115,63 @@ public class MainActivity extends Activity implements MediaHub.Listener {
         loader = new Widgets.WheelLoader(this);
         root.addView(loader, new FrameLayout.LayoutParams(Ui.MATCH, Ui.MATCH));
         buildToast(root);
+        watchInsetsAndSize();
         setContentView(root);
         hideSystemBars();
-        show(HOME, false);
+        if (safeMode) showSafeMode();
+        else show(HOME, false);
+        applyIntent(getIntent());
     }
 
     private void hideSystemBars() {
-        getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LAYOUT_STABLE | View.SYSTEM_UI_FLAG_FULLSCREEN);
+        try {
+            if (!NewApi.hideStatusBar(getWindow())) {
+                getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LAYOUT_STABLE | View.SYSTEM_UI_FLAG_FULLSCREEN);
+            }
+        } catch (Throwable ignored) {
+        }
+    }
+
+    /**
+     * Pads the content away from any navigation bar the firmware shows, and re-scales the
+     * whole UI whenever the usable area changes (different screen, split screen, nav bar
+     * shown/hidden, density change), so the layout fits every head unit.
+     */
+    @SuppressWarnings("deprecation")
+    private void watchInsetsAndSize() {
+        root.setOnApplyWindowInsetsListener(new View.OnApplyWindowInsetsListener() {
+            @Override
+            public WindowInsets onApplyWindowInsets(View v, WindowInsets in) {
+                int[] b = NewApi.systemBars(in);
+                if (b == null) b = new int[]{in.getSystemWindowInsetLeft(), in.getSystemWindowInsetTop(),
+                        in.getSystemWindowInsetRight(), in.getSystemWindowInsetBottom()};
+                host.setPadding(b[0], b[1], b[2], b[3]);
+                return in;
+            }
+        });
+        host.addOnLayoutChangeListener(new View.OnLayoutChangeListener() {
+            @Override
+            public void onLayoutChange(View v, int l, int t, int r, int b, int ol, int ot, int or, int ob) {
+                int w = r - l - host.getPaddingLeft() - host.getPaddingRight();
+                int h = b - t - host.getPaddingTop() - host.getPaddingBottom();
+                if (w <= 0 || h <= 0 || (w == laidOutW && h == laidOutH)) return;
+                laidOutW = w;
+                laidOutH = h;
+                if (Ui.setArea(w, h)) {
+                    main.post(new Runnable() {
+                        @Override
+                        public void run() { rebuildAll(); }
+                    });
+                }
+            }
+        });
+    }
+
+    @Override
+    public void onConfigurationChanged(Configuration c) {
+        super.onConfigurationChanged(c);
+        laidOutW = laidOutH = 0;
+        root.requestLayout();
     }
 
     @Override
@@ -119,12 +184,19 @@ public class MainActivity extends Activity implements MediaHub.Listener {
     protected void onStart() {
         super.onStart();
         started = true;
-        registerReceivers();
-        updatePhone();
-        media.start();
-        screen(current).onShow();
+        try {
+            registerReceivers();
+            phone.start();
+            updatePhone();
+            media.start();
+            if (!safeMode) screen(current).onShow();
+        } catch (Throwable t) {
+            CrashGuard.report(this, "start", t);
+        }
         main.removeCallbacks(tick);
         main.post(tick);
+        main.removeCallbacks(stable);
+        main.postDelayed(stable, 30000);
         refreshWeather(false);
     }
 
@@ -133,17 +205,30 @@ public class MainActivity extends Activity implements MediaHub.Listener {
         super.onStop();
         started = false;
         main.removeCallbacks(tick);
-        try { unregisterReceiver(receiver); } catch (Exception ignored) {}
-        media.stop();
-        screen(current).onHide();
+        main.removeCallbacks(stable);
+        try { unregisterReceiver(receiver); } catch (Throwable ignored) {}
+        try {
+            media.stop();
+            phone.stop();
+            if (!safeMode) screen(current).onHide();
+        } catch (Throwable t) {
+            CrashGuard.report(this, "stop", t);
+        }
         stopLocation();
     }
+
+    private final Runnable stable = new Runnable() {
+        @Override
+        public void run() { CrashGuard.markStable(MainActivity.this); }
+    };
 
     @Override
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
+        setIntent(intent);
+        boolean handled = applyIntent(intent);
         // Pressing Home always returns to the chosen home layout.
-        if (Intent.ACTION_MAIN.equals(intent.getAction())) {
+        if (!handled && Intent.ACTION_MAIN.equals(intent.getAction()) && !safeMode) {
             hideKeyboard(getCurrentFocus());
             if (current != HOME) show(HOME, true);
         }
@@ -151,6 +236,7 @@ public class MainActivity extends Activity implements MediaHub.Listener {
 
     @Override
     public void onBackPressed() {
+        if (safeMode) return;
         if (screen(current).onBack()) return;
         if (current != HOME) show(HOME, true);
         // On Home, Back does nothing (this is the launcher).
@@ -159,11 +245,135 @@ public class MainActivity extends Activity implements MediaHub.Listener {
     private final Runnable tick = new Runnable() {
         @Override
         public void run() {
-            screen(current).onTick();
-            if (System.currentTimeMillis() - lastWeatherTry > WEATHER_EVERY_MS) refreshWeather(false);
+            try {
+                if (!safeMode) screen(current).onTick();
+                if (System.currentTimeMillis() - lastWeatherTry > WEATHER_EVERY_MS) refreshWeather(false);
+            } catch (Throwable t) {
+                CrashGuard.report(MainActivity.this, "tick", t);
+            }
             main.postDelayed(this, 1000);
         }
     };
+
+    // ---- Setup-script / automation interface ----------------------------------------------
+    /**
+     * Lets the ADB setup script (and any automation app) configure the launcher:
+     *   am start -n com.adnan.glasslauncher/.MainActivity --es theme Ocean --ei home_layout 0
+     *            --ei font_size 1 --ez apply_system_theme true --es car_name "Toyota Noah"
+     * Unknown or invalid values are ignored.
+     */
+    private boolean applyIntent(Intent i) {
+        if (i == null || i.getExtras() == null) return false;
+        boolean changed = false;
+        try {
+            String theme = i.getStringExtra("theme");
+            if (theme != null) {
+                for (int k = 0; k < Ui.THEME_NAMES.length; k++) {
+                    if (Ui.THEME_NAMES[k].equalsIgnoreCase(theme.trim())) { prefs.setTheme(k); Ui.themeIndex = k; changed = true; }
+                }
+            }
+            if (i.hasExtra("home_layout")) { prefs.setHomeLayout(i.getIntExtra("home_layout", 0)); screens[HOME] = null; changed = true; }
+            if (i.hasExtra("font_size")) {
+                prefs.setFontSize(i.getIntExtra("font_size", 1));
+                Ui.fontScale = Prefs.FONT_SCALES[prefs.fontSize()];
+                changed = true;
+            }
+            String car = i.getStringExtra("car_name");
+            if (car != null && car.trim().length() > 0) { prefs.setCarName(car.trim()); changed = true; }
+            if (i.getBooleanExtra("apply_system_theme", false)) {
+                prefs.setMatchSystemWallpaper(true);
+                applySystemTheme();
+                changed = true;
+            }
+            if (i.getBooleanExtra("reset_safe_mode", false)) {
+                CrashGuard.markStable(this);
+                changed = true;
+            }
+        } catch (Throwable t) {
+            CrashGuard.report(this, "intent", t);
+        }
+        if (changed && !safeMode) rebuildAll();
+        return changed;
+    }
+
+    // ---- Hardware keys (steering wheel, media keys, rotary knob) --------------------------
+    /**
+     * Steering-wheel and front-panel keys usually arrive as standard Android key codes. Media
+     * keys reach the playing app through Android even when another app is in front; while
+     * the launcher is in front it handles them itself so the on-screen state updates at once.
+     * D-pad / rotary knob keys move the focus ring between controls.
+     */
+    @Override
+    public boolean dispatchKeyEvent(KeyEvent e) {
+        int code = e.getKeyCode();
+        boolean up = e.getAction() == KeyEvent.ACTION_UP;
+        try {
+            switch (code) {
+                case KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE:
+                case KeyEvent.KEYCODE_HEADSETHOOK:
+                case KeyEvent.KEYCODE_MEDIA_PLAY:
+                case KeyEvent.KEYCODE_MEDIA_PAUSE:
+                    if (up) {
+                        boolean playing = media.isPlaying();
+                        if (code == KeyEvent.KEYCODE_MEDIA_PLAY && playing) return true;
+                        if (code == KeyEvent.KEYCODE_MEDIA_PAUSE && !playing) return true;
+                        media.togglePlay();
+                        refreshMediaSoon();
+                    }
+                    return true;
+                case KeyEvent.KEYCODE_MEDIA_NEXT:
+                    if (up) { media.next(); refreshMediaSoon(); }
+                    return true;
+                case KeyEvent.KEYCODE_MEDIA_PREVIOUS:
+                    if (up) { media.prev(); refreshMediaSoon(); }
+                    return true;
+                case KeyEvent.KEYCODE_MEDIA_FAST_FORWARD:
+                    if (up) media.seekTo(media.position() + 10000);
+                    return true;
+                case KeyEvent.KEYCODE_MEDIA_REWIND:
+                    if (up) media.seekTo(media.position() - 10000);
+                    return true;
+                case KeyEvent.KEYCODE_VOLUME_UP:
+                case KeyEvent.KEYCODE_VOLUME_DOWN:
+                case KeyEvent.KEYCODE_VOLUME_MUTE:
+                    if (up) refreshMediaSoon();
+                    return super.dispatchKeyEvent(e); // the system changes the volume
+                case KeyEvent.KEYCODE_MUSIC:
+                    if (up && !safeMode) show(MUSIC, true);
+                    return true;
+                case KeyEvent.KEYCODE_SETTINGS:
+                    if (up && !safeMode) show(SETTINGS, true);
+                    return true;
+                case KeyEvent.KEYCODE_CALL:
+                    if (up) openRole(Vendor.PHONE);
+                    return true;
+                case KeyEvent.KEYCODE_CAMERA:
+                    if (up) openRole(Vendor.CAMERA);
+                    return true;
+                case KeyEvent.KEYCODE_EXPLORER:
+                    if (up) openRole(Vendor.BROWSER);
+                    return true;
+                case KeyEvent.KEYCODE_SEARCH:
+                    if (up && !safeMode) show(APPS, true);
+                    return true;
+                case KeyEvent.KEYCODE_ESCAPE:
+                    if (up) onBackPressed();
+                    return true;
+                default:
+                    return super.dispatchKeyEvent(e);
+            }
+        } catch (Throwable t) {
+            CrashGuard.report(this, "key " + code, t);
+            return super.dispatchKeyEvent(e);
+        }
+    }
+
+    private void refreshMediaSoon() {
+        main.postDelayed(new Runnable() {
+            @Override
+            public void run() { onMediaChanged(); }
+        }, 250);
+    }
 
     // ---- Screens --------------------------------------------------------------------------
     private Screen screen(int i) {
@@ -181,17 +391,35 @@ public class MainActivity extends Activity implements MediaHub.Listener {
 
     void show(int which) { show(which, true); }
 
+    /** Shows a screen; if it fails to build, a recovery view is shown instead of crashing. */
     private void show(int which, boolean animate) {
+        if (safeMode) return;
         hideKeyboard(getCurrentFocus());
-        if (host.getChildCount() > 0) screen(current).onHide();
+        try {
+            if (host.getChildCount() > 0) screen(current).onHide();
+        } catch (Throwable t) {
+            CrashGuard.report(this, "hide", t);
+        }
         current = which;
+        View v;
         Screen s = screen(which);
-        View v = s.view();
+        try {
+            v = s.view();
+        } catch (Throwable t) {
+            CrashGuard.report(this, "build screen " + which, t);
+            s.invalidate();
+            screens[which] = null;
+            v = errorView(which);
+        }
         if (v.getParent() != null) ((FrameLayout) v.getParent()).removeView(v);
         host.removeAllViews();
         host.addView(v, new FrameLayout.LayoutParams(Ui.MATCH, Ui.MATCH));
-        if (started) s.onShow();
-        else background.setWallpaperMode(which == HOME && prefs.homeLayout() == 2);
+        try {
+            if (started && screens[which] != null) s.onShow();
+            else background.setWallpaperMode(which == HOME && prefs.homeLayout() == 2);
+        } catch (Throwable t) {
+            CrashGuard.report(this, "show screen " + which, t);
+        }
         if (animate && !Ui.reduceMotion) {
             v.setAlpha(0f);
             v.animate().alpha(1f).setDuration(280).setInterpolator(Ui.EASE_OUT).start();
@@ -199,34 +427,82 @@ public class MainActivity extends Activity implements MediaHub.Listener {
         }
     }
 
+    /** Shown when a screen can't be built (bad data, firmware quirk): never a dead end. */
+    private View errorView(final int which) {
+        LinearLayout col = Ui.col(this);
+        col.setGravity(Gravity.CENTER);
+        col.setPadding(Ui.u(40), Ui.u(40), Ui.u(40), Ui.u(40));
+        TextView t = Ui.text(this, "This screen couldn't open", 28, Ui.TEXT, Ui.display(600));
+        col.addView(t);
+        TextView m = Ui.multiline(this, "The launcher kept running. You can reset the screen's settings or go back home.", 16, Ui.TEXT_2, Ui.body(400));
+        m.setGravity(Gravity.CENTER);
+        col.addView(m, Ui.margins(Ui.lp(Ui.WRAP, Ui.WRAP), 0, 12, 0, 20));
+        LinearLayout row = Ui.row(this);
+        row.addView(Parts.accentButton(this, which == HOME ? "Use Dashboard layout" : "Back to home", 16, 22, 52, 16, new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (which == HOME) { prefs.setHomeLayout(0); screens[HOME] = null; }
+                show(HOME, true);
+            }
+        }));
+        row.addView(Parts.outlineButton(this, "Open Android settings", 16, 22, 52, 16, new View.OnClickListener() {
+            @Override
+            public void onClick(View v) { startSafe(new Intent(Settings.ACTION_SETTINGS), null); }
+        }), Ui.margins(Ui.lp(Ui.WRAP, Ui.u(52)), 12, 0, 0, 0));
+        col.addView(row);
+        return col;
+    }
+
+    private void showSafeMode() {
+        host.removeAllViews();
+        background.setWallpaperMode(false);
+        host.addView(new SafeModeView(this), new FrameLayout.LayoutParams(Ui.MATCH, Ui.MATCH));
+    }
+
+    void leaveSafeMode(boolean reset) {
+        if (reset) prefs.resetAll();
+        CrashGuard.markStable(this);
+        safeMode = false;
+        Ui.themeIndex = prefs.theme();
+        Ui.fontScale = Prefs.FONT_SCALES[prefs.fontSize()];
+        for (int i = 0; i < screens.length; i++) screens[i] = null;
+        show(HOME, true);
+        if (started) {
+            try { screen(HOME).onShow(); } catch (Throwable t) { CrashGuard.report(this, "safe exit", t); }
+        }
+    }
+
     void openSettingsSection(int section) {
         SettingsScreen s = (SettingsScreen) screen(SETTINGS);
         s.current = section;
         show(SETTINGS, true);
-        s.select(section);
+        try { s.select(section); } catch (Throwable t) { CrashGuard.report(this, "section", t); }
     }
 
     Widgets.Background background() { return background; }
     Prefs prefs() { return prefs; }
     MediaHub media() { return media; }
+    PhoneLink phoneLink() { return phone; }
+    boolean inSafeMode() { return safeMode; }
 
     void homeLayoutChanged() {
-        if (screens[HOME] != null) screens[HOME].onHide();
+        try { if (screens[HOME] != null) screens[HOME].onHide(); } catch (Throwable ignored) {}
         screens[HOME] = null;
     }
 
-    /** Theme or font size changed: rebuild every screen with the new tokens. */
+    /** Theme, font size or screen size changed: rebuild every screen with the new tokens. */
     void rebuildAll() {
+        if (safeMode) return;
+        Screen cur = screens[current];
+        int section = cur instanceof SidebarScreen ? ((SidebarScreen) cur).current : 0;
+        try { if (cur != null) cur.onHide(); } catch (Throwable ignored) {}
         for (int i = 0; i < screens.length; i++) {
-            if (screens[i] != null && i != current) screens[i].invalidate();
+            if (screens[i] != null) screens[i].invalidate();
         }
         screens[HOME] = null;
-        Screen cur = screen(current);
-        int section = cur instanceof SidebarScreen ? ((SidebarScreen) cur).current : 0;
-        cur.onHide();
-        cur.invalidate();
         if (cur instanceof SidebarScreen) ((SidebarScreen) cur).current = section;
         background.themeChanged();
+        if (toast != null) toastText.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, Ui.uf(16) * Ui.textScale());
         show(current, false);
     }
 
@@ -235,19 +511,32 @@ public class MainActivity extends Activity implements MediaHub.Listener {
         Ui.themeIndex = idx;
         rebuildAll();
         toast(Ui.THEME_NAMES[idx] + " theme");
+        if (prefs.matchSystemWallpaper()) applySystemTheme();
+    }
+
+    void applySystemTheme() {
+        SystemTheme.apply(this, Ui.themeIndex, new SystemTheme.Done() {
+            @Override
+            public void done(String summary) { toast(summary); }
+        });
     }
 
     void setFontSize(int i) {
         prefs.setFontSize(i);
-        Ui.fontScale = Prefs.FONT_SCALES[i];
+        Ui.fontScale = Prefs.FONT_SCALES[prefs.fontSize()];
         rebuildAll();
     }
 
     // ---- Media ----------------------------------------------------------------------------
     @Override
     public void onMediaChanged() {
+        if (safeMode) return;
         Screen s = screens[current];
-        if (s != null) s.onMedia();
+        try {
+            if (s != null) s.onMedia();
+        } catch (Throwable t) {
+            CrashGuard.report(this, "media", t);
+        }
     }
 
     void askNotificationAccess() {
@@ -256,11 +545,14 @@ public class MainActivity extends Activity implements MediaHub.Listener {
             return;
         }
         toast("Turn on “Glass Launcher” in the list");
-        startSafe(new Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS),
-                "Open Settings › Apps › Special access › Notification access");
+        if (!startSafe(new Intent(NOTIFICATION_LISTENER_SETTINGS), null)) {
+            startSafe(new Intent(Settings.ACTION_SECURITY_SETTINGS), "Open Settings › Apps › Special access › Notification access");
+        }
     }
 
     void openEqualizer() {
+        ComponentName vendorEq = Vendor.find(this, prefs, Vendor.EQ);
+        if (vendorEq != null && AppsRepo.launch(this, vendorEq)) return;
         Intent i = new Intent(AudioEffect.ACTION_DISPLAY_AUDIO_EFFECT_CONTROL_PANEL)
                 .putExtra(AudioEffect.EXTRA_PACKAGE_NAME, getPackageName())
                 .putExtra(AudioEffect.EXTRA_AUDIO_SESSION, 0)
@@ -270,9 +562,9 @@ public class MainActivity extends Activity implements MediaHub.Listener {
                 startActivityForResult(i, 0);
                 return;
             }
-        } catch (Exception ignored) {
+        } catch (Throwable ignored) {
         }
-        openVendorSettings();
+        openRole(Vendor.CAR_SETTINGS);
     }
 
     String appLabel(String pkg) {
@@ -280,7 +572,7 @@ public class MainActivity extends Activity implements MediaHub.Listener {
         try {
             PackageManager pm = getPackageManager();
             return pm.getApplicationInfo(pkg, 0).loadLabel(pm).toString();
-        } catch (Exception e) {
+        } catch (Throwable e) {
             return pkg;
         }
     }
@@ -288,7 +580,7 @@ public class MainActivity extends Activity implements MediaHub.Listener {
     String versionName() {
         try {
             return getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
-        } catch (Exception e) {
+        } catch (Throwable e) {
             return "";
         }
     }
@@ -299,10 +591,24 @@ public class MainActivity extends Activity implements MediaHub.Listener {
             i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             startActivity(i);
             return true;
-        } catch (Exception e) {
+        } catch (Throwable e) {
             if (failToast != null) toast(failToast);
             return false;
         }
+    }
+
+    /** Opens the app connected to a role (auto-detected or chosen); asks once if none found. */
+    void openRole(final String role) {
+        ComponentName cn = Vendor.find(this, prefs, role);
+        if (cn != null && AppsRepo.launch(this, cn)) return;
+        if (Vendor.PHONE.equals(role) && startSafe(new Intent(Intent.ACTION_DIAL), null)) return;
+        pickApp(Vendor.label(role), new AppCallback() {
+            @Override
+            public void picked(String component, String label) {
+                prefs.setRoleApp(role, component);
+                AppsRepo.launch(MainActivity.this, ComponentName.unflattenFromString(component));
+            }
+        });
     }
 
     /** Opens the chosen maps app; asks once which one when none is saved yet. */
@@ -311,95 +617,111 @@ public class MainActivity extends Activity implements MediaHub.Listener {
         if (saved != null) {
             ComponentName cn = ComponentName.unflattenFromString(saved);
             if (cn != null && AppsRepo.launch(this, cn)) return;
-            prefs.setMapsApp(null);
+            prefs.setMapsApp(null); // uninstalled by an update: ask again
         }
         final PackageManager pm = getPackageManager();
-        List<ResolveInfo> geo = pm.queryIntentActivities(new Intent(Intent.ACTION_VIEW, Uri.parse("geo:0,0?q=")), 0);
         final List<ResolveInfo> launchable = new ArrayList<ResolveInfo>();
-        Intent mainIntent = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER);
-        List<ResolveInfo> all = pm.queryIntentActivities(mainIntent, 0);
-        for (ResolveInfo g : geo) {
-            for (ResolveInfo l : all) {
-                if (l.activityInfo.packageName.equals(g.activityInfo.packageName)) { launchable.add(l); break; }
-            }
-        }
-        if (launchable.isEmpty()) {
-            pickApp("Choose your maps app", new AppCallback() {
-                @Override
-                public void picked(String component, String label) {
-                    prefs.setMapsApp(component);
-                    AppsRepo.launch(MainActivity.this, ComponentName.unflattenFromString(component));
+        try {
+            List<ResolveInfo> geo = pm.queryIntentActivities(new Intent(Intent.ACTION_VIEW, Uri.parse("geo:0,0?q=")), 0);
+            List<ResolveInfo> all = pm.queryIntentActivities(new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER), 0);
+            for (ResolveInfo g : geo) {
+                for (ResolveInfo l : all) {
+                    if (l.activityInfo.packageName.equals(g.activityInfo.packageName)) { launchable.add(l); break; }
                 }
-            });
-            return;
+            }
+        } catch (Throwable ignored) {
         }
-        if (launchable.size() == 1) {
+        AppCallback save = new AppCallback() {
+            @Override
+            public void picked(String component, String label) {
+                prefs.setMapsApp(component);
+                toast("Navigate will open " + label + ". Change it in Settings › Connections.");
+                AppsRepo.launch(MainActivity.this, ComponentName.unflattenFromString(component));
+            }
+        };
+        if (launchable.isEmpty()) {
+            pickApp("Choose your maps app", save);
+        } else if (launchable.size() == 1) {
             ResolveInfo r = launchable.get(0);
             String comp = new ComponentName(r.activityInfo.packageName, r.activityInfo.name).flattenToString();
             prefs.setMapsApp(comp);
             AppsRepo.launch(this, ComponentName.unflattenFromString(comp));
-            return;
+        } else {
+            pickFrom("Choose your maps app", launchable, false, save);
         }
-        pickFrom("Choose your maps app", launchable, new AppCallback() {
-            @Override
-            public void picked(String component, String label) {
-                prefs.setMapsApp(component);
-                toast("Navigate will open " + label + ". Change it in Car settings.");
-                AppsRepo.launch(MainActivity.this, ComponentName.unflattenFromString(component));
-            }
-        });
     }
 
-    void openVendorSettings() {
-        String saved = prefs.vendorApp();
-        if (saved != null) {
-            ComponentName cn = ComponentName.unflattenFromString(saved);
-            if (cn != null && AppsRepo.launch(this, cn)) return;
-            prefs.setVendorApp(null);
-        }
-        pickApp("Head unit settings app", new AppCallback() {
-            @Override
-            public void picked(String component, String label) {
-                prefs.setVendorApp(component);
-                AppsRepo.launch(MainActivity.this, ComponentName.unflattenFromString(component));
-            }
-        });
-    }
+    void openVendorSettings() { openRole(Vendor.CAR_SETTINGS); }
 
     void openBluetoothSettings() {
-        startSafe(new Intent(Settings.ACTION_BLUETOOTH_SETTINGS), "Bluetooth settings aren't available");
+        if (phone.needsPermission()) {
+            requestBluetoothPermission();
+            return;
+        }
+        if (!startSafe(new Intent(Settings.ACTION_BLUETOOTH_SETTINGS), null)) openRole(Vendor.PHONE);
+    }
+
+    void requestBluetoothPermission() {
+        NewApi.request(this, new String[]{PhoneLink.PERM_CONNECT}, REQ_BLUETOOTH);
+    }
+
+    /** Lets the user pick (or reset to auto-detect) the app for a connection role. */
+    void pickConnection(final String role, final SidebarScreen refresh) {
+        pickApp(Vendor.label(role), true, new AppCallback() {
+            @Override
+            public void picked(String component, String label) {
+                prefs.setRoleApp(role, component);
+                ComponentName cn = Vendor.find(MainActivity.this, prefs, role);
+                String name = cn != null ? AppsRepo.labelFor(MainActivity.this, cn.flattenToString()) : null;
+                toast(Vendor.label(role) + ": " + (name != null ? name : "not found"));
+                if (refresh != null) refresh.refresh();
+            }
+        });
     }
 
     // ---- Dialogs --------------------------------------------------------------------------
-    void pickApp(String title, AppCallback cb) {
-        Intent mainIntent = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER);
-        List<ResolveInfo> all = getPackageManager().queryIntentActivities(mainIntent, 0);
+    void pickApp(String title, AppCallback cb) { pickApp(title, false, cb); }
+
+    /** App chooser; {@code withAuto} adds an "Auto-detect" first row (returns component null). */
+    void pickApp(String title, boolean withAuto, AppCallback cb) {
         List<ResolveInfo> others = new ArrayList<ResolveInfo>();
-        for (ResolveInfo r : all) if (!getPackageName().equals(r.activityInfo.packageName)) others.add(r);
-        pickFrom(title, others, cb);
+        try {
+            List<ResolveInfo> all = getPackageManager().queryIntentActivities(
+                    new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER), 0);
+            for (ResolveInfo r : all) if (!getPackageName().equals(r.activityInfo.packageName)) others.add(r);
+        } catch (Throwable ignored) {
+        }
+        pickFrom(title, others, withAuto, cb);
     }
 
-    private void pickFrom(String title, List<ResolveInfo> list, final AppCallback cb) {
+    private void pickFrom(String title, List<ResolveInfo> list, final boolean withAuto, final AppCallback cb) {
         final PackageManager pm = getPackageManager();
         final List<ResolveInfo> sorted = new ArrayList<ResolveInfo>(list);
         final Collator col = Collator.getInstance(Locale.getDefault());
         Collections.sort(sorted, new Comparator<ResolveInfo>() {
             @Override
-            public int compare(ResolveInfo x, ResolveInfo y) { return col.compare(x.loadLabel(pm).toString(), y.loadLabel(pm).toString()); }
+            public int compare(ResolveInfo x, ResolveInfo y) { return col.compare(String.valueOf(x.loadLabel(pm)), String.valueOf(y.loadLabel(pm))); }
         });
-        final String[] labels = new String[sorted.size()];
-        for (int i = 0; i < labels.length; i++) labels[i] = sorted.get(i).loadLabel(pm).toString();
-        new AlertDialog.Builder(this, AlertDialog.THEME_DEVICE_DEFAULT_DARK)
-                .setTitle(title)
-                .setItems(labels, new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface d, int which) {
-                        ResolveInfo r = sorted.get(which);
-                        cb.picked(new ComponentName(r.activityInfo.packageName, r.activityInfo.name).flattenToString(), labels[which]);
-                    }
-                })
-                .setNegativeButton("Cancel", null)
-                .show();
+        final int off = withAuto ? 1 : 0;
+        final String[] labels = new String[sorted.size() + off];
+        if (withAuto) labels[0] = "Auto-detect";
+        for (int i = 0; i < sorted.size(); i++) labels[i + off] = String.valueOf(sorted.get(i).loadLabel(pm));
+        try {
+            new AlertDialog.Builder(this, AlertDialog.THEME_DEVICE_DEFAULT_DARK)
+                    .setTitle(title)
+                    .setItems(labels, new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface d, int which) {
+                            if (withAuto && which == 0) { cb.picked(null, "Auto-detect"); return; }
+                            ResolveInfo r = sorted.get(which - off);
+                            cb.picked(new ComponentName(r.activityInfo.packageName, r.activityInfo.name).flattenToString(), labels[which]);
+                        }
+                    })
+                    .setNegativeButton("Cancel", null)
+                    .show();
+        } catch (Throwable t) {
+            CrashGuard.report(this, "picker", t);
+        }
     }
 
     void askText(String title, String initial, final TextCallback cb) {
@@ -411,22 +733,29 @@ public class MainActivity extends Activity implements MediaHub.Listener {
         FrameLayout box = new FrameLayout(this);
         box.setPadding(Ui.u(24), Ui.u(8), Ui.u(24), 0);
         box.addView(e);
-        new AlertDialog.Builder(this, AlertDialog.THEME_DEVICE_DEFAULT_DARK)
-                .setTitle(title)
-                .setView(box)
-                .setNegativeButton("Cancel", null)
-                .setPositiveButton("Save", new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface d, int w) { cb.done(e.getText().toString().trim()); }
-                })
-                .show();
+        try {
+            new AlertDialog.Builder(this, AlertDialog.THEME_DEVICE_DEFAULT_DARK)
+                    .setTitle(title)
+                    .setView(box)
+                    .setNegativeButton("Cancel", null)
+                    .setPositiveButton("Save", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface d, int w) { cb.done(e.getText().toString().trim()); }
+                    })
+                    .show();
+        } catch (Throwable t) {
+            CrashGuard.report(this, "text dialog", t);
+        }
     }
 
     void hideKeyboard(View v) {
         if (v == null) return;
-        InputMethodManager imm = (InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
-        if (imm != null) imm.hideSoftInputFromWindow(v.getWindowToken(), 0);
-        v.clearFocus();
+        try {
+            InputMethodManager imm = (InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
+            if (imm != null) imm.hideSoftInputFromWindow(v.getWindowToken(), 0);
+            v.clearFocus();
+        } catch (Throwable ignored) {
+        }
     }
 
     // ---- Toast ----------------------------------------------------------------------------
@@ -474,9 +803,20 @@ public class MainActivity extends Activity implements MediaHub.Listener {
     private final BroadcastReceiver receiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context c, Intent i) {
-            boolean wasOnline = online;
-            updatePhone();
-            if (!wasOnline && online) refreshWeather(true);
+            try {
+                String a = i.getAction();
+                if (BluetoothDevice.ACTION_ACL_CONNECTED.equals(a) || BluetoothDevice.ACTION_ACL_DISCONNECTED.equals(a)) {
+                    BluetoothDevice d = i.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
+                    phone.onAcl(d, BluetoothDevice.ACTION_ACL_CONNECTED.equals(a));
+                }
+                if (BluetoothAdapter.ACTION_STATE_CHANGED.equals(a)) phone.start();
+                boolean wasOnline = online;
+                updatePhone();
+                if (!wasOnline && online) refreshWeather(true);
+                if (AudioManager.ACTION_AUDIO_BECOMING_NOISY.equals(a)) refreshMediaSoon();
+            } catch (Throwable t) {
+                CrashGuard.report(MainActivity.this, "receiver", t);
+            }
         }
     };
 
@@ -486,51 +826,35 @@ public class MainActivity extends Activity implements MediaHub.Listener {
         f.addAction(BluetoothDevice.ACTION_ACL_DISCONNECTED);
         f.addAction(BluetoothAdapter.ACTION_STATE_CHANGED);
         f.addAction(ConnectivityManager.CONNECTIVITY_ACTION);
-        registerReceiver(receiver, f);
+        f.addAction(AudioManager.ACTION_AUDIO_BECOMING_NOISY);
+        NewApi.registerReceiver(this, receiver, f);
     }
 
     private void updatePhone() {
-        String name = null;
         try {
-            BluetoothAdapter ad = BluetoothAdapter.getDefaultAdapter();
-            if (ad != null && ad.isEnabled()) {
-                Set<BluetoothDevice> bonded = ad.getBondedDevices();
-                Method isConnected = BluetoothDevice.class.getMethod("isConnected");
-                if (bonded != null) {
-                    for (BluetoothDevice d : bonded) {
-                        if (Boolean.TRUE.equals(isConnected.invoke(d))) {
-                            name = d.getName();
-                            break;
-                        }
-                    }
-                }
-            }
-        } catch (Throwable ignored) {
-            // Hidden API blocked or no permission: show "No phone".
+            phoneName = phone.connectedName();
+        } catch (Throwable t) {
+            phoneName = null;
         }
-        phoneName = name;
         online = isOnline();
-        Screen s = screens[current];
-        if (s != null) s.onPhone();
+        Screen s = safeMode ? null : screens[current];
+        try {
+            if (s != null) s.onPhone();
+        } catch (Throwable t) {
+            CrashGuard.report(this, "phone", t);
+        }
     }
 
     String phoneName() { return phoneName; }
 
-    boolean bluetoothOn() {
-        try {
-            BluetoothAdapter ad = BluetoothAdapter.getDefaultAdapter();
-            return ad != null && ad.isEnabled();
-        } catch (Throwable t) {
-            return false;
-        }
-    }
+    boolean bluetoothOn() { return phone.enabled(); }
 
     private boolean isOnline() {
         try {
             ConnectivityManager cm = (ConnectivityManager) getSystemService(CONNECTIVITY_SERVICE);
             NetworkInfo ni = cm != null ? cm.getActiveNetworkInfo() : null;
             return ni != null && ni.isConnected();
-        } catch (Exception e) {
+        } catch (Throwable e) {
             return true;
         }
     }
@@ -545,8 +869,35 @@ public class MainActivity extends Activity implements MediaHub.Listener {
             if ("MOBILE".equalsIgnoreCase(type)) return "Online · Mobile data";
             if ("BLUETOOTH".equalsIgnoreCase(type)) return "Online · Bluetooth tethering";
             return "Online · " + type;
-        } catch (Exception e) {
+        } catch (Throwable e) {
             return "Unknown";
+        }
+    }
+
+    // ---- Permissions ----------------------------------------------------------------------
+    boolean hasLocationPermission() {
+        return NewApi.granted(this, Manifest.permission.ACCESS_COARSE_LOCATION)
+                || NewApi.granted(this, Manifest.permission.ACCESS_FINE_LOCATION);
+    }
+
+    void requestLocationPermission() {
+        NewApi.request(this, new String[]{Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.ACCESS_FINE_LOCATION}, REQ_LOCATION);
+    }
+
+    // Activity.onRequestPermissionsResult exists from API 23; on 21-22 permissions are granted at install.
+    public void onRequestPermissionsResult(int code, String[] perms, int[] results) {
+        if (code == REQ_BLUETOOTH) {
+            phone.start();
+            updatePhone();
+            if (phone.needsPermission()) toast("Without “Nearby devices” the phone status can't be shown");
+            return;
+        }
+        if (code != REQ_LOCATION) return;
+        if (hasLocationPermission()) {
+            prefs.useDeviceLocation();
+            refreshWeather(true);
+        } else {
+            toast("Without location, set a city in Settings › Weather");
         }
     }
 
@@ -560,8 +911,13 @@ public class MainActivity extends Activity implements MediaHub.Listener {
     }
 
     void weatherChanged() {
+        if (safeMode) return;
         Screen s = screens[current];
-        if (s != null) s.onWeather();
+        try {
+            if (s != null) s.onWeather();
+        } catch (Throwable t) {
+            CrashGuard.report(this, "weather", t);
+        }
         if (screens[HOME] != null && current != HOME) screens[HOME].invalidate();
     }
 
@@ -570,27 +926,15 @@ public class MainActivity extends Activity implements MediaHub.Listener {
         weatherChanged();
     }
 
-    boolean hasLocationPermission() {
-        return checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
-                || checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED;
-    }
-
-    void requestLocationPermission() {
-        requestPermissions(new String[]{Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.ACCESS_FINE_LOCATION}, REQ_LOCATION);
-    }
-
-    @Override
-    public void onRequestPermissionsResult(int code, String[] perms, int[] results) {
-        if (code != REQ_LOCATION) return;
-        if (hasLocationPermission()) {
-            prefs.useDeviceLocation();
-            refreshWeather(true);
-        } else {
-            toast("Without location, set a city in Settings › Weather");
+    void refreshWeather(boolean force) {
+        try {
+            refreshWeatherUnsafe(force);
+        } catch (Throwable t) {
+            CrashGuard.report(this, "weather refresh", t);
         }
     }
 
-    void refreshWeather(boolean force) {
+    private void refreshWeatherUnsafe(boolean force) {
         if (!force && weather != null && System.currentTimeMillis() - weather.fetchedAt < WEATHER_EVERY_MS
                 && System.currentTimeMillis() - lastWeatherTry < WEATHER_EVERY_MS) {
             return;
@@ -629,7 +973,7 @@ public class MainActivity extends Activity implements MediaHub.Listener {
                 Location l = lm.getLastKnownLocation(p);
                 if (l != null && (best == null || l.getTime() > best.getTime())) best = l;
             }
-        } catch (SecurityException ignored) {
+        } catch (Throwable ignored) {
         }
         return best;
     }
@@ -656,7 +1000,7 @@ public class MainActivity extends Activity implements MediaHub.Listener {
                     any = true;
                 }
             }
-        } catch (SecurityException ignored) {
+        } catch (Throwable ignored) {
         }
         if (!any) {
             stopLocation();
@@ -677,7 +1021,7 @@ public class MainActivity extends Activity implements MediaHub.Listener {
     private void stopLocation() {
         if (pendingLocation == null) return;
         LocationManager lm = (LocationManager) getSystemService(LOCATION_SERVICE);
-        try { if (lm != null) lm.removeUpdates(pendingLocation); } catch (Exception ignored) {}
+        try { if (lm != null) lm.removeUpdates(pendingLocation); } catch (Throwable ignored) {}
         pendingLocation = null;
     }
 
@@ -695,7 +1039,7 @@ public class MainActivity extends Activity implements MediaHub.Listener {
                             place = ad.getLocality() != null ? ad.getLocality() : ad.getSubAdminArea() != null ? ad.getSubAdminArea() : ad.getAdminArea();
                         }
                     }
-                } catch (Exception ignored) {
+                } catch (Throwable ignored) {
                 }
                 final String fp = place;
                 main.post(new Runnable() {
@@ -720,4 +1064,6 @@ public class MainActivity extends Activity implements MediaHub.Listener {
             }
         });
     }
+
+    static boolean atLeast(int sdk) { return Build.VERSION.SDK_INT >= sdk; }
 }

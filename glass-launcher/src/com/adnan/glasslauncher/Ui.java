@@ -85,6 +85,29 @@ final class Ui {
         reduceMotion = animScale == 0f;
     }
 
+    /**
+     * Re-scales the design to the real usable area (called on every layout size change).
+     * Returns true when the scale changed and screens must be rebuilt.
+     */
+    static boolean setArea(int w, int h) {
+        if (w <= 0 || h <= 0) return false;
+        // Landscape head units: fit 1280x720 design units. A portrait window still gets a
+        // usable layout because the smaller ratio wins.
+        float s = Math.min(w / 1280f, h / 720f);
+        if (Math.abs(s - scale) < 0.002f) return false;
+        scale = s;
+        return true;
+    }
+
+    /**
+     * Text multiplier: the user's font size, plus a boost on small screens (7" 800x480 or
+     * 1024x600 units) so labels stay readable while driving.
+     */
+    static float textScale() {
+        float boost = scale < 0.85f ? Math.min(1.3f, 0.85f / scale) : 1f;
+        return fontScale * boost;
+    }
+
     static int u(float designPx) { return Math.round(designPx * scale); }
     static float uf(float designPx) { return designPx * scale; }
 
@@ -127,6 +150,7 @@ final class Ui {
     /** Press feedback from the motion spec: scale to 0.95 and brighten, spring back in ~220 ms. */
     static void pressable(final View v) {
         v.setClickable(true);
+        focusable(v);
         v.setOnTouchListener(new View.OnTouchListener() {
             @Override
             public boolean onTouch(View view, MotionEvent e) {
@@ -147,6 +171,29 @@ final class Ui {
         });
     }
 
+    /**
+     * Rotary knob / D-pad support: the view can take focus and shows an accent ring while
+     * focused (drawn in the view's overlay, so it works on every Android version).
+     */
+    static void focusable(final View v) {
+        v.setFocusable(true);
+        final GlassDrawable ring = new GlassDrawable(0, accent(), 0, uf(16)).stroke(accent(), 3);
+        v.setOnFocusChangeListener(new View.OnFocusChangeListener() {
+            @Override
+            public void onFocusChange(View view, boolean hasFocus) {
+                try {
+                    if (hasFocus) {
+                        ring.setBounds(0, 0, view.getWidth(), view.getHeight());
+                        view.getOverlay().add(ring);
+                    } else {
+                        view.getOverlay().remove(ring);
+                    }
+                } catch (Throwable ignored) {
+                }
+            }
+        });
+    }
+
     /** "rise" entrance: fade in and move up 14 design px, with a delay for staggering. */
     static void rise(View v, long delayMs) {
         if (reduceMotion) return;
@@ -161,7 +208,7 @@ final class Ui {
         t.setText(s);
         t.setTextColor(color);
         t.setTypeface(tf);
-        t.setTextSize(TypedValue.COMPLEX_UNIT_PX, uf(sizeDesignPx) * fontScale);
+        t.setTextSize(TypedValue.COMPLEX_UNIT_PX, uf(sizeDesignPx) * textScale());
         t.setIncludeFontPadding(false);
         t.setSingleLine(true);
         t.setEllipsize(TextUtils.TruncateAt.END);

@@ -17,10 +17,10 @@ import android.widget.TextView;
 
 /** Android settings, as shortcuts to the system screens plus the launcher's own options. */
 final class SettingsScreen extends SidebarScreen {
-    static final int HOME = 0, DISPLAY = 1, SOUND = 2, WEATHER = 3, NETWORK = 4, BLUETOOTH = 5, APPS = 6, ABOUT = 7;
-    private static final String[] LABELS = {"Home screen", "Display", "Sound & music", "Weather",
+    static final int HOME = 0, DISPLAY = 1, SOUND = 2, WEATHER = 3, CONNECTIONS = 4, NETWORK = 5, BLUETOOTH = 6, APPS = 7, ABOUT = 8;
+    private static final String[] LABELS = {"Home screen", "Display", "Sound & music", "Weather", "Connections",
             "Network & internet", "Bluetooth", "Storage & apps", "About device"};
-    private static final Icons.Glyph[] GLYPHS = {Icons.GRID, Icons.SUN, Icons.VOLUME, Icons.CLOUD,
+    private static final Icons.Glyph[] GLYPHS = {Icons.GRID, Icons.SUN, Icons.VOLUME, Icons.CLOUD, Icons.OPEN,
             Icons.WIFI, Icons.BLUETOOTH, Icons.STORAGE, Icons.INFO};
 
     SettingsScreen(MainActivity a) { super(a, LABELS.length); current = HOME; }
@@ -38,6 +38,7 @@ final class SettingsScreen extends SidebarScreen {
             case DISPLAY: display(out); break;
             case SOUND: sound(out); break;
             case WEATHER: weather(out); break;
+            case CONNECTIONS: connections(out); break;
             case NETWORK: network(out); break;
             case BLUETOOTH: bluetooth(out); break;
             case APPS: apps(out); break;
@@ -222,7 +223,21 @@ final class SettingsScreen extends SidebarScreen {
         });
         nav(out, "Brightness & screen timeout", "Opens the system display settings", null,
                 open(Settings.ACTION_DISPLAY_SETTINGS, "Display settings aren't available"));
-        nav(out, "Wallpaper", "The Minimal home uses the theme's fluted-glass wallpaper", Ui.THEME_NAMES[Ui.themeIndex], null);
+        label(out, "Whole head unit");
+        toggle(out, "Match system wallpaper to theme", "Sets the Android home and lock wallpaper to this theme whenever it changes",
+                a.prefs().matchSystemWallpaper(), new Widgets.Toggle.OnChange() {
+                    @Override
+                    public void changed(boolean on) {
+                        a.prefs().setMatchSystemWallpaper(on);
+                        if (on) a.applySystemTheme();
+                    }
+                });
+        button(out, "Apply theme to system now", false, new View.OnClickListener() {
+            @Override
+            public void onClick(View v) { a.applySystemTheme(); }
+        });
+        para(out, "Android lets an app change the system wallpaper, and on some firmwares dark mode. Colours, icons and fonts of other apps "
+                + "can't be changed without root, so they stay as they are. The setup script (tools/setup-headunit) can also switch dark mode over USB.");
     }
 
     // ---- Sound & music --------------------------------------------------------------------
@@ -308,6 +323,36 @@ final class SettingsScreen extends SidebarScreen {
         });
     }
 
+    // ---- Connections ----------------------------------------------------------------------
+    private void connections(LinearLayout out) {
+        heading(out, "Connections", "The head unit apps the launcher opens from its buttons, steering-wheel keys and Car settings. "
+                + "They are found automatically; tap one to choose a different app or go back to auto-detect.");
+        for (final String role : Vendor.ROLES) {
+            android.content.ComponentName cn = Vendor.find(a, a.prefs(), role);
+            String name = cn != null ? AppsRepo.labelFor(a, cn.flattenToString()) : null;
+            boolean auto = a.prefs().roleApp(role) == null;
+            nav(out, Vendor.label(role), name == null ? "Not found on this head unit" : auto ? "Found automatically" : "Chosen by you",
+                    name != null ? name : "Choose", new View.OnClickListener() {
+                        @Override
+                        public void onClick(View v) { a.pickConnection(role, SettingsScreen.this); }
+                    });
+        }
+        String maps = AppsRepo.labelFor(a, a.prefs().mapsApp());
+        nav(out, "Navigation app", "Opened by Maps on the rail and the Navigation card", maps != null ? maps : "Ask on first use",
+                new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        a.pickApp("Navigation app", true, new MainActivity.AppCallback() {
+                            @Override
+                            public void picked(String component, String label) {
+                                a.prefs().setMapsApp(component);
+                                refresh();
+                            }
+                        });
+                    }
+                });
+    }
+
     // ---- Network / Bluetooth / Apps -------------------------------------------------------
     private void network(LinearLayout out) {
         heading(out, "Network & internet", null);
@@ -322,6 +367,12 @@ final class SettingsScreen extends SidebarScreen {
     private void bluetooth(LinearLayout out) {
         heading(out, "Bluetooth", null);
         String name = a.phoneName();
+        if (a.phoneLink().needsPermission()) {
+            nav(out, "Allow “Nearby devices”", "Android 12+ needs this to show which phone is connected", null, new View.OnClickListener() {
+                @Override
+                public void onClick(View v) { a.requestBluetoothPermission(); }
+            });
+        }
         nav(out, "Bluetooth", null, a.bluetoothOn() ? "On" : "Off", null);
         nav(out, "Connected phone", null, name != null ? name : "None", null);
         nav(out, "Pair or manage devices", "Opens the system Bluetooth settings", null, new View.OnClickListener() {
@@ -350,6 +401,24 @@ final class SettingsScreen extends SidebarScreen {
         nav(out, "Build", null, Build.DISPLAY, null);
         nav(out, "Screen", null, dm.widthPixels + " × " + dm.heightPixels + " px · " + dm.densityDpi + " dpi", null);
         nav(out, "Launcher", null, "Glass Launcher " + a.versionName(), null);
+        nav(out, "Layout scale", "The 1280×720 design fitted to this screen", String.format(java.util.Locale.US, "%.2f×", Ui.scale), null);
+        label(out, "Diagnostics");
+        final String err = a.prefs().lastError();
+        nav(out, "Last problem", err == null ? "None recorded" : "Recorded and recovered from automatically",
+                err == null ? "None" : "Show", err == null ? null : new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        new android.app.AlertDialog.Builder(a, android.app.AlertDialog.THEME_DEVICE_DEFAULT_DARK)
+                                .setTitle("Last problem").setMessage(err).setPositiveButton("OK", null)
+                                .setNeutralButton("Clear", new android.content.DialogInterface.OnClickListener() {
+                                    @Override
+                                    public void onClick(android.content.DialogInterface d, int w) {
+                                        a.prefs().raw().edit().remove("last_error").apply();
+                                        refresh();
+                                    }
+                                }).show();
+                    }
+                });
         label(out, "Credits");
         para(out, "Car 3D model — ‘Toyota Noah’ by Nieve5677 · CC BY (Sketchfab).");
         para(out, "Fonts: Barlow Semi Condensed and Manrope · SIL Open Font License.");
