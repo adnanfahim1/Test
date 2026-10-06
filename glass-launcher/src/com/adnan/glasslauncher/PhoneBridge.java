@@ -6,8 +6,6 @@ import android.bluetooth.BluetoothSocket;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.net.DhcpInfo;
-import android.net.wifi.WifiManager;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Base64;
@@ -29,9 +27,10 @@ import java.util.concurrent.Executors;
  * Link to the "Glass Link" companion app on the driver's phone. The phone sends its
  * weather (from its own GPS and internet) and the next turn of Google Maps / Waze.
  *
- * Two ways to connect, whichever works first:
- *  - Bluetooth: the head unit listens; the paired phone connects (works with no internet).
- *  - Phone hotspot: when the head unit is on the phone's hotspot, it connects to the phone.
+ * Ways to connect, whichever works first:
+ *  - Bluetooth: the head unit listens; the paired phone connects (secure, then insecure RFCOMM).
+ *  - Wi-Fi: the head unit announces itself on the local network (UDP beacon) and the phone
+ *    connects to it. Covers the phone's hotspot, the head unit's hotspot and shared Wi-Fi.
  *
  * Messages are single lines of JSON in both directions.
  */
@@ -58,6 +57,7 @@ final class PhoneBridge {
         String app;     // "Google Maps"
         Bitmap icon;    // maneuver arrow from the maps app
         long at;
+        boolean local;  // from a maps app on the head unit itself (not the phone)
     }
 
     private final Context ctx;
@@ -86,30 +86,47 @@ final class PhoneBridge {
     /** Phone name while connected. */
     String phoneName() { return linked ? phone : null; }
 
-    /** "Bluetooth" or "Hotspot" while connected. */
+    /** "Bluetooth" or "Wi-Fi" while connected. */
     String via() { return linked ? via : null; }
+
+    private static PhoneBridge current;
 
     void start() {
         if (running) return;
+        // Only one listener per process (an older screen instance gives way to the new one).
+        synchronized (PhoneBridge.class) {
+            if (current != null && current != this) current.stop();
+            current = this;
+        }
         running = true;
-        Thread bt = new Thread(new Runnable() {
-            @Override
-            public void run() { bluetoothLoop(); }
-        }, "phone-link-bt");
-        bt.setDaemon(true);
-        bt.start();
-        Thread tcp = new Thread(new Runnable() {
-            @Override
-            public void run() { hotspotLoop(); }
-        }, "phone-link-wifi");
-        tcp.setDaemon(true);
-        tcp.start();
+        thread("phone-link-bt", new Runnable() { @Override public void run() { bluetoothLoop(true); } });
+        thread("phone-link-bt2", new Runnable() { @Override public void run() { bluetoothLoop(false); } });
+        thread("phone-link-lan", new Runnable() { @Override public void run() { lanServerLoop(); } });
+        thread("phone-link-beacon", new Runnable() { @Override public void run() { beaconLoop(); } });
+    }
+
+    private static void thread(String name, Runnable r) {
+        Thread t = new Thread(r, name);
+        t.setDaemon(true);
+        t.start();
     }
 
     void stop() {
         running = false;
         close(server);
+        close(server2);
+        close(lanServer);
         close(conn);
+    }
+
+    /** What the link is doing, for Settings › Weather › Phone link. */
+    String state() {
+        if (linked) return "Connected over " + via;
+        StringBuilder b = new StringBuilder("Waiting for the phone");
+        String ips = lanAddresses();
+        if (ips.length() > 0) b.append(" · Wi-Fi address ").append(ips);
+        if (btState != null) b.append(" · ").append(btState);
+        return b.toString();
     }
 
     private volatile String weatherAsk = "{\"t\":\"req\",\"what\":\"weather\"}";
@@ -143,64 +160,132 @@ final class PhoneBridge {
         });
     }
 
-    // ---- Bluetooth: the phone connects to us -------------------------------------------------
-    private void bluetoothLoop() {
+    // ---- Bluetooth: the phone connects to us (secure and, for odd stacks, insecure RFCOMM) ----
+    static final UUID SERVICE_UUID_INSECURE = UUID.fromString("6b1c2f5e-3c55-4d7e-9a4f-6f1e2a9b7c42");
+    private volatile BluetoothServerSocket server2;
+    private volatile String btState;
+
+    private void bluetoothLoop(boolean secure) {
         while (running) {
             BluetoothSocket s = null;
+            BluetoothServerSocket ss = null;
             try {
                 BluetoothAdapter ad = BluetoothAdapter.getDefaultAdapter();
-                if (linked || ad == null || !ad.isEnabled() || !NewApi.granted(ctx, PhoneLink.PERM_CONNECT)) {
-                    pause(10000);
-                    continue;
-                }
-                server = ad.listenUsingRfcommWithServiceRecord("Glass Link", SERVICE_UUID);
-                s = server.accept();
-                close(server);
-                server = null;
+                if (ad == null) { btState = "this head unit's Android has no Bluetooth (use Wi-Fi)"; pause(60000); continue; }
+                if (!NewApi.granted(ctx, PhoneLink.PERM_CONNECT)) { btState = "allow “Nearby devices” for Bluetooth"; pause(8000); continue; }
+                if (!ad.isEnabled()) { btState = "Android Bluetooth is off"; pause(10000); continue; }
+                if (linked) { pause(5000); continue; }
+                btState = "Bluetooth ready";
+                ss = secure ? ad.listenUsingRfcommWithServiceRecord("Glass Link", SERVICE_UUID)
+                        : ad.listenUsingInsecureRfcommWithServiceRecord("Glass Link (insecure)", SERVICE_UUID_INSECURE);
+                if (secure) server = ss; else server2 = ss;
+                s = ss.accept();
+                close(ss);
                 if (linked) { close(s); continue; }
                 String name = null;
                 try { name = s.getRemoteDevice().getName(); } catch (Throwable ignored) {}
                 serve(s, s.getInputStream(), s.getOutputStream(), name, "Bluetooth");
             } catch (Throwable t) {
-                close(server);
-                server = null;
+                close(ss);
                 close(s);
-                pause(8000);
+                pause(6000);
             }
         }
     }
 
-    // ---- Phone hotspot: we connect to the phone (the hotspot's gateway) -----------------------
-    private void hotspotLoop() {
+    // ---- Wi-Fi: the phone finds us by a broadcast "beacon" and connects to our address ------------
+    // Works when the head unit is on the phone's hotspot, the phone is on the head unit's hotspot,
+    // or both are on the same Wi-Fi. Only devices on the local network can connect.
+    static final int BEACON_PORT = 47822;
+    private volatile java.net.ServerSocket lanServer;
+    private final String id = java.util.UUID.randomUUID().toString().substring(0, 8);
+
+    private void lanServerLoop() {
         while (running) {
             Socket s = null;
             try {
-                String gw = linked ? null : gateway();
-                if (gw == null) {
-                    pause(15000);
+                if (lanServer == null || lanServer.isClosed()) {
+                    java.net.ServerSocket ss = new java.net.ServerSocket();
+                    ss.setReuseAddress(true);
+                    ss.bind(new InetSocketAddress(TCP_PORT));
+                    lanServer = ss;
+                }
+                s = lanServer.accept();
+                java.net.InetAddress from = s.getInetAddress();
+                if (linked || !(from.isSiteLocalAddress() || from.isLoopbackAddress() || from.isLinkLocalAddress())) {
+                    close(s);
                     continue;
                 }
-                s = new Socket();
-                s.connect(new InetSocketAddress(gw, TCP_PORT), 2500);
                 s.setKeepAlive(true);
-                serve(s, s.getInputStream(), s.getOutputStream(), null, "Hotspot");
+                s.setTcpNoDelay(true);
+                s.setSoTimeout(45000); // the phone pings every 15 s; silence means it's gone
+                serve(s, s.getInputStream(), s.getOutputStream(), null, "Wi-Fi");
             } catch (Throwable t) {
                 close(s);
-                pause(20000);
+                if (!running) break;
+                close(lanServer);
+                lanServer = null;
+                pause(5000);
             }
         }
     }
 
-    private String gateway() {
-        try {
-            WifiManager wm = (WifiManager) ctx.getSystemService(Context.WIFI_SERVICE);
-            DhcpInfo d = wm != null && wm.isWifiEnabled() ? wm.getDhcpInfo() : null;
-            if (d == null || d.gateway == 0) return null;
-            int g = d.gateway;
-            return (g & 0xFF) + "." + ((g >> 8) & 0xFF) + "." + ((g >> 16) & 0xFF) + "." + ((g >> 24) & 0xFF);
-        } catch (Throwable t) {
-            return null;
+    private void beaconLoop() {
+        java.net.DatagramSocket ds = null;
+        while (running) {
+            try {
+                if (ds == null) {
+                    ds = new java.net.DatagramSocket();
+                    ds.setBroadcast(true);
+                }
+                if (linked) send("{\"t\":\"ping\"}"); // keeps the link alive and detects a dead one
+                else {
+                    String name = android.os.Build.MODEL;
+                    byte[] msg = new JSONObject().put("glass", 1).put("name", name).put("port", TCP_PORT).put("id", id)
+                            .toString().getBytes("UTF-8");
+                    for (java.net.InetAddress b : broadcastAddresses()) {
+                        try { ds.send(new java.net.DatagramPacket(msg, msg.length, b, BEACON_PORT)); } catch (Throwable ignored) {}
+                    }
+                }
+                pause(linked ? 10000 : 2500);
+            } catch (Throwable t) {
+                if (ds != null) ds.close();
+                ds = null;
+                pause(5000);
+            }
         }
+        if (ds != null) ds.close();
+    }
+
+    private static java.util.List<java.net.InetAddress> broadcastAddresses() {
+        java.util.List<java.net.InetAddress> out = new java.util.ArrayList<java.net.InetAddress>();
+        try {
+            out.add(java.net.InetAddress.getByName("255.255.255.255"));
+            for (java.net.NetworkInterface ni : java.util.Collections.list(java.net.NetworkInterface.getNetworkInterfaces())) {
+                if (!ni.isUp() || ni.isLoopback()) continue;
+                for (java.net.InterfaceAddress ia : ni.getInterfaceAddresses()) {
+                    if (ia.getBroadcast() != null) out.add(ia.getBroadcast());
+                }
+            }
+        } catch (Throwable ignored) {}
+        return out;
+    }
+
+    /** This head unit's local IPv4 addresses, e.g. "192.168.43.120" (to type into Glass Link). */
+    static String lanAddresses() {
+        StringBuilder b = new StringBuilder();
+        try {
+            for (java.net.NetworkInterface ni : java.util.Collections.list(java.net.NetworkInterface.getNetworkInterfaces())) {
+                if (!ni.isUp() || ni.isLoopback()) continue;
+                for (java.net.InetAddress a : java.util.Collections.list(ni.getInetAddresses())) {
+                    if (a instanceof java.net.Inet4Address && a.isSiteLocalAddress()) {
+                        if (b.length() > 0) b.append(", ");
+                        b.append(a.getHostAddress());
+                    }
+                }
+            }
+        } catch (Throwable ignored) {}
+        return b.toString();
     }
 
     // ---- Session -------------------------------------------------------------------------------

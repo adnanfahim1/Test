@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.adnan.glasslink"
-    android:versionCode="2"
-    android:versionName="1.1.0">
+    android:versionCode="3"
+    android:versionName="1.2.0">
 
     <!-- Phone app for Glass Launcher: sends weather and turn-by-turn to the head unit. -->
     <uses-sdk android:minSdkVersion="23" android:targetSdkVersion="35" />
@@ -11,6 +11,11 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <!-- Lets the connection service run even before Bluetooth access is allowed (Android 14+). -->
     <uses-permission android:name="android.permission.CHANGE_NETWORK_STATE" />
+    <!-- Finding the car on Wi-Fi (hotspot) by its announcement. -->
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
+    <!-- Asks once to be left running by the battery saver, so the link doesn't stop. -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />

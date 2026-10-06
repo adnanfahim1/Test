@@ -123,7 +123,8 @@ public class MainActivity extends Activity implements MediaHub.Listener {
 
             @Override
             public void onPhoneNav(PhoneBridge.Nav n) {
-                nav = n;
+                // A route on the head unit's own maps app wins while it's running.
+                if (n.active || nav == null || !nav.local) nav = n;
                 navChanged();
             }
 
@@ -148,6 +149,14 @@ public class MainActivity extends Activity implements MediaHub.Listener {
             @Override
             public void onUpdateFailed(String message) { toast(message); }
         });
+        // Fallback for the Navigation card: a maps app navigating on the head unit itself.
+        MediaListenerService.sink = new MediaListenerService.NavSink() {
+            @Override
+            public void onLocalNav(PhoneBridge.Nav n) {
+                if (n.active || nav == null || nav.local) nav = n;
+                navChanged();
+            }
+        };
         weather = Weather.Data.fromJson(prefs.weatherCache());
         if (weather != null) weatherState = W_OK;
         safeMode = boot >= 2;
@@ -1200,7 +1209,9 @@ public class MainActivity extends Activity implements MediaHub.Listener {
     /** Turn-by-turn from the phone, or null when no route is active. */
     PhoneBridge.Nav nav() {
         PhoneBridge.Nav n = nav;
-        if (n == null || !n.active || System.currentTimeMillis() - n.at > 3 * 60 * 1000L) return null;
+        if (n == null || !n.active) return null;
+        // Phone routes are re-sent every 45 s; a silent one has ended. Local ones end by removal.
+        if (!n.local && System.currentTimeMillis() - n.at > 3 * 60 * 1000L) return null;
         return n;
     }
 

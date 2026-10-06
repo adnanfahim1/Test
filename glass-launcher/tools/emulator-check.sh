@@ -88,21 +88,68 @@ adb shell am start -n $ACT --ez compat_mode false >/dev/null; sleep 4
 adb shell am start -n $PKG/.HelpActivity >/dev/null; shot help-screen 4
 adb shell am start -n $ACT --es screen home >/dev/null; sleep 3
 
-echo "== Glass Link phone app (Android 6+)"
+echo "== Glass Link phone app + phone link end to end (Android 6+)"
+# Car app and phone app run on the same emulator: Glass Link must find the car's Wi-Fi
+# announcement, connect, deliver weather, reconnect after the car app restarts and send
+# an update that the car installs after Install is pressed.
 API=$(adb shell getprop ro.build.version.sdk | tr -d '\r')
+LINK_FAIL=0
+UI="python3 tools/ui.py"
 if [ -f dist/GlassLink.apk ] && [ "${API:-0}" -ge 23 ]; then
   adb install -r -g dist/GlassLink.apk 2>&1 | tail -1
+  adb emu geo fix 90.4125 23.8103 >/dev/null 2>&1 || true
+  adb shell appops set $PKG REQUEST_INSTALL_PACKAGES allow >/dev/null 2>&1 || true
   adb shell am start -n com.adnan.glasslink/.MainActivity >/dev/null; shot glass-link 4
-  # Press Start (scroll down, find the button with uiautomator) and let the link service run.
-  for i in 1 2 3; do adb shell input swipe 640 600 640 150 200; done; sleep 1
-  adb shell uiautomator dump /sdcard/ui.xml >/dev/null 2>&1
-  XY=$(adb shell cat /sdcard/ui.xml 2>/dev/null | python3 -c '
-import re, sys
-m = re.search(r"text=\"Start\"[^>]*bounds=\"\[(\d+),(\d+)\]\[(\d+),(\d+)\]", sys.stdin.read())
-print("%d %d" % ((int(m.group(1)) + int(m.group(3))) // 2, (int(m.group(2)) + int(m.group(4))) // 2) if m else "")')
-  if [ -n "$XY" ]; then adb shell input tap $XY; sleep 6; shot glass-link-started 1; else echo "Start button not found"; fi
-  adb shell dumpsys activity services com.adnan.glasslink 2>/dev/null | grep -E "ServiceRecord|isForeground" | head -4
-  adb shell input keyevent KEYCODE_BACK; sleep 1
+  $UI tap '^Start$' --scroll
+  sleep 2
+  adb shell am start -n com.adnan.glasslink/.MainActivity >/dev/null; sleep 1
+  adb shell input swipe 640 200 640 700 200; adb shell input swipe 640 200 640 700 200
+  if $UI wait '^Connected to' 45; then
+    echo "LINK: connected automatically (Wi-Fi announcement)"
+  else
+    echo "LINK: not found automatically; entering the address by hand"
+    $UI tap "Enter the car's Wi-Fi address" --scroll && sleep 1 && $UI edit 127.0.0.1 && $UI tap '^(Save|SAVE)$'
+    adb shell input swipe 640 200 640 700 200; adb shell input swipe 640 200 640 700 200
+    if $UI wait '^Connected to' 40; then echo "LINK: connected with the typed address"; else echo "LINK: FAILED"; LINK_FAIL=1; fi
+  fi
+  shot glass-link-connected 2
+  $UI tap '^Show$' --scroll >/dev/null; shot glass-link-log 2
+  adb shell input swipe 640 200 640 700 200; adb shell input swipe 640 200 640 700 200
+  $UI text | head -12
+
+  adb shell am start -n $ACT --es screen home >/dev/null; shot home-phone-link 10
+  adb shell am start -n $ACT --es screen settings --ei settings_section 3 >/dev/null; shot settings-phone-link 4
+
+  echo "-- Reconnect after the car app restarts"
+  adb shell am force-stop $PKG; sleep 2
+  adb shell am start -n $ACT --es screen home >/dev/null; sleep 3
+  adb shell am start -n com.adnan.glasslink/.MainActivity >/dev/null; sleep 2
+  adb shell input swipe 640 200 640 700 200
+  if $UI wait '^Connected to' 75; then echo "RECONNECT: OK"; else echo "RECONNECT: FAILED"; LINK_FAIL=1; fi
+
+  echo "-- Update the car app from the phone"
+  BEFORE=$(adb shell dumpsys package $PKG | grep -m1 lastUpdateTime | tr -d '\r')
+  if $UI tap 'Send .* to car' --scroll && sleep 2 && $UI tap '^(Send|SEND)$'; then
+    if $UI wait 'Tap Install on the car screen' 120; then
+      echo "UPDATE: sent and accepted by the car"
+      adb shell am start -n $ACT >/dev/null; sleep 3; shot update-dialog 1
+      if $UI tap '^(Install|INSTALL)$'; then
+        sleep 6; shot update-system-confirm 1
+        $UI tap '^(Install|INSTALL|Update|UPDATE)$' || true
+        sleep 20
+        AFTER=$(adb shell dumpsys package $PKG | grep -m1 lastUpdateTime | tr -d '\r')
+        echo "before: $BEFORE"; echo "after:  $AFTER"
+        [ "$BEFORE" != "$AFTER" ] && echo "UPDATE: installed by Android" || echo "UPDATE: Android's confirm screen wasn't completed by the test (see screenshot)"
+      else
+        echo "UPDATE: FAILED (no Install prompt on the car)"; LINK_FAIL=1
+      fi
+    else
+      echo "UPDATE: FAILED (transfer not confirmed)"; $UI text | head -20; LINK_FAIL=1
+    fi
+  else
+    echo "UPDATE: FAILED (send button not found)"; $UI text | head -20; LINK_FAIL=1
+  fi
+  adb shell input keyevent KEYCODE_HOME; sleep 4
 fi
 adb shell am start -n $ACT --es screen home >/dev/null; sleep 3
 adb logcat -d > "$OUT/logcat-$LABEL.txt" || true
@@ -112,6 +159,7 @@ if grep -q -E "FATAL EXCEPTION" "$OUT/logcat-$LABEL.txt" && grep -A3 "FATAL EXCE
   echo "CRASH found in logcat:"; grep -A25 "FATAL EXCEPTION" "$OUT/logcat-$LABEL.txt" | head -60; FAIL=1
 fi
 if grep -q -E "CRASH: $PKG|// CRASH" "$OUT/monkey-$LABEL.txt"; then echo "Monkey reported a crash"; FAIL=1; fi
+if [ $LINK_FAIL = 1 ]; then echo "Phone link test failed"; FAIL=1; fi
 if ! adb shell pidof $PKG >/dev/null 2>&1 && ! adb shell ps | grep -q $PKG; then echo "Launcher is not running at the end"; FAIL=1; fi
 RECOVERED=$(adb shell run-as $PKG cat shared_prefs/glass_launcher.xml 2>/dev/null | grep -c last_error || true)
 echo "Recovered (non-fatal) errors recorded: ${RECOVERED:-unknown}"

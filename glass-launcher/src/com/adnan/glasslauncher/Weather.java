@@ -86,6 +86,17 @@ final class Weather {
                 } catch (Exception e) {
                     err = e.getMessage() != null ? e.getMessage() : e.toString();
                 }
+                if (d == null) {
+                    // Backup service when Open-Meteo is down or blocked.
+                    try {
+                        d = parseWttr(new JSONObject(get(String.format(Locale.US, "https://wttr.in/%.4f,%.4f?format=j1", lat, lon))));
+                        d.place = place;
+                        d.fetchedAt = System.currentTimeMillis();
+                        err = null;
+                    } catch (Exception e2) {
+                        if (err == null) err = e2.getMessage();
+                    }
+                }
                 final Data fd = d;
                 final String fe = err;
                 MAIN.post(new Runnable() {
@@ -193,6 +204,64 @@ final class Weather {
     }
 
     /** WMO weather interpretation codes, as documented by Open-Meteo. */
+    /** wttr.in "j1" answer, mapped onto the same weather codes as Open-Meteo. */
+    static Data parseWttr(JSONObject o) throws Exception {
+        JSONObject cur = o.getJSONArray("current_condition").getJSONObject(0);
+        Data d = new Data();
+        d.tempC = Double.parseDouble(cur.getString("temp_C"));
+        d.code = wwoToWmo(cur.optInt("weatherCode", 116));
+        d.visibilityKm = cur.has("visibility") ? cur.optDouble("visibility", -1) : -1;
+        try {
+            JSONObject day = o.getJSONArray("weather").getJSONObject(0);
+            JSONArray hours = day.getJSONArray("hourly");
+            String obs = cur.optString("localObsDateTime", ""); // "2026-10-06 02:15 PM"
+            int hour = hour24(obs.length() > 11 ? obs.substring(11) : "");
+            JSONObject h = hours.getJSONObject(Math.min(hours.length() - 1, Math.max(0, hour / 3)));
+            d.rainPct = h.optInt("chanceofrain", -1);
+            JSONObject astro = day.getJSONArray("astronomy").getJSONObject(0);
+            int rise = hour24(astro.optString("sunrise")), set = hour24(astro.optString("sunset"));
+            if (hour >= 0 && rise >= 0 && set >= 0) d.day = hour >= rise && hour < set;
+        } catch (Exception ignored) {
+        }
+        return d;
+    }
+
+    /** "02:15 PM" -> 14, or -1. */
+    private static int hour24(String t) {
+        try {
+            t = t.trim();
+            int h = Integer.parseInt(t.substring(0, 2));
+            boolean pm = t.toUpperCase(Locale.US).endsWith("PM");
+            if (h == 12) h = 0;
+            return pm ? h + 12 : h;
+        } catch (Exception e) {
+            return -1;
+        }
+    }
+
+    static int wwoToWmo(int c) {
+        switch (c) {
+            case 113: return 0;
+            case 116: return 2;
+            case 119: case 122: return 3;
+            case 143: case 248: case 260: return 45;
+            case 263: case 266: return 51;
+            case 176: case 293: case 296: return 61;
+            case 299: case 302: return 63;
+            case 305: case 308: return 65;
+            case 281: case 284: case 311: case 314: case 179: case 182: case 185: case 317: case 320: case 362: case 365: return 66;
+            case 323: case 326: case 368: return 71;
+            case 329: case 332: return 73;
+            case 227: case 230: case 335: case 338: case 371: return 75;
+            case 350: case 374: case 377: return 77;
+            case 353: return 80;
+            case 356: return 81;
+            case 359: return 82;
+            case 200: case 386: case 389: case 392: case 395: return 95;
+            default: return 2;
+        }
+    }
+
     static String describe(int code) {
         if (code == 0) return "Clear sky";
         if (code == 1) return "Mainly clear";

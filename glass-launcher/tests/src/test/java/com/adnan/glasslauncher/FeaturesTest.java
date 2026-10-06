@@ -302,4 +302,80 @@ public class FeaturesTest {
         assertTrue(end, end.contains("apk_done") || end.contains("apk_error"));
         shot(a, "24-update-from-phone");
     }
+
+    /** A phone connecting over Wi-Fi (real TCP socket on this machine) delivers weather. */
+    @Test
+    public void wifiLinkEndToEnd() throws Exception {
+        MainActivity a = start();
+        idle(500);
+        java.net.Socket s = null;
+        for (int i = 0; i < 40 && s == null; i++) {
+            try {
+                s = new java.net.Socket();
+                s.connect(new java.net.InetSocketAddress("127.0.0.1", PhoneBridge.TCP_PORT), 500);
+            } catch (Exception e) {
+                s = null;
+                Thread.sleep(250);
+            }
+        }
+        assertNotNull("car app listens on Wi-Fi", s);
+        s.setSoTimeout(5000);
+        java.io.BufferedReader in = new java.io.BufferedReader(new java.io.InputStreamReader(s.getInputStream(), "UTF-8"));
+        java.io.OutputStream out = s.getOutputStream();
+        String hello = in.readLine();
+        assertTrue(hello, hello.contains("\"hello\"") && hello.contains("\"updates\":true"));
+        String ask = in.readLine();
+        assertTrue(ask, ask.contains("\"req\""));
+        out.write("{\"t\":\"hello\",\"name\":\"Pixel 9\"}\n".getBytes("UTF-8"));
+        String raw = "{\"current\":{\"time\":\"2026-10-06T14:00\",\"temperature_2m\":26.5,\"weather_code\":3,\"is_day\":1}}";
+        out.write((new org.json.JSONObject().put("t", "weather").put("raw", raw).put("place", "Sylhet").toString() + "\n").getBytes("UTF-8"));
+        out.flush();
+        for (int i = 0; i < 30 && (a.weather() == null || !"Sylhet".equals(a.weather().place)); i++) {
+            Thread.sleep(100);
+            idle(100);
+        }
+        assertEquals("Sylhet", a.weather().place);
+        assertTrue(a.bridge().connected());
+        assertEquals("Wi-Fi", a.bridge().via());
+        s.close();
+        for (int i = 0; i < 30 && a.bridge().connected(); i++) { Thread.sleep(100); idle(100); }
+        assertTrue("link drops when the phone goes", !a.bridge().connected());
+    }
+
+    @Test
+    public void backupWeatherServiceParses() throws Exception {
+        String j = "{\"current_condition\":[{\"temp_C\":\"31\",\"weatherCode\":\"302\",\"visibility\":\"6\","
+                + "\"localObsDateTime\":\"2026-10-06 02:15 PM\"}],\"weather\":[{\"astronomy\":[{\"sunrise\":\"05:50 AM\","
+                + "\"sunset\":\"05:40 PM\"}],\"hourly\":[{\"chanceofrain\":\"10\"},{\"chanceofrain\":\"20\"},{\"chanceofrain\":\"30\"},"
+                + "{\"chanceofrain\":\"40\"},{\"chanceofrain\":\"70\"},{\"chanceofrain\":\"60\"},{\"chanceofrain\":\"50\"},{\"chanceofrain\":\"40\"}]}]}";
+        Weather.Data d = Weather.parseWttr(new org.json.JSONObject(j));
+        assertEquals(31, d.tempC, 0.01);
+        assertEquals(63, d.code);
+        assertEquals("Rain", Weather.describe(d.code));
+        assertEquals(70, d.rainPct);
+        assertEquals(6, d.visibilityKm, 0.01);
+        assertTrue(d.day);
+    }
+
+    @Test
+    public void headUnitMapsAppFeedsNavigationCard() throws Exception {
+        MainActivity a = start();
+        idle(500);
+        PhoneBridge.Nav n = new PhoneBridge.Nav();
+        n.active = true;
+        n.local = true;
+        n.title = "500 m";
+        n.text = "Keep left at the fork";
+        n.app = "Google Maps";
+        n.at = System.currentTimeMillis() - 10 * 60 * 1000L; // long straight road: still shown
+        MediaListenerService.sink.onLocalNav(n);
+        idle(300);
+        assertNotNull(a.nav());
+        assertEquals("500 m", a.nav().title);
+        PhoneBridge.Nav end = new PhoneBridge.Nav();
+        end.local = true;
+        MediaListenerService.sink.onLocalNav(end);
+        idle(300);
+        assertEquals(null, a.nav());
+    }
 }

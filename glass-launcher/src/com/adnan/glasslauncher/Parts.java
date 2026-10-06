@@ -581,7 +581,8 @@ final class Parts {
             navIcon.setVisibility(n.icon != null ? VISIBLE : GONE);
             navGlyph.setVisibility(n.icon != null ? GONE : VISIBLE);
             String phone = a.bridge().phoneName();
-            appName.setText((n.app != null ? n.app : "Navigation") + " on " + (phone != null ? phone : "your phone"));
+            appName.setText((n.app != null ? n.app : "Navigation") + (n.local ? " on this head unit"
+                    : " on " + (phone != null ? phone : "your phone")));
             btnLabel.setText(label != null ? "Open " + label : "Open navigation");
             if (navPanel.getVisibility() != VISIBLE) {
                 navPanel.setVisibility(VISIBLE);

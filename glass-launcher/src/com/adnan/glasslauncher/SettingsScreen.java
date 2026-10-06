@@ -324,7 +324,7 @@ final class SettingsScreen extends SidebarScreen {
         boolean on = b != null && b.connected();
         String name = on ? b.phoneName() : null;
         nav(out, "Phone link (Glass Link)", on ? "Weather and turn-by-turn come from your phone over " + b.via()
-                        : "Install Glass Link on your phone and open it once. It connects over Bluetooth or the phone's hotspot.",
+                        : (b != null ? b.state() + ". " : "") + "Open Glass Link on your phone; it finds the car over Bluetooth or Wi-Fi.",
                 on ? (name != null ? name : "Connected") : "Not connected", null);
         if (!on && a.phoneLink().needsPermission()) {
             nav(out, "Allow “Nearby devices”", "Needed for the phone link over Bluetooth (Android 12+)", null, new View.OnClickListener() {

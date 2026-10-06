@@ -3,8 +3,19 @@
 An Android home-screen launcher for Nakamichi Android car players, built from the "NAM5240T
 Glass Launcher" design handoff (`design-source/`).
 
-**Download:** [`dist/GlassLauncher.apk`](dist/GlassLauncher.apk) (about 3 MB, version 1.5.0) for the head unit, and
-[`dist/GlassLink.apk`](dist/GlassLink.apk) (optional, about 3 MB, version 1.1.0) for your Android phone.
+**Download:** [`dist/GlassLauncher.apk`](dist/GlassLauncher.apk) (about 3 MB, version 1.6.0) for the head unit, and
+[`dist/GlassLink.apk`](dist/GlassLink.apk) (optional, about 3 MB, version 1.2.0) for your Android phone.
+
+## New in 1.6
+
+- **Phone link rebuilt.** Glass Link now finds the car over **Wi-Fi** as well as Bluetooth: the car announces
+  itself on the local network (your phone's hotspot, the car's hotspot or shared Wi-Fi) and the phone connects.
+  You can also type the car's address (shown in Settings › Weather › Phone link). Bluetooth tries secure and
+  insecure connections. Both sides ping each other, drop dead links and reconnect by themselves.
+- **Glass Link redesigned:** one status card with Start/Stop, a set-up checklist (tap to fix), help when the
+  car can't be found, a battery-saver exemption so it doesn't stop, and a connection log you can copy.
+- **More fallbacks for the widgets.** Weather: phone → Open-Meteo → wttr.in backup → last saved weather.
+  Navigation: phone → a maps app navigating on the head unit itself → Open navigation button.
 
 ## New in 1.5
 
@@ -144,20 +155,20 @@ Optional. It's how the head unit gets weather and turn-by-turn **from your phone
 can't read anything like that from a phone over normal Bluetooth (calls and music only).
 
 1. Install `GlassLink.apk` on your Android phone (6.0 or newer). iPhones aren't supported.
-2. Open it and tap **Allow** (location, nearby devices, notifications), then **Allow navigation
-   access**. It only reads maps apps' navigation notifications; other notifications are ignored and never
-   leave the phone.
-3. Make sure the phone is paired with the head unit, then tap **Start**. Optionally pick your head unit
-   under **Choose head unit**.
-4. On the head unit, allow **Nearby devices** (Settings › Bluetooth) on Android 12+.
+2. Open it, tap **Start**, then work through the **Set up** list (tap each item marked with !).
+   Navigation access only reads maps apps' navigation notifications; nothing else leaves the phone.
+3. Easiest connection: turn on the phone's hotspot and connect the car to it (car: Settings › Wi-Fi &
+   internet). Glass Link finds the car within seconds. Bluetooth also works when the car's Android
+   Bluetooth is the one paired with the phone.
+4. On the head unit, allow **Nearby devices** (Settings › Bluetooth) on Android 12+ for Bluetooth.
 
 The status shows in **Settings › Weather › Phone link**. Weather shows a **From phone** label; the next turn
 appears on the Navigation card while the phone is navigating. If the head unit uses your phone's hotspot,
-you can turn on **Also connect over this phone's hotspot** in Glass Link (only for the car's hotspot: while
-on, any device on the same Wi-Fi network as the phone could connect).
+the link uses it automatically. The car only accepts connections from the local network, and an update
+sent this way is installed only after you confirm it on the car screen.
 
-Known limits: on some head units the Bluetooth used for calls is a separate module from Android's
-Bluetooth, so the phone link may need the hotspot option. Navigation text depends on each maps app's
+Known limits: on many head units the Bluetooth used for calls is a separate module from Android's
+Bluetooth, so the phone link can't use it; use Wi-Fi/hotspot there. Navigation text depends on each maps app's
 notification and can change when that app updates.
 
 ## Built not to break
