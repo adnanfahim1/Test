@@ -63,9 +63,9 @@ data="42"
 :Sending Trackball (ACTION_MOVE): 0:(-4.0,-3.0)
 :Sending Touch (ACTION_DOWN): 0:(583.0,673.0)
 :Sending Touch (ACTION_UP): 0:(578.01697,662.46387)
-    //[calendar_time:2026-10-06 14:05:50.166  system_uptime:145403]
+    //[calendar_time:2026-10-06 14:17:55.826  system_uptime:142128]
     // Sending event #100
-    //[calendar_time:2026-10-06 14:05:50.320  system_uptime:145553]
+    //[calendar_time:2026-10-06 14:17:55.980  system_uptime:142278]
     // Sending event #100
 :Sending Touch (ACTION_DOWN): 0:(710.0,493.0)
 :Sending Touch (ACTION_UP): 0:(710.8976,487.48795)
@@ -87,7 +87,7 @@ data="42"
 :Sending Touch (ACTION_DOWN): 0:(576.0,684.0)
 :Sending Touch (ACTION_UP): 0:(618.1666,629.98096)
 :Sending Touch (ACTION_DOWN): 0:(242.0,527.0)
-    //[calendar_time:2026-10-06 14:05:55.403  system_uptime:150637]
+    //[calendar_time:2026-10-06 14:18:01.179  system_uptime:147478]
     // Sending event #200
 :Sending Touch (ACTION_UP): 0:(256.28848,551.2756)
 :Sending Touch (ACTION_DOWN): 0:(627.0,623.0)
@@ -115,7 +115,7 @@ data="42"
 :Sending Touch (ACTION_DOWN): 0:(1213.0,2.0)
 :Sending Touch (ACTION_UP): 0:(1190.8182,0.0)
 :Sending Touch (ACTION_DOWN): 0:(445.0,455.0)
-    //[calendar_time:2026-10-06 14:05:59.228  system_uptime:154462]
+    //[calendar_time:2026-10-06 14:18:05.109  system_uptime:151409]
     // Sending event #300
 :Sending Touch (ACTION_UP): 0:(507.69513,385.3596)
 :Sending Trackball (ACTION_MOVE): 0:(-4.0,2.0)
@@ -135,7 +135,7 @@ data="42"
 :Sending Touch (ACTION_UP): 0:(298.27316,405.94788)
 :Sending Trackball (ACTION_MOVE): 0:(-5.0,2.0)
 :Sending Trackball (ACTION_MOVE): 0:(-5.0,-4.0)
-    //[calendar_time:2026-10-06 14:06:02.048  system_uptime:157282]
+    //[calendar_time:2026-10-06 14:18:07.986  system_uptime:154285]
     // Sending event #400
 :Sending Touch (ACTION_DOWN): 0:(441.0,28.0)
 :Sending Touch (ACTION_UP): 0:(456.4128,42.739956)
@@ -162,7 +162,7 @@ data="42"
 :Sending Touch (ACTION_DOWN): 0:(4.0,68.0)
 :Sending Touch (ACTION_UP): 0:(11.141901,72.56054)
 :Sending Trackball (ACTION_MOVE): 0:(2.0,-3.0)
-    //[calendar_time:2026-10-06 14:06:05.250  system_uptime:160484]
+    //[calendar_time:2026-10-06 14:18:11.522  system_uptime:157821]
     // Sending event #500
 :Sending Trackball (ACTION_MOVE): 0:(2.0,-1.0)
 :Sending Trackball (ACTION_MOVE): 0:(-1.0,-4.0)
@@ -174,7 +174,7 @@ data="42"
 :Sending Touch (ACTION_UP): 0:(431.9242,324.08878)
 :Sending Trackball (ACTION_MOVE): 0:(2.0,-4.0)
 :Sending Trackball (ACTION_MOVE): 0:(-2.0,0.0)
-    //[calendar_time:2026-10-06 14:06:07.157  system_uptime:162391]
+    //[calendar_time:2026-10-06 14:18:13.432  system_uptime:159730]
     // Sending event #600
 :Sending Trackball (ACTION_MOVE): 0:(-4.0,-4.0)
 :Sending Touch (ACTION_DOWN): 0:(1246.0,156.0)
@@ -199,9 +199,9 @@ data="42"
     // Injection Failed
 :Sending Touch (ACTION_UP): 0:(217.94987,491.42538)
     // Injection Failed
-    //[calendar_time:2026-10-06 14:06:10.939  system_uptime:166173]
+    //[calendar_time:2026-10-06 14:18:17.554  system_uptime:163853]
     // Sending event #700
-    //[calendar_time:2026-10-06 14:06:11.092  system_uptime:166326]
+    //[calendar_time:2026-10-06 14:18:17.705  system_uptime:164003]
     // Sending event #700
 :Sending Trackball (ACTION_MOVE): 0:(-3.0,-4.0)
 :Sending Trackball (ACTION_UP): 0:(0.0,0.0)
@@ -236,5 +236,5 @@ data="42"
 Events injected: 800
 :Sending rotation degree=0, persist=false
 :Dropped: keys=0 pointers=12 trackballs=0 flips=0 rotations=0
-## Network stats: elapsed time=27207ms (0ms mobile, 0ms wifi, 27207ms not connected)
+## Network stats: elapsed time=28237ms (0ms mobile, 0ms wifi, 28237ms not connected)
 // Monkey finished
