@@ -268,7 +268,7 @@ public final class MainActivity extends Activity {
         tipsBox.removeAllViews();
         if (state == LinkService.ST_SEARCHING && now - LinkService.searchingSince > 40000) {
             tipsBox.addView(text("Can't find your car?", 15, TEXT, true));
-            tipsBox.addView(text("1. Turn the car on and check it runs Glass Launcher 1.6.1 or newer (car: Settings › About device › "
+            tipsBox.addView(text("1. Turn the car on and check it runs Glass Launcher 1.6.2 or newer (car: Settings › About device › "
                     + "Launcher). Older versions only connect over this phone's hotspot.\n"
                     + "2. Easiest: turn on this phone's hotspot and connect the car to it (car: Settings › Wi-Fi & internet). "
                     + "Glass Link finds it within seconds.\n"

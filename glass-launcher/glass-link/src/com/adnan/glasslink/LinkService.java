@@ -67,7 +67,9 @@ import java.util.concurrent.TimeUnit;
 public final class LinkService extends Service {
     static final UUID SERVICE_UUID = UUID.fromString("6b1c2f5e-3c55-4d7e-9a4f-6f1e2a9b7c41");
     static final UUID SERVICE_UUID_INSECURE = UUID.fromString("6b1c2f5e-3c55-4d7e-9a4f-6f1e2a9b7c42");
-    static final int TCP_PORT = 47821, BEACON_PORT = 47822;
+    /** CAR_PORT: the car app (1.6.2+) listens there. PHONE_PORT: this app listens there on its hotspot
+     *  (the car dials it; car app 1.5 only knows this one). Separate ports so they never collide. */
+    static final int CAR_PORT = 47823, PHONE_PORT = 47821, BEACON_PORT = 47822;
     static final String PREFS = "glass_link";
     static final String K_DEVICE = "device", K_ENABLED = "enabled", K_LAT = "lat", K_LON = "lon", K_PLACE = "place",
             K_HOST = "host", K_LAST_HOST = "last_host", K_FIXED = "device_fixed", K_CRASH = "crash";
@@ -372,6 +374,8 @@ public final class LinkService extends Service {
     }
 
     // ---- Wi-Fi: hear the head unit's announcement, then connect to it --------------------------------
+    private final java.util.Map<String, Long> lastTry = new java.util.HashMap<String, Long>();
+
     private void discoveryLoop() {
         DatagramSocket ds = null;
         boolean logged = false;
@@ -395,11 +399,14 @@ public final class LinkService extends Service {
                 JSONObject o = new JSONObject(new String(p.getData(), 0, p.getLength(), "UTF-8"));
                 if (o.optInt("glass", 0) != 1 || out != null) continue;
                 String host = p.getAddress().getHostAddress();
+                Long tried = lastTry.get(host);
+                if (tried != null && System.currentTimeMillis() - tried < 5000) continue; // one try per 5 s
+                lastTry.put(host, System.currentTimeMillis());
                 if (!logged) {
                     log("Wi-Fi: found " + o.optString("name", "the car") + " at " + host);
                     logged = true;
                 }
-                connectTcp(host, o.optInt("port", TCP_PORT), o.optString("name", null));
+                connectTcp(host, o.optInt("port", CAR_PORT), o.optString("name", null));
             } catch (Throwable t) {
                 if (ds != null) ds.close();
                 ds = null;
@@ -421,7 +428,7 @@ public final class LinkService extends Service {
                 if (ss == null) {
                     ss = new java.net.ServerSocket();
                     ss.setReuseAddress(true);
-                    ss.bind(new InetSocketAddress(TCP_PORT));
+                    ss.bind(new InetSocketAddress(PHONE_PORT));
                 }
                 s = ss.accept();
                 java.net.InetAddress peer = s.getInetAddress();
@@ -512,7 +519,7 @@ public final class LinkService extends Service {
                         since = System.currentTimeMillis();
                         hinted = false;
                     } else if (!hinted && System.currentTimeMillis() - since > 60000) {
-                        log("Wi-Fi: nothing from the car yet. Check the car is on this hotspot and shows Glass Launcher 1.6.1 or newer "
+                        log("Wi-Fi: nothing from the car yet. Check the car is on this hotspot and shows Glass Launcher 1.6.2 or newer "
                                 + "(car: Settings › About device › Launcher).");
                         hinted = true;
                     }
@@ -532,8 +539,8 @@ public final class LinkService extends Service {
             try {
                 if (out == null) {
                     String manual = sp.getString(K_HOST, null), last = sp.getString(K_LAST_HOST, null);
-                    if (manual != null && manual.length() > 0) connectTcp(manual, TCP_PORT, null);
-                    if (out == null && last != null && !last.equals(manual)) connectTcp(last, TCP_PORT, null);
+                    if (manual != null && manual.length() > 0) connectTcp(manual, CAR_PORT, null);
+                    if (out == null && last != null && !last.equals(manual)) connectTcp(last, CAR_PORT, null);
                 }
                 pause(10000);
             } catch (Throwable t) {

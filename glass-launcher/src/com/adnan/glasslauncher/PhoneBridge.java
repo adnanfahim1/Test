@@ -36,7 +36,11 @@ import java.util.concurrent.Executors;
  */
 final class PhoneBridge {
     static final UUID SERVICE_UUID = UUID.fromString("6b1c2f5e-3c55-4d7e-9a4f-6f1e2a9b7c41");
-    static final int TCP_PORT = 47821;
+    /** The car listens here for the phone (Wi-Fi). */
+    static final int TCP_PORT = 47823;
+    /** Glass Link listens here on its hotspot (also what car app 1.5 dials). Kept apart from
+     *  TCP_PORT so the two apps can never fight over one port. */
+    static final int PHONE_PORT = 47821;
     private static final int MAX_LINE = 512 * 1024;
 
     interface Listener {
@@ -281,7 +285,7 @@ final class PhoneBridge {
                 String gw = linked ? null : gateway();
                 if (gw == null) { pause(6000); continue; }
                 s = new Socket();
-                s.connect(new InetSocketAddress(gw, TCP_PORT), 2500);
+                s.connect(new InetSocketAddress(gw, PHONE_PORT), 2500);
                 s.setKeepAlive(true);
                 s.setTcpNoDelay(true);
                 s.setSoTimeout(45000);
