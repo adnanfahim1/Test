@@ -201,6 +201,8 @@ public final class LinkService extends Service {
             thread("link-bt", new Runnable() { @Override public void run() { bluetoothLoop(); } });
             thread("link-discovery", new Runnable() { @Override public void run() { discoveryLoop(); } });
             thread("link-direct", new Runnable() { @Override public void run() { directLoop(); } });
+            thread("link-hotspot", new Runnable() { @Override public void run() { hotspotServerLoop(); } });
+            thread("link-wifi-watch", new Runnable() { @Override public void run() { wifiWatch(); } });
             main.postDelayed(weatherTimer, WEATHER_EVERY_MS);
             main.postDelayed(pinger, 15000);
         }
@@ -406,6 +408,122 @@ public final class LinkService extends Service {
             }
         }
         if (ds != null) ds.close();
+    }
+
+    // ---- Phone hotspot: the car dials the phone (the hotspot's gateway) ---------------------------------
+    // Only devices connected to THIS phone's hotspot (or USB/Bluetooth tethering) are accepted, never
+    // devices on a Wi-Fi network the phone itself has joined.
+    private void hotspotServerLoop() {
+        java.net.ServerSocket ss = null;
+        while (active) {
+            Socket s = null;
+            try {
+                if (ss == null) {
+                    ss = new java.net.ServerSocket();
+                    ss.setReuseAddress(true);
+                    ss.bind(new InetSocketAddress(TCP_PORT));
+                }
+                s = ss.accept();
+                java.net.InetAddress peer = s.getInetAddress();
+                if (out != null || !onPhoneHotspot(peer)) {
+                    close(s);
+                    continue;
+                }
+                s.setKeepAlive(true);
+                s.setTcpNoDelay(true);
+                s.setSoTimeout(45000);
+                log("Wi-Fi: the car connected over this phone's hotspot (" + peer.getHostAddress() + ")");
+                serve(s, s.getInputStream(), s.getOutputStream(), "the car", "this phone's hotspot");
+            } catch (Throwable t) {
+                close(s);
+                if (ss != null) try { ss.close(); } catch (Throwable ignored) {}
+                ss = null;
+                pause(5000);
+            }
+        }
+        if (ss != null) try { ss.close(); } catch (Throwable ignored) {}
+    }
+
+    /** Names of interfaces Android uses as networks for this phone (Wi-Fi client, mobile, VPN). */
+    private java.util.Set<String> ownNetworkInterfaces() {
+        java.util.Set<String> names = new java.util.HashSet<String>();
+        try {
+            android.net.ConnectivityManager cm = (android.net.ConnectivityManager) getSystemService(CONNECTIVITY_SERVICE);
+            for (android.net.Network n : cm.getAllNetworks()) {
+                android.net.LinkProperties lp = cm.getLinkProperties(n);
+                if (lp != null && lp.getInterfaceName() != null) names.add(lp.getInterfaceName());
+            }
+        } catch (Throwable ignored) {}
+        return names;
+    }
+
+    /** Local IPv4 addresses of this phone's hotspot / tethering interfaces. */
+    private List<java.net.InterfaceAddress> hotspotAddresses() {
+        List<java.net.InterfaceAddress> out = new ArrayList<java.net.InterfaceAddress>();
+        java.util.Set<String> own = ownNetworkInterfaces();
+        try {
+            for (java.net.NetworkInterface ni : java.util.Collections.list(java.net.NetworkInterface.getNetworkInterfaces())) {
+                if (!ni.isUp() || ni.isLoopback() || own.contains(ni.getName())) continue;
+                for (java.net.InterfaceAddress ia : ni.getInterfaceAddresses()) {
+                    if (ia.getAddress() instanceof java.net.Inet4Address && ia.getAddress().isSiteLocalAddress()) out.add(ia);
+                }
+            }
+        } catch (Throwable ignored) {}
+        return out;
+    }
+
+    private boolean onPhoneHotspot(java.net.InetAddress peer) {
+        if (!(peer instanceof java.net.Inet4Address) || !peer.isSiteLocalAddress()) return false;
+        for (java.net.InterfaceAddress ia : hotspotAddresses()) {
+            if (sameSubnet(peer, ia.getAddress(), ia.getNetworkPrefixLength())) return true;
+        }
+        return false;
+    }
+
+    static boolean sameSubnet(java.net.InetAddress a, java.net.InetAddress b, int prefix) {
+        byte[] x = a.getAddress(), y = b.getAddress();
+        if (x.length != y.length) return false;
+        prefix = Math.max(8, Math.min(32, prefix));
+        for (int i = 0; i < x.length && prefix > 0; i++, prefix -= 8) {
+            int mask = prefix >= 8 ? 0xFF : (0xFF << (8 - prefix)) & 0xFF;
+            if ((x[i] & mask) != (y[i] & mask)) return false;
+        }
+        return true;
+    }
+
+    /** Explains in the log what Wi-Fi situation the phone is in, whenever it changes. */
+    private void wifiWatch() {
+        String last = null;
+        long since = System.currentTimeMillis();
+        boolean hinted = false;
+        while (active) {
+            try {
+                if (out == null) {
+                    StringBuilder b = new StringBuilder();
+                    for (java.net.InterfaceAddress ia : hotspotAddresses()) {
+                        if (b.length() > 0) b.append(", ");
+                        b.append(ia.getAddress().getHostAddress());
+                    }
+                    String now = b.length() > 0 ? "Wi-Fi: this phone's hotspot is on (" + b + "); waiting for the car to join and connect"
+                            : "Wi-Fi: this phone's hotspot is off; listening for the car on the current Wi-Fi";
+                    if (!now.equals(last)) {
+                        log(now);
+                        last = now;
+                        since = System.currentTimeMillis();
+                        hinted = false;
+                    } else if (!hinted && System.currentTimeMillis() - since > 60000) {
+                        log("Wi-Fi: nothing from the car yet. Check the car is on this hotspot and shows Glass Launcher 1.6.1 or newer "
+                                + "(car: Settings › About device › Launcher).");
+                        hinted = true;
+                    }
+                } else {
+                    last = null;
+                }
+                pause(5000);
+            } catch (Throwable t) {
+                pause(10000);
+            }
+        }
     }
 
     /** The address typed in by the user, then the last one that worked. */

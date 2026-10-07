@@ -378,4 +378,20 @@ public class FeaturesTest {
         idle(300);
         assertEquals(null, a.nav());
     }
+
+    /** On the phone's hotspot the car also dials the phone: the hotspot gateway address. */
+    @Test
+    public void carFindsPhoneHotspotGateway() throws Exception {
+        MainActivity a = start();
+        idle(300);
+        WifiManager wm = (WifiManager) RuntimeEnvironment.getApplication().getSystemService(Context.WIFI_SERVICE);
+        wm.setWifiEnabled(true);
+        android.net.DhcpInfo d = new android.net.DhcpInfo();
+        d.gateway = (1 << 24) | (34 << 16) | (200 << 8) | 10; // 10.200.34.1, little-endian like Android
+        shadowOf(wm).setDhcpInfo(d);
+        Method gw = PhoneBridge.class.getDeclaredMethod("gateway");
+        gw.setAccessible(true);
+        assertEquals("10.200.34.1", gw.invoke(a.bridge()));
+        assertTrue(a.bridge().state().startsWith("Waiting for the phone"));
+    }
 }

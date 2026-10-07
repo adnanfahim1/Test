@@ -103,6 +103,7 @@ final class PhoneBridge {
         thread("phone-link-bt2", new Runnable() { @Override public void run() { bluetoothLoop(false); } });
         thread("phone-link-lan", new Runnable() { @Override public void run() { lanServerLoop(); } });
         thread("phone-link-beacon", new Runnable() { @Override public void run() { beaconLoop(); } });
+        thread("phone-link-gateway", new Runnable() { @Override public void run() { gatewayLoop(); } });
     }
 
     private static void thread(String name, Runnable r) {
@@ -269,6 +270,40 @@ final class PhoneBridge {
             }
         } catch (Throwable ignored) {}
         return out;
+    }
+
+    // ---- Phone hotspot: also dial the phone (the hotspot's gateway), which Glass Link listens on.
+    // Works even where the hotspot drops broadcast announcements.
+    private void gatewayLoop() {
+        while (running) {
+            Socket s = null;
+            try {
+                String gw = linked ? null : gateway();
+                if (gw == null) { pause(6000); continue; }
+                s = new Socket();
+                s.connect(new InetSocketAddress(gw, TCP_PORT), 2500);
+                s.setKeepAlive(true);
+                s.setTcpNoDelay(true);
+                s.setSoTimeout(45000);
+                serve(s, s.getInputStream(), s.getOutputStream(), null, "Wi-Fi hotspot");
+            } catch (Throwable t) {
+                close(s);
+                pause(8000);
+            }
+        }
+    }
+
+    @SuppressWarnings("deprecation")
+    private String gateway() {
+        try {
+            android.net.wifi.WifiManager wm = (android.net.wifi.WifiManager) ctx.getApplicationContext().getSystemService(Context.WIFI_SERVICE);
+            android.net.DhcpInfo d = wm != null && wm.isWifiEnabled() ? wm.getDhcpInfo() : null;
+            if (d == null || d.gateway == 0) return null;
+            int g = d.gateway;
+            return (g & 0xFF) + "." + ((g >> 8) & 0xFF) + "." + ((g >> 16) & 0xFF) + "." + ((g >> 24) & 0xFF);
+        } catch (Throwable t) {
+            return null;
+        }
     }
 
     /** This head unit's local IPv4 addresses, e.g. "192.168.43.120" (to type into Glass Link). */

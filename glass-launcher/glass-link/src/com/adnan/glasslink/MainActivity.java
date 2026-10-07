@@ -237,7 +237,8 @@ public final class MainActivity extends Activity {
         if (state == LinkService.ST_CONNECTED) {
             dotColor = GREEN;
             statusTitle.setText("Connected to " + (LinkService.linkedTo != null ? LinkService.linkedTo : "your car"));
-            statusSub.setText("Over " + LinkService.via + (LinkService.carVersion != null ? " · car app " + LinkService.carVersion : ""));
+            statusSub.setText("Over " + LinkService.via + (LinkService.carVersion != null ? " · car app " + LinkService.carVersion : "")
+                    + (bundled != null && LinkService.carUpdates && bundledCode > LinkService.carCode ? " · update available below" : ""));
         } else if (state == LinkService.ST_SEARCHING) {
             dotColor = AMBER;
             statusTitle.setText("Looking for your car…");
@@ -267,7 +268,8 @@ public final class MainActivity extends Activity {
         tipsBox.removeAllViews();
         if (state == LinkService.ST_SEARCHING && now - LinkService.searchingSince > 40000) {
             tipsBox.addView(text("Can't find your car?", 15, TEXT, true));
-            tipsBox.addView(text("1. Turn the car on and make sure Glass Launcher 1.6 or newer is the home screen.\n"
+            tipsBox.addView(text("1. Turn the car on and check it runs Glass Launcher 1.6.1 or newer (car: Settings › About device › "
+                    + "Launcher). Older versions only connect over this phone's hotspot.\n"
                     + "2. Easiest: turn on this phone's hotspot and connect the car to it (car: Settings › Wi-Fi & internet). "
                     + "Glass Link finds it within seconds.\n"
                     + "3. Bluetooth works only if the car's Android Bluetooth is the one paired with this phone. On many head "
