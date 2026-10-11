@@ -14,9 +14,9 @@ def adb(*a):
 def dump():
     """Fresh UI dump; never a stale file from an earlier call (empty string when it fails)."""
     for _ in range(3):
-        adb("shell", "rm", "-f", "/sdcard/ui.xml")
-        adb("shell", "uiautomator", "dump", "/sdcard/ui.xml")
-        xml = adb("shell", "cat", "/sdcard/ui.xml")
+        adb("shell", "rm", "-f", "/data/local/tmp/ui.xml")
+        adb("shell", "uiautomator", "dump", "/data/local/tmp/ui.xml")
+        xml = adb("shell", "cat", "/data/local/tmp/ui.xml")
         if "<hierarchy" in xml:
             return xml
         time.sleep(1)
