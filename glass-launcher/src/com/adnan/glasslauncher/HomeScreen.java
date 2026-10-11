@@ -207,10 +207,10 @@ final class HomeScreen extends Screen {
 
     private void updateClock() {
         if (bigClock == null) return;
-        bigClock.setText(Parts.timeShort());
-        bigAmPm.setText(Parts.ampm());
-        bigDate.setText(Parts.dateLong());
-        bigGreeting.setText(Parts.greeting());
+        Ui.setText(bigClock, Parts.timeShort());
+        Ui.setText(bigAmPm, Parts.ampm());
+        Ui.setText(bigDate, Parts.dateLong());
+        Ui.setText(bigGreeting, Parts.greeting());
     }
 
     // ---- Lifecycle ------------------------------------------------------------------------

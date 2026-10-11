@@ -234,7 +234,7 @@ final class MusicScreen extends Screen {
         MediaHub m = a.media();
         boolean muted = m.isMuted();
         volGlyph.set(muted ? Icons.MUTE : Icons.VOLUME);
-        volLabel.setText(muted ? "Muted" : String.valueOf(m.volume()));
+        Ui.setText(volLabel, muted ? "Muted" : String.valueOf(m.volume()));
         volSlider.setMax(m.maxVolume());
         volSlider.setValue(muted ? 0 : m.volume());
     }
@@ -767,9 +767,9 @@ final class MusicScreen extends Screen {
         long d = m.duration(), p = m.position();
         if (!seek.isDragging()) {
             seek.setValue(d > 0 ? (int) (p * 1000 / d) : 0);
-            elapsed.setText(Ui.mmss(p));
+            Ui.setText(elapsed, Ui.mmss(p));
         }
-        total.setText(d > 0 ? Ui.mmss(d) : "--:--");
+        Ui.setText(total, d > 0 ? Ui.mmss(d) : "--:--");
         if (volPop.getVisibility() != View.VISIBLE) updateVolume();
     }
 

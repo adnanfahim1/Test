@@ -84,6 +84,7 @@ final class Parts {
     static final class Header extends LinearLayout {
         private final MainActivity a;
         private final TextView greeting, date, clock, chipText;
+        private Boolean chipOn;
         private final Widgets.Dot dot;
         private final LinearLayout chip;
         private final boolean minimal;
@@ -123,15 +124,18 @@ final class Parts {
         }
 
         void update() {
-            greeting.setText(greeting());
-            date.setText(date());
-            clock.setText(time());
+            Ui.setText(greeting, greeting());
+            Ui.setText(date, date());
+            Ui.setText(clock, time());
             String phone = a.phoneName();
             boolean on = phone != null;
             boolean needPerm = a.phoneLink().needsPermission();
-            chipText.setText(on ? phone + " connected" : needPerm ? "Allow Bluetooth" : "No phone");
-            dot.set(on ? Ui.SUCCESS : Ui.FAINT, false);
-            chip.setBackground(Ui.fill(on ? Ui.white(0.14f) : Ui.white(0.06f), Ui.white(0.18f), 999));
+            Ui.setText(chipText, on ? phone + " connected" : needPerm ? "Allow Bluetooth" : "No phone");
+            if (chipOn == null || chipOn != on) {
+                chipOn = on;
+                dot.set(on ? Ui.SUCCESS : Ui.FAINT, false);
+                chip.setBackground(Ui.fill(on ? Ui.white(0.14f) : Ui.white(0.06f), Ui.white(0.18f), 999));
+            }
             chip.setContentDescription(on ? "Phone connected. Opens Bluetooth settings" : "No phone connected. Opens Bluetooth settings");
         }
     }

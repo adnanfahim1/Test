@@ -205,6 +205,14 @@ final class Ui {
     }
 
     // ---- Views ---------------------------------------------------------------------------
+    /**
+     * Sets text only when it differs. The once-a-second refresh would otherwise re-layout and
+     * announce unchanged text every tick (wasted work, and accessibility tools never see idle).
+     */
+    static void setText(TextView t, CharSequence s) {
+        if (!TextUtils.equals(t.getText(), s == null ? "" : s)) t.setText(s);
+    }
+
     static TextView text(Context c, CharSequence s, float sizeDesignPx, int color, Typeface tf) {
         TextView t = new TextView(c);
         t.setText(s);
