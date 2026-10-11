@@ -3,3 +3,4 @@ build/
 signing/
 tests/target/
 tests/shots/
+emulator-out/

@@ -3,8 +3,19 @@
 An Android home-screen launcher for Nakamichi Android car players, built from the "NAM5240T
 Glass Launcher" design handoff (`design-source/`).
 
-**Download:** [`dist/GlassLauncher.apk`](dist/GlassLauncher.apk) (about 3 MB, version 1.6.0) for the head unit, and
-[`dist/GlassLink.apk`](dist/GlassLink.apk) (optional, about 3 MB, version 1.2.0) for your Android phone.
+**Download:** [`dist/GlassLauncher.apk`](dist/GlassLauncher.apk) (about 3 MB, version 1.7.0) for the head unit, and
+[`dist/GlassLink.apk`](dist/GlassLink.apk) (optional, about 3 MB, version 1.4.0) for your Android phone.
+
+## New in 1.7
+
+- **Apps on the rail.** The highlighted bottom slot of the rail opens the app drawer (Home was there).
+  Swipe left on Home still opens it too. In the drawer, **swipe down with two fingers** to go back Home.
+- **Your phone's music in the car.** With Glass Link, whatever plays on the phone (Spotify, YouTube Music,
+  …) shows on the home music bar and the Music screen with cover, artist and progress. Play/pause, next,
+  previous and seeking on the car screen or the steering wheel control the phone. Music playing on the
+  head unit itself takes priority while it plays.
+- **Navigation from the phone fixed.** Glass Link now also reads Google Maps' newer custom-layout
+  navigation notifications and Android 14+ dismissible ones, and logs what it read.
 
 ## New in 1.6
 

@@ -35,6 +35,8 @@ for l in 1 2 3; do
 done
 adb shell am start -n $ACT --es theme Emerald --ei home_layout 0 --es screen home >/dev/null; shot home-emerald 4
 
+UI="python3 tools/ui.py"
+RAIL_FAIL=0
 echo "== New in 1.4: songs on the head unit, swipe to apps, Wi-Fi page"
 python3 - "$OUT/Glass Test Tone.wav" <<'PY'
 import math, struct, sys, wave
@@ -59,6 +61,11 @@ adb shell input keyevent KEYCODE_MEDIA_PLAY_PAUSE; sleep 1
 adb shell input swipe 1000 360 450 370 250; shot swipe-to-apps 3
 adb shell am start -n $ACT --es screen settings --ei settings_section 5 >/dev/null; shot settings-wifi 4
 adb shell am start -n $ACT --es screen settings --ei settings_section 3 >/dev/null; shot settings-weather 4
+
+echo "-- Rail: Apps in the bottom slot"
+adb shell am start -n $ACT --es screen home >/dev/null; sleep 3
+if $UI tap '^Apps$'; then sleep 2; if $UI has '^[0-9]+ apps$'; then echo "RAIL: Apps opens the app drawer"; else echo "RAIL: Apps didn't open the drawer"; RAIL_FAIL=1; fi; else echo "RAIL: Apps button not found"; RAIL_FAIL=1; fi
+adb shell am start -n $ACT --es screen home >/dev/null; sleep 2
 
 echo "== Pull-down panel"
 adb shell settings get secure theme_customization_overlay_packages
@@ -94,7 +101,6 @@ echo "== Glass Link phone app + phone link end to end (Android 6+)"
 # an update that the car installs after Install is pressed.
 API=$(adb shell getprop ro.build.version.sdk | tr -d '\r')
 LINK_FAIL=0
-UI="python3 tools/ui.py"
 if [ -f dist/GlassLink.apk ] && [ "${API:-0}" -ge 23 ]; then
   adb install -r -g dist/GlassLink.apk 2>&1 | tail -1
   adb emu geo fix 90.4125 23.8103 >/dev/null 2>&1 || true
@@ -116,6 +122,31 @@ if [ -f dist/GlassLink.apk ] && [ "${API:-0}" -ge 23 ]; then
   $UI tap '^Show$' --scroll >/dev/null; shot glass-link-log 2
   adb shell input swipe 640 200 640 700 200; adb shell input swipe 640 200 640 700 200
   $UI text | head -12
+
+  echo "-- Phone music and navigation through the link (test app pretends to be Waze + a music app)"
+  if [ -f "$OUT/e2e-app.apk" ]; then
+    adb install -r -g "$OUT/e2e-app.apk" 2>&1 | tail -1
+    # Only Glass Link may read notifications/media during this step, so whatever the car shows
+    # can only have come through the phone link (the car app could otherwise see the test app itself).
+    LIS=$(adb shell settings get secure enabled_notification_listeners | tr -d '\r')
+    adb shell settings put secure enabled_notification_listeners "com.adnan.glasslink/com.adnan.glasslink.NavListener"
+    adb shell cmd notification allow_listener com.adnan.glasslink/com.adnan.glasslink.NavListener >/dev/null 2>&1 || true
+    sleep 3
+    adb shell am start -n com.waze/.TestActivity >/dev/null; sleep 5
+    adb shell am start -n $ACT --es screen home >/dev/null; sleep 4
+    if $UI wait 'E2E Test Song 1' 30 && $UI has 'ON YOUR PHONE'; then echo "PHONE MUSIC: shown on the car (from the phone)"; else echo "PHONE MUSIC: FAILED"; $UI text | head -30; LINK_FAIL=1; fi
+    if $UI wait '^300 m$' 20 && $UI has '^Waze on (?!this head unit)'; then echo "PHONE NAV: shown on the car (from the phone)"; $UI text | grep -E "300 m|Test Street|ETA|Waze on"; else echo "PHONE NAV: FAILED"; LINK_FAIL=1; fi
+    shot home-phone-music-nav 1
+    adb logcat -c
+    $UI tap '^Next track$' >/dev/null
+    if $UI wait 'E2E Test Song 2' 20; then echo "PHONE CONTROL: Next from the car skipped the song on the phone"; else echo "PHONE CONTROL: FAILED"; LINK_FAIL=1; fi
+    adb logcat -d -s E2E_MEDIA | tail -3
+    adb shell input keyevent KEYCODE_MEDIA_PLAY_PAUSE; sleep 3
+    adb logcat -d -s E2E_MEDIA | grep -q "cmd=pause" && echo "PHONE CONTROL: steering-wheel play/pause reached the phone" || { echo "PHONE CONTROL: play/pause FAILED"; LINK_FAIL=1; }
+    adb shell input keyevent KEYCODE_MEDIA_PLAY_PAUSE; sleep 2
+    adb shell am start -n $ACT --es screen music >/dev/null; shot music-phone 4
+    adb shell settings put secure enabled_notification_listeners "$LIS"
+  fi
 
   adb shell am start -n $ACT --es screen home >/dev/null; shot home-phone-link 10
   adb shell am start -n $ACT --es screen settings --ei settings_section 3 >/dev/null; shot settings-phone-link 4
@@ -160,6 +191,7 @@ if grep -q -E "FATAL EXCEPTION" "$OUT/logcat-$LABEL.txt" && grep -A3 "FATAL EXCE
 fi
 if grep -q -E "CRASH: $PKG|// CRASH" "$OUT/monkey-$LABEL.txt"; then echo "Monkey reported a crash"; FAIL=1; fi
 if [ $LINK_FAIL = 1 ]; then echo "Phone link test failed"; FAIL=1; fi
+if [ $RAIL_FAIL = 1 ]; then echo "Rail test failed"; FAIL=1; fi
 if ! adb shell pidof $PKG >/dev/null 2>&1 && ! adb shell ps | grep -q $PKG; then echo "Launcher is not running at the end"; FAIL=1; fi
 RECOVERED=$(adb shell run-as $PKG cat shared_prefs/glass_launcher.xml 2>/dev/null | grep -c last_error || true)
 echo "Recovered (non-fatal) errors recorded: ${RECOVERED:-unknown}"

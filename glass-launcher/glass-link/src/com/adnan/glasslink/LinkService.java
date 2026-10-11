@@ -192,6 +192,7 @@ public final class LinkService extends Service {
                 sp.edit().remove(K_CRASH).apply();
             }
             log("Started. Looking for the car over Bluetooth and Wi-Fi…");
+            PhoneMedia.ping(this);
             try {
                 WifiManager wm = (WifiManager) getApplicationContext().getSystemService(WIFI_SERVICE);
                 if (wm != null) {
@@ -581,6 +582,7 @@ public final class LinkService extends Service {
             send(new JSONObject().put("t", "hello").put("name", Build.MODEL).put("app", "Glass Link").put("v", 2).toString());
             String nav = lastNav;
             if (nav != null) send(nav);
+            PhoneMedia.resend();
             BufferedReader r = new BufferedReader(new InputStreamReader(in, "UTF-8"));
             String line;
             while (active && (line = r.readLine()) != null) {
@@ -623,6 +625,8 @@ public final class LinkService extends Service {
                 updateStatus = "Car: " + m.optString("msg", "update failed");
                 MainActivity.refreshSoon();
             }
+        } else if ("media_cmd".equals(type)) {
+            PhoneMedia.command(m.optString("cmd"), m.optLong("pos", 0));
         } else if ("req".equals(type) && "weather".equals(m.optString("what"))) {
             final String place = m.has("place") ? m.optString("place") : null;
             final double lat = m.optDouble("lat", Double.NaN), lon = m.optDouble("lon", Double.NaN);
@@ -753,6 +757,15 @@ public final class LinkService extends Service {
             throw new Exception("The car stopped answering; try again");
         }
         return r;
+    }
+
+    // ---- Music on this phone ------------------------------------------------------------------------
+    /** Sends a media message to the car; false when not connected. */
+    static boolean media(String json) {
+        LinkService s = running;
+        if (s == null || s.out == null) return false;
+        s.send(json);
+        return true;
     }
 
     // ---- Navigation ------------------------------------------------------------------------------

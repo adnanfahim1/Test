@@ -258,6 +258,8 @@ public final class MainActivity extends Activity {
         if (LinkService.lastWeatherAt > 0) d.append("☀  Weather sent at ").append(DateFormat.format("h:mm a", new Date(LinkService.lastWeatherAt)));
         String turn = NavListener.lastTurn;
         if (turn != null) d.append(d.length() > 0 ? "\n" : "").append("➜  ").append(turn);
+        String song = PhoneMedia.nowPlaying;
+        if (song != null) d.append(d.length() > 0 ? "\n" : "").append("♪  ").append(song);
         statusDetail.setText(d.toString());
         statusDetail.setVisibility(d.length() > 0 && state == LinkService.ST_CONNECTED ? View.VISIBLE : View.GONE);
         startBtn.setText(running ? "Stop" : "Start");
@@ -284,7 +286,7 @@ public final class MainActivity extends Activity {
         missing += check("Nearby devices (Bluetooth)", LinkService.hasBluetoothPermission(this), new Runnable() { public void run() { askPermissions(); } });
         missing += check("Location (weather where you are)", has(Manifest.permission.ACCESS_COARSE_LOCATION), new Runnable() { public void run() { askPermissions(); } });
         missing += check("Notifications", Build.VERSION.SDK_INT < 33 || has("android.permission.POST_NOTIFICATIONS"), new Runnable() { public void run() { askPermissions(); } });
-        missing += check("Navigation access (next turn in the car)", navAccess(), new Runnable() {
+        missing += check("Navigation & music access (next turn and songs in the car)", navAccess(), new Runnable() {
             public void run() {
                 try { startActivity(new Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS")); }
                 catch (Throwable t) { startActivity(new Intent(Settings.ACTION_SETTINGS)); }

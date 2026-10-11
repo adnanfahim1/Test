@@ -394,4 +394,122 @@ public class FeaturesTest {
         assertEquals("10.200.34.1", gw.invoke(a.bridge()));
         assertTrue(a.bridge().state().startsWith("Waiting for the phone"));
     }
+
+    private static View findByDescription(View v, String d) {
+        if (d.contentEquals(v.getContentDescription() == null ? "" : v.getContentDescription())) return v;
+        if (v instanceof android.view.ViewGroup) {
+            android.view.ViewGroup g = (android.view.ViewGroup) v;
+            for (int i = 0; i < g.getChildCount(); i++) {
+                View f = findByDescription(g.getChildAt(i), d);
+                if (f != null) return f;
+            }
+        }
+        return null;
+    }
+
+    @Test
+    public void railHasAppsInsteadOfHomeAndTwoFingerSwipeGoesHome() throws Exception {
+        MainActivity a = start();
+        idle(800);
+        View root = a.getWindow().getDecorView();
+        View apps = findByDescription(root, "Apps");
+        assertNotNull("Apps on the rail", apps);
+        assertEquals(null, findByDescription(root, "Home"));
+        apps.performClick();
+        idle(500);
+        assertEquals(MainActivity.APPS, current(a));
+        // One-finger drag down in the drawer does nothing special.
+        swipe(a, 640, 640, 200);
+        assertEquals(MainActivity.APPS, current(a));
+        // Two fingers down: back Home.
+        long t = SystemClock.uptimeMillis();
+        MotionEvent.PointerProperties[] pp = {new MotionEvent.PointerProperties(), new MotionEvent.PointerProperties()};
+        pp[0].id = 0; pp[1].id = 1;
+        pp[0].toolType = pp[1].toolType = MotionEvent.TOOL_TYPE_FINGER;
+        float[][] start = {{500, 200}, {700, 210}};
+        a.dispatchTouchEvent(MotionEvent.obtain(t, t, MotionEvent.ACTION_DOWN, 1, new MotionEvent.PointerProperties[]{pp[0]},
+                new MotionEvent.PointerCoords[]{coords(start[0][0], start[0][1])}, 0, 0, 1, 1, 0, 0, 0, 0));
+        a.dispatchTouchEvent(MotionEvent.obtain(t, t + 10, MotionEvent.ACTION_POINTER_DOWN | (1 << MotionEvent.ACTION_POINTER_INDEX_SHIFT), 2, pp,
+                new MotionEvent.PointerCoords[]{coords(500, 200), coords(700, 210)}, 0, 0, 1, 1, 0, 0, 0, 0));
+        for (int i = 1; i <= 6; i++) {
+            a.dispatchTouchEvent(MotionEvent.obtain(t, t + 10 + 16 * i, MotionEvent.ACTION_MOVE, 2, pp,
+                    new MotionEvent.PointerCoords[]{coords(500, 200 + 40 * i), coords(700, 210 + 40 * i)}, 0, 0, 1, 1, 0, 0, 0, 0));
+        }
+        a.dispatchTouchEvent(MotionEvent.obtain(t, t + 200, MotionEvent.ACTION_UP, 1, new MotionEvent.PointerProperties[]{pp[0]},
+                new MotionEvent.PointerCoords[]{coords(500, 440)}, 0, 0, 1, 1, 0, 0, 0, 0));
+        idle(600);
+        assertEquals(MainActivity.HOME, current(a));
+    }
+
+    private static MotionEvent.PointerCoords coords(float x, float y) {
+        MotionEvent.PointerCoords c = new MotionEvent.PointerCoords();
+        c.x = x;
+        c.y = y;
+        c.pressure = 1;
+        c.size = 1;
+        return c;
+    }
+
+    /** Spotify on the phone shows on the car and the car's buttons control it. */
+    @Test
+    public void phoneMusicShowsAndIsControlledFromTheCar() throws Exception {
+        MainActivity a = start();
+        idle(500);
+        PhoneBridge b = a.bridge();
+        java.io.ByteArrayOutputStream sent = new java.io.ByteArrayOutputStream();
+        Field out = PhoneBridge.class.getDeclaredField("out");
+        out.setAccessible(true);
+        out.set(b, sent);
+        Method handle = PhoneBridge.class.getDeclaredMethod("handle", String.class);
+        handle.setAccessible(true);
+        handle.invoke(b, new org.json.JSONObject().put("t", "media").put("active", true).put("playing", true).put("app", "Spotify")
+                .put("pkg", "com.spotify.music").put("title", "Blinding Lights").put("artist", "The Weeknd")
+                .put("dur", 200000).put("pos", 64000).put("artId", "a1").toString());
+        Bitmap cover = Bitmap.createBitmap(120, 120, Bitmap.Config.ARGB_8888);
+        cover.eraseColor(0xFFE0784A);
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        cover.compress(Bitmap.CompressFormat.JPEG, 80, bos);
+        handle.invoke(b, new org.json.JSONObject().put("t", "media_art").put("artId", "a1")
+                .put("data", Base64.encodeToString(bos.toByteArray(), Base64.NO_WRAP)).toString());
+        idle(400);
+        MediaHub m = a.media();
+        assertTrue(m.isPhone());
+        assertEquals("Blinding Lights", m.title());
+        assertEquals("The Weeknd", m.artist());
+        assertTrue(m.isPlaying());
+        assertNotNull(m.art());
+        assertTrue(m.position() >= 64000);
+        assertEquals("Spotify on your phone", m.phoneSource());
+        a.show(MainActivity.HOME);
+        shot(a, "24-home-phone-music");
+        a.show(MainActivity.MUSIC);
+        shot(a, "25-music-phone");
+
+        // Steering-wheel / on-screen controls go to the phone.
+        a.dispatchKeyEvent(new android.view.KeyEvent(android.view.KeyEvent.ACTION_UP, android.view.KeyEvent.KEYCODE_MEDIA_NEXT));
+        m.togglePlay();
+        assertTrue("shown paused at once", !m.isPlaying());
+        m.seekTo(90000);
+        Thread.sleep(400);
+        String cmds = sent.toString("UTF-8");
+        assertTrue(cmds, cmds.contains("\"cmd\":\"next\""));
+        assertTrue(cmds, cmds.contains("\"cmd\":\"pause\""));
+        assertTrue(cmds, cmds.contains("\"cmd\":\"seek\"") && cmds.contains("\"pos\":90000"));
+
+        // Music playing on the head unit itself takes over.
+        Application app = RuntimeEnvironment.getApplication();
+        shadowOf(app).grantPermissions("android.permission.READ_MEDIA_AUDIO");
+        LocalPlayer p = a.media().player();
+        p.playList(fakeLibrary(), 0, false);
+        idle(500);
+        assertTrue(!m.isPhone());
+        assertEquals("Bohemian Rhapsody", m.title());
+        p.stop();
+        idle(300);
+
+        // Phone stops / link drops: nothing from the phone is shown.
+        handle.invoke(b, "{\"t\":\"media\",\"active\":false}");
+        idle(300);
+        assertTrue(!m.isPhone());
+    }
 }

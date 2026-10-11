@@ -83,6 +83,7 @@ final class MediaHub implements MediaSessionManager.OnActiveSessionsChangedListe
 
     boolean isLocal() {
         LocalPlayer lp = LocalPlayer.peek();
+        if (isPhone()) return false;
         return controller != null && lp != null && controller.getSessionToken().equals(lp.token());
     }
 
@@ -168,19 +169,80 @@ final class MediaHub implements MediaSessionManager.OnActiveSessionsChangedListe
 
     // ---- State ---------------------------------------------------------------------------
     /** The built-in player when it is the one shown; read directly (no round trip through Android). */
-    private LocalPlayer lp() { return isLocal() ? LocalPlayer.peek() : null; }
+    private LocalPlayer lp() { return isLocal() && !isPhone() ? LocalPlayer.peek() : null; }
+
+    // ---- The phone's music (through Glass Link) ---------------------------------------------
+    private RemoteMedia remote;
+    private RemoteMedia.Control remoteControl;
+    private long remoteSeenPlayingAt;
+
+    void setRemote(RemoteMedia r, RemoteMedia.Control c) {
+        remote = r;
+        remoteControl = c;
+        if (r != null && r.active && r.playing) remoteSeenPlayingAt = SystemClock.elapsedRealtime();
+        notifyChanged();
+    }
+
+    /**
+     * The phone's track is shown when it plays (unless music on the head unit plays), or when
+     * it was the last thing playing and nothing else plays now.
+     */
+    boolean isPhone() {
+        RemoteMedia r = remote;
+        if (r == null || !r.active || r.title == null) return false;
+        LocalPlayer lp = LocalPlayer.peek();
+        if (lp != null && lp.isPlaying()) return false;
+        if (r.playing) return true;
+        if (controllerPlaying()) return false;
+        long localAt = lp != null && lp.hasTrack() ? lp.lastPlayingAt : 0;
+        return remoteSeenPlayingAt >= Math.max(localAt, otherPlayingAt) || controller == null;
+    }
+
+    private boolean controllerPlaying() {
+        PlaybackState st = controller != null ? controller.getPlaybackState() : null;
+        return st != null && st.getState() == PlaybackState.STATE_PLAYING;
+    }
+
+    /** "Spotify on your phone", or null when the head unit's own source is shown. */
+    String phoneSource() {
+        RemoteMedia r = remote;
+        return isPhone() ? (r.app != null ? r.app : "Music") + " on your phone" : null;
+    }
+
+    private boolean phoneCommand(String cmd, long pos) {
+        if (!isPhone() || remoteControl == null) return false;
+        RemoteMedia r = remote;
+        // Show the change at once; the phone confirms a moment later.
+        if ("pause".equals(cmd) || "play".equals(cmd)) {
+            r.position = r.positionNow();
+            r.receivedAt = SystemClock.elapsedRealtime();
+            r.playing = "play".equals(cmd);
+            if (r.playing) remoteSeenPlayingAt = SystemClock.elapsedRealtime();
+        } else if ("seek".equals(cmd)) {
+            r.position = Math.max(0, pos);
+            r.receivedAt = SystemClock.elapsedRealtime();
+        }
+        remoteControl.command(cmd, pos);
+        notifyChanged();
+        return true;
+    }
 
     boolean hasSession() {
+        if (isPhone()) return true;
         LocalPlayer lp = lp();
         if (lp != null) return lp.hasTrack();
         return controller != null && controller.getMetadata() != null;
     }
 
-    String packageName() { return controller != null ? controller.getPackageName() : null; }
+    String packageName() {
+        if (isPhone()) return remote.pkg;
+        return controller != null ? controller.getPackageName() : null;
+    }
 
     private MediaMetadata meta() { return controller != null ? controller.getMetadata() : null; }
 
     String title() {
+        if (isPhone()) return remote.title;
         LocalPlayer lp = lp();
         if (lp != null) return lp.current() != null ? lp.current().title : null;
         MediaMetadata m = meta();
@@ -191,6 +253,7 @@ final class MediaHub implements MediaSessionManager.OnActiveSessionsChangedListe
     }
 
     String artist() {
+        if (isPhone()) return remote.artist != null ? remote.artist : remote.album;
         LocalPlayer lp = lp();
         if (lp != null) return lp.current() != null ? lp.current().artist : null;
         MediaMetadata m = meta();
@@ -202,6 +265,7 @@ final class MediaHub implements MediaSessionManager.OnActiveSessionsChangedListe
     }
 
     Bitmap art() {
+        if (isPhone()) return remote.art;
         LocalPlayer lp = lp();
         if (lp != null) return lp.art();
         MediaMetadata m = meta();
@@ -213,6 +277,7 @@ final class MediaHub implements MediaSessionManager.OnActiveSessionsChangedListe
     }
 
     long duration() {
+        if (isPhone()) return remote.duration;
         LocalPlayer lp = lp();
         if (lp != null) return lp.duration();
         MediaMetadata m = meta();
@@ -220,6 +285,7 @@ final class MediaHub implements MediaSessionManager.OnActiveSessionsChangedListe
     }
 
     long position() {
+        if (isPhone()) return remote.positionNow();
         LocalPlayer lp = lp();
         if (lp != null) return lp.position();
         PlaybackState st = controller != null ? controller.getPlaybackState() : null;
@@ -234,6 +300,7 @@ final class MediaHub implements MediaSessionManager.OnActiveSessionsChangedListe
     }
 
     boolean isPlaying() {
+        if (isPhone()) return remote.playing;
         LocalPlayer lp = lp();
         if (lp != null) return lp.isPlaying();
         PlaybackState st = controller != null ? controller.getPlaybackState() : null;
@@ -245,6 +312,7 @@ final class MediaHub implements MediaSessionManager.OnActiveSessionsChangedListe
     }
 
     List<MediaSession.QueueItem> queue() {
+        if (isPhone()) return Collections.<MediaSession.QueueItem>emptyList();
         LocalPlayer lp = lp();
         if (lp != null) return lp.queueWindow();
         List<MediaSession.QueueItem> q = controller != null ? controller.getQueue() : null;
@@ -260,6 +328,7 @@ final class MediaHub implements MediaSessionManager.OnActiveSessionsChangedListe
 
     // ---- Controls ------------------------------------------------------------------------
     void togglePlay() {
+        if (isPhone()) { phoneCommand(remote.playing ? "pause" : "play", 0); return; }
         LocalPlayer lp = lp();
         if (lp != null) { lp.toggle(); return; }
         if (controller != null) {
@@ -271,6 +340,7 @@ final class MediaHub implements MediaSessionManager.OnActiveSessionsChangedListe
     }
 
     void next() {
+        if (phoneCommand("next", 0)) return;
         LocalPlayer lp = lp();
         if (lp != null) { lp.next(); return; }
         if (controller != null) controller.getTransportControls().skipToNext();
@@ -278,6 +348,7 @@ final class MediaHub implements MediaSessionManager.OnActiveSessionsChangedListe
     }
 
     void prev() {
+        if (phoneCommand("prev", 0)) return;
         LocalPlayer lp = lp();
         if (lp != null) { lp.prev(); return; }
         if (controller != null) controller.getTransportControls().skipToPrevious();
@@ -285,6 +356,7 @@ final class MediaHub implements MediaSessionManager.OnActiveSessionsChangedListe
     }
 
     void seekTo(long ms) {
+        if (phoneCommand("seek", Math.max(0, ms))) return;
         LocalPlayer lp = lp();
         if (lp != null) { lp.seekTo(ms); return; }
         if (controller != null) controller.getTransportControls().seekTo(Math.max(0, ms));

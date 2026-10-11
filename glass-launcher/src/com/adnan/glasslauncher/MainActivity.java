@@ -148,6 +148,14 @@ public class MainActivity extends Activity implements MediaHub.Listener {
 
             @Override
             public void onUpdateFailed(String message) { toast(message); }
+
+            @Override
+            public void onPhoneMedia(RemoteMedia m) {
+                media.setRemote(m, new RemoteMedia.Control() {
+                    @Override
+                    public void command(String cmd, long pos) { bridge.mediaCommand(cmd, pos); }
+                });
+            }
         });
         // Fallback for the Navigation card: a maps app navigating on the head unit itself.
         MediaListenerService.sink = new MediaListenerService.NavSink() {
@@ -242,9 +250,10 @@ public class MainActivity extends Activity implements MediaHub.Listener {
         root.requestLayout();
     }
 
-    // ---- Swipe left on Home opens the app drawer -----------------------------------------
-    private float swipeX, swipeY;
-    private boolean swipeTracking, swipeTaken;
+    // ---- Gestures: swipe left on Home opens the app drawer; two-finger swipe down in the
+    // app drawer goes back Home ------------------------------------------------------------
+    private float swipeX, swipeY, twoY, twoX;
+    private boolean swipeTracking, swipeTaken, twoTracking;
 
     @Override
     public boolean dispatchTouchEvent(android.view.MotionEvent e) {
@@ -254,28 +263,62 @@ public class MainActivity extends Activity implements MediaHub.Listener {
                 swipeX = e.getRawX();
                 swipeY = e.getRawY();
                 swipeTaken = false;
+                twoTracking = false;
                 swipeTracking = current == HOME && !safeMode;
             } else if (swipeTaken) {
                 return true;
-            } else if (swipeTracking && act == android.view.MotionEvent.ACTION_MOVE) {
-                float dx = e.getRawX() - swipeX, dy = e.getRawY() - swipeY;
-                if (Widgets.Slider.anyDragging || e.getPointerCount() > 1 || Math.abs(dy) > Ui.u(80)) {
-                    swipeTracking = false;
-                } else if (dx < -Ui.u(110) && Math.abs(dx) > 2 * Math.abs(dy)) {
-                    swipeTracking = false;
-                    swipeTaken = true;
-                    android.view.MotionEvent cancel = android.view.MotionEvent.obtain(e);
-                    cancel.setAction(android.view.MotionEvent.ACTION_CANCEL);
-                    super.dispatchTouchEvent(cancel);
-                    cancel.recycle();
-                    show(APPS);
-                    return true;
+            } else if (act == android.view.MotionEvent.ACTION_POINTER_DOWN && e.getPointerCount() == 2
+                    && current == APPS && !safeMode) {
+                twoTracking = true;
+                twoX = avgX(e);
+                twoY = avgY(e);
+            } else if (act == android.view.MotionEvent.ACTION_MOVE) {
+                if (twoTracking) {
+                    float dy = avgY(e) - twoY, dx = avgX(e) - twoX;
+                    if (e.getPointerCount() != 2) {
+                        twoTracking = false;
+                    } else if (dy > Ui.u(120) && dy > 1.5f * Math.abs(dx)) {
+                        return take(e, HOME);
+                    }
+                } else if (swipeTracking) {
+                    float dx = e.getRawX() - swipeX, dy = e.getRawY() - swipeY;
+                    if (Widgets.Slider.anyDragging || e.getPointerCount() > 1 || Math.abs(dy) > Ui.u(80)) {
+                        swipeTracking = false;
+                    } else if (dx < -Ui.u(110) && Math.abs(dx) > 2 * Math.abs(dy)) {
+                        return take(e, APPS);
+                    }
                 }
+            } else if (act == android.view.MotionEvent.ACTION_UP || act == android.view.MotionEvent.ACTION_CANCEL) {
+                twoTracking = false;
             }
         } catch (RuntimeException ignored) {
-            swipeTracking = swipeTaken = false;
+            swipeTracking = swipeTaken = twoTracking = false;
         }
         return super.dispatchTouchEvent(e);
+    }
+
+    /** The gesture wins: cancel the touch for the views below and switch screens. */
+    private boolean take(android.view.MotionEvent e, int screen) {
+        swipeTracking = twoTracking = false;
+        swipeTaken = true;
+        android.view.MotionEvent cancel = android.view.MotionEvent.obtain(e);
+        cancel.setAction(android.view.MotionEvent.ACTION_CANCEL);
+        super.dispatchTouchEvent(cancel);
+        cancel.recycle();
+        show(screen);
+        return true;
+    }
+
+    private static float avgX(android.view.MotionEvent e) {
+        float s = 0;
+        for (int i = 0; i < e.getPointerCount(); i++) s += e.getX(i);
+        return s / Math.max(1, e.getPointerCount());
+    }
+
+    private static float avgY(android.view.MotionEvent e) {
+        float s = 0;
+        for (int i = 0; i < e.getPointerCount(); i++) s += e.getY(i);
+        return s / Math.max(1, e.getPointerCount());
     }
 
     @Override

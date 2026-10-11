@@ -31,7 +31,7 @@ jobs:
 
       - name: Build APKs (launcher + Glass Link phone app)
         working-directory: glass-launcher
-        run: ./build.sh && ./glass-link/build.sh
+        run: ./build.sh && ./glass-link/build.sh && mkdir -p emulator-out && ./tools/e2e-app/build.sh
 
       - name: Enable KVM
         run: |

@@ -51,6 +51,19 @@ final class PhoneBridge {
         void onUpdateProgress(int percent);
         void onUpdateReady(Updater.Ready r);
         void onUpdateFailed(String message);
+        /** What the phone plays changed (null = nothing / link gone). */
+        void onPhoneMedia(RemoteMedia m);
+    }
+
+    private volatile RemoteMedia media;
+
+    RemoteMedia media() { return media; }
+
+    /** Play/pause/next/prev/seek for the phone's music app. */
+    void mediaCommand(String cmd, long positionMs) {
+        try {
+            send(new JSONObject().put("t", "media_cmd").put("cmd", cmd).put("pos", positionMs).toString());
+        } catch (Throwable ignored) {}
     }
 
     static final class Nav {
@@ -358,6 +371,10 @@ final class PhoneBridge {
                 out = null;
                 conn = null;
             }
+            if (media != null) {
+                media = null;
+                post(new Runnable() { @Override public void run() { if (listener != null) listener.onPhoneMedia(null); } });
+            }
             if (updater.receiving()) {
                 updater.abort();
                 post(new Runnable() { @Override public void run() { if (listener != null) listener.onUpdateFailed("Connection to the phone lost during the update"); } });
@@ -444,6 +461,39 @@ final class PhoneBridge {
             String t = o.optString("t");
             if (t.startsWith("apk_")) {
                 updateMessage(t, o);
+                return;
+            }
+            if ("media".equals(t)) {
+                final RemoteMedia m = new RemoteMedia();
+                RemoteMedia old = media;
+                m.active = o.optBoolean("active", false);
+                m.playing = o.optBoolean("playing", false);
+                m.app = str(o, "app");
+                m.pkg = str(o, "pkg");
+                m.title = str(o, "title");
+                m.artist = str(o, "artist");
+                m.album = str(o, "album");
+                m.duration = Math.max(0, o.optLong("dur", 0));
+                m.position = Math.max(0, o.optLong("pos", 0));
+                m.receivedAt = android.os.SystemClock.elapsedRealtime();
+                m.artId = str(o, "artId");
+                if (old != null && m.artId != null && m.artId.equals(old.artId)) m.art = old.art; // same cover
+                media = m.active ? m : null;
+                post(new Runnable() { @Override public void run() { if (listener != null) listener.onPhoneMedia(media); } });
+                return;
+            }
+            if ("media_art".equals(t)) {
+                RemoteMedia m = media;
+                String id = str(o, "artId"), data = str(o, "data");
+                if (m == null || id == null || !id.equals(m.artId) || data == null || data.length() > 400000) return;
+                byte[] b = Base64.decode(data, Base64.DEFAULT);
+                BitmapFactory.Options opt = new BitmapFactory.Options();
+                opt.inJustDecodeBounds = true;
+                BitmapFactory.decodeByteArray(b, 0, b.length, opt);
+                if (opt.outWidth <= 0 || opt.outWidth > 1024 || opt.outHeight > 1024) return;
+                m.art = BitmapFactory.decodeByteArray(b, 0, b.length);
+                final RemoteMedia fm = m;
+                post(new Runnable() { @Override public void run() { if (listener != null) listener.onPhoneMedia(fm); } });
                 return;
             }
             if ("hello".equals(t)) {

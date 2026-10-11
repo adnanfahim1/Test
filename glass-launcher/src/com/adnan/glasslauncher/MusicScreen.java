@@ -388,7 +388,7 @@ final class MusicScreen extends Screen {
             if (sig.equals(listSig)) return;
             listSig = sig;
             list.removeAllViews();
-            if (!m.hasAccess() && !m.isLocal()) {
+            if (!m.hasAccess() && !m.isLocal() && m.phoneSource() == null) {
                 list.addView(note("Allow notification access to see the queue of the app that's playing.", "Allow access", new View.OnClickListener() {
                     @Override
                     public void onClick(View v) { a.askNotificationAccess(); }
@@ -396,7 +396,9 @@ final class MusicScreen extends Screen {
                 return;
             }
             if (q.isEmpty()) {
-                list.addView(note(m.hasSession()
+                list.addView(note(m.phoneSource() != null
+                        ? "Playing " + m.phoneSource() + ". Pause, skip and seek with the controls on the right."
+                        : m.hasSession()
                         ? "This music app doesn't share its queue. Use the controls on the right, or switch tracks in the app."
                         : "Nothing is playing. Pick a song under “My songs” or an app under “Music apps”.", null, null));
                 return;
@@ -744,7 +746,9 @@ final class MusicScreen extends Screen {
             String t = m.title();
             title.setText(t != null ? t : "Unknown track");
             String ar = m.artist();
-            artist.setText(ar != null ? ar : m.isLocal() ? "On this head unit" : a.appLabel(m.packageName()));
+            String src = m.phoneSource();
+            if (src != null) artist.setText(ar != null ? ar + "  ·  " + src : src);
+            else artist.setText(ar != null ? ar : m.isLocal() ? "On this head unit" : a.appLabel(m.packageName()));
         }
         disc.setArt(m.art());
         disc.setSpinning(playing);

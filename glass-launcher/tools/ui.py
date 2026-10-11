@@ -15,10 +15,10 @@ def nodes():
     adb("shell", "uiautomator", "dump", "/sdcard/ui.xml")
     xml = adb("shell", "cat", "/sdcard/ui.xml")
     out = []
-    for m in re.finditer(r'<node [^>]*?text="([^"]*)"[^>]*?bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"', xml):
-        t = (m.group(1).replace("&amp;", "&").replace("&quot;", '"').replace("&#10;", "\n")
+    for m in re.finditer(r'<node [^>]*?text="([^"]*)"[^>]*?content-desc="([^"]*)"[^>]*?bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"', xml):
+        t = ((m.group(1) or m.group(2)).replace("&amp;", "&").replace("&quot;", '"').replace("&#10;", "\n")
              .replace("&lt;", "<").replace("&gt;", ">").replace("&apos;", "'"))
-        x1, y1, x2, y2 = map(int, m.group(2, 3, 4, 5))
+        x1, y1, x2, y2 = map(int, m.group(3, 4, 5, 6))
         out.append((t, (x1 + x2) // 2, (y1 + y2) // 2))
     return out
 

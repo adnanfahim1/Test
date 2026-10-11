@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- TEST ONLY (emulator check): pretends to be a maps app (package com.waze) that navigates and a
+     music app that plays, so the phone link can be tested end to end. Never shipped. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.waze"
+    android:versionCode="1" android:versionName="test">
+    <uses-sdk android:minSdkVersion="23" android:targetSdkVersion="35" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <application android:label="E2E nav+music test">
+        <activity android:name=".TestActivity" android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>

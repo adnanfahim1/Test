@@ -147,7 +147,7 @@ final class Parts {
         r.setPadding(0, Ui.u(10), 0, Ui.u(10));
         r.setBackground(Ui.glass(30));
         String[][] items = {
-                {"maps", "Maps"}, {"music", "Music"}, {"apps", "Apps"}, {"car", "Car"}, {"settings", "Settings"}};
+                {"maps", "Maps"}, {"music", "Music"}, {"car", "Car"}, {"settings", "Settings"}};
         for (int i = 0; i < items.length; i++) {
             final String key = items[i][0];
             View item = railItem(a, key, items[i][1], false);
@@ -156,7 +156,6 @@ final class Parts {
                 public void onClick(View v) {
                     if ("maps".equals(key)) a.openMaps();
                     else if ("music".equals(key)) a.show(MainActivity.MUSIC);
-                    else if ("apps".equals(key)) a.show(MainActivity.APPS);
                     else if ("car".equals(key)) a.show(MainActivity.CAR);
                     else a.show(MainActivity.SETTINGS);
                 }
@@ -164,12 +163,13 @@ final class Parts {
             r.addView(item, Ui.margins(Ui.lp(Ui.u(RAIL_ITEM), Ui.u(RAIL_ITEM)), 0, i == 0 ? 0 : 8, 0, 0));
         }
         r.addView(Ui.space(a), Ui.lpw(1, 0, 1));
-        View home = railItem(a, "home", "Home", true);
-        home.setOnClickListener(new View.OnClickListener() {
+        // The app drawer sits in the highlighted bottom slot (also: swipe left on Home).
+        View apps = railItem(a, "apps", "Apps", true);
+        apps.setOnClickListener(new View.OnClickListener() {
             @Override
-            public void onClick(View v) { a.show(MainActivity.HOME); }
+            public void onClick(View v) { a.show(MainActivity.APPS); }
         });
-        r.addView(home, Ui.lp(Ui.u(RAIL_ITEM), Ui.u(RAIL_ITEM)));
+        r.addView(apps, Ui.lp(Ui.u(RAIL_ITEM), Ui.u(RAIL_ITEM)));
         return r;
     }
 
@@ -310,7 +310,8 @@ final class Parts {
                 disc.setArt(null);
                 progress.set(0);
             } else {
-                kicker.setText("NOW PLAYING · TAP TO OPEN");
+                String src = m.phoneSource();
+                kicker.setText(src != null ? ("NOW PLAYING · " + src).toUpperCase(Locale.US) : "NOW PLAYING · TAP TO OPEN");
                 String t = m.title();
                 title.setText(t != null ? t : "Unknown track");
                 String ar = m.artist();
