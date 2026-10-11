@@ -37,6 +37,13 @@ adb shell am start -n $ACT --es theme Emerald --ei home_layout 0 --es screen hom
 
 UI="python3 tools/ui.py"
 RAIL_FAIL=0
+# Android's "Remove animations": the launcher then stops its constant animations (spinning record,
+# equaliser bars), so uiautomator can read the screen on every Android version.
+adb shell settings put global animator_duration_scale 0
+adb shell settings put global transition_animation_scale 0
+adb shell settings put global window_animation_scale 0
+adb shell am force-stop $PKG; sleep 1
+adb shell am start -n $ACT --es screen home >/dev/null; sleep 4
 echo "== New in 1.4: songs on the head unit, swipe to apps, Wi-Fi page"
 python3 - "$OUT/Glass Test Tone.wav" <<'PY'
 import math, struct, sys, wave

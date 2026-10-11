@@ -11,9 +11,20 @@ import re, subprocess, sys, time
 def adb(*a):
     return subprocess.run(["adb", *a], capture_output=True, text=True, errors="replace").stdout
 
+def dump():
+    """Fresh UI dump; never a stale file from an earlier call (empty string when it fails)."""
+    for _ in range(3):
+        adb("shell", "rm", "-f", "/sdcard/ui.xml")
+        adb("shell", "uiautomator", "dump", "/sdcard/ui.xml")
+        xml = adb("shell", "cat", "/sdcard/ui.xml")
+        if "<hierarchy" in xml:
+            return xml
+        time.sleep(1)
+    sys.stderr.write("ui.py: uiautomator could not read the screen\n")
+    return ""
+
 def nodes():
-    adb("shell", "uiautomator", "dump", "/sdcard/ui.xml")
-    xml = adb("shell", "cat", "/sdcard/ui.xml")
+    xml = dump()
     out = []
     for m in re.finditer(r'<node [^>]*?text="([^"]*)"[^>]*?content-desc="([^"]*)"[^>]*?bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"', xml):
         t = ((m.group(1) or m.group(2)).replace("&amp;", "&").replace("&quot;", '"').replace("&#10;", "\n")
@@ -35,8 +46,7 @@ if cmd == "text":
         if t: print(t.replace("\n", " | "))
 elif cmd == "edit":
     # Tap the first text field, then type the text.
-    adb("shell", "uiautomator", "dump", "/sdcard/ui.xml")
-    xml = adb("shell", "cat", "/sdcard/ui.xml")
+    xml = dump()
     m = re.search(r'class="android.widget.EditText"[^>]*?bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"', xml)
     if not m:
         print("no text field"); sys.exit(1)
