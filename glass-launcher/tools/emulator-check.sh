@@ -87,7 +87,8 @@ if [ "${SDK_NOW:-0}" -lt 23 ]; then
   # The Android 5 emulator suspends fully once its screen is off and adb can't reach it afterwards,
   # so there the head unit's quick-boot power-on signal is sent instead (the launcher listens for it).
   echo "(Android 5: sending the quick-boot power-on signal)"
-  adb shell am broadcast -a android.intent.action.QUICKBOOT_POWERON -n $PKG/.HomeKeeper\$Boot >/dev/null
+  # Quoted for the device's shell too, which would otherwise expand "$Boot".
+  adb shell "am broadcast -a android.intent.action.QUICKBOOT_POWERON -n '$PKG/.HomeKeeper\$Boot'"
   sleep 10
 else
   timeout 20 adb shell input keyevent KEYCODE_SLEEP; sleep 100

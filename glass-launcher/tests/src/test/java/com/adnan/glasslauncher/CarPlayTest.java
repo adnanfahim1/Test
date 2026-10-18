@@ -284,6 +284,22 @@ public class CarPlayTest {
     }
 
     @Test
+    public void quickBootPowerOnSignalOpensHome() throws Exception {
+        ActivityController<MainActivity> c = controller();
+        Application app = RuntimeEnvironment.getApplication();
+        idle(500);
+        c.pause().stop();
+        ShadowSystemClock.advanceBy(Duration.ofMinutes(1));
+        shadowOf(app).clearNextStartedActivities();
+        Intent boot = new Intent("android.intent.action.QUICKBOOT_POWERON").setClassName(app, HomeKeeper.Boot.class.getName());
+        app.sendBroadcast(boot);
+        idle(7000); // the receiver waits 6 s for the firmware to settle
+        Intent started = shadowOf(app).getNextStartedActivity();
+        assertNotNull("launcher opened after the power-on signal", started);
+        assertTrue(started.getBooleanExtra(HomeKeeper.EXTRA, false));
+    }
+
+    @Test
     public void settingsExplainTheBluetoothLinkAndNewOptions() throws Exception {
         MainActivity a = controller().get();
         idle(500);
