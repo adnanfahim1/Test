@@ -17,7 +17,9 @@ bash tools/setup-headunit.sh --theme Violet --layout dashboard 2>&1 | tee "$OUT/
 
 shot() {
   sleep "${2:-5}"
-  adb exec-out screencap -p > "$OUT/$LABEL-$1.png"
+  timeout 30 adb exec-out screencap -p > "$OUT/$LABEL-$1.png"
+  # No half-written or empty screenshots (e.g. when the device didn't answer).
+  head -c 8 "$OUT/$LABEL-$1.png" 2>/dev/null | grep -q PNG || rm -f "$OUT/$LABEL-$1.png"
 }
 
 if ! adb shell pm list packages | grep -q "$PKG"; then
@@ -77,6 +79,10 @@ adb shell am start -n $ACT --es screen home >/dev/null; sleep 2
 echo "-- Always open on Home: car switched off with Settings open, then on again"
 HOME_FAIL=0
 adb shell locksettings set-disabled true >/dev/null 2>&1 || true
+# Keep the CPU awake while the screen is off (root-only, i.e. the Android 5 test image): there the
+# emulator otherwise suspends fully and adb no longer reaches it after waking. The screen still goes
+# off, so the launcher sees the same "screen back on after the car was off" as on a head unit.
+adb shell 'echo glasscheck > /sys/power/wake_lock' >/dev/null 2>&1 || true
 adb shell am start -n $ACT --es screen settings >/dev/null; sleep 2
 adb shell am start -a android.settings.SETTINGS >/dev/null; sleep 4
 adb shell dumpsys activity activities | grep -m1 -E "ResumedActivity" | tr -d '\r'
@@ -100,6 +106,7 @@ else
   echo "HOME ON POWER-ON: FAILED (another app stayed in front)"; HOME_FAIL=1
 fi
 shot home-after-power-on 1
+timeout 15 adb shell 'echo glasscheck > /sys/power/wake_unlock' >/dev/null 2>&1 || true
 adb shell am start -n $ACT --es screen home >/dev/null; sleep 2
 
 echo "== Pull-down panel"
