@@ -9,7 +9,12 @@
 import re, subprocess, sys, time
 
 def adb(*a):
-    return subprocess.run(["adb", *a], capture_output=True, text=True, errors="replace").stdout
+    # A device that went to sleep can stop answering; never hang the whole check on it.
+    try:
+        return subprocess.run(["adb", *a], capture_output=True, text=True, errors="replace", timeout=40).stdout
+    except subprocess.TimeoutExpired:
+        sys.stderr.write("ui.py: adb didn't answer\n")
+        return ""
 
 def dump():
     """Fresh UI dump; never a stale file from an earlier call (empty string when it fails)."""

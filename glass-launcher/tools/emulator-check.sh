@@ -80,12 +80,20 @@ adb shell locksettings set-disabled true >/dev/null 2>&1 || true
 adb shell am start -n $ACT --es screen settings >/dev/null; sleep 2
 adb shell am start -a android.settings.SETTINGS >/dev/null; sleep 4
 adb shell dumpsys activity activities | grep -m1 -E "ResumedActivity" | tr -d '\r'
-adb shell input keyevent KEYCODE_SLEEP; sleep 100
-adb shell input keyevent KEYCODE_WAKEUP; sleep 3
-adb shell input keyevent 82; sleep 5
-TOP=$(adb shell dumpsys activity activities | grep -m1 -E "ResumedActivity" | tr -d '\r')
+timeout 20 adb shell input keyevent KEYCODE_SLEEP; sleep 100
+# Some Android versions (5.x) really suspend once the screen is off, like a head unit at ACC-off,
+# and adb can't reach them: then press the power key from the emulator side, like switching the car on.
+if ! timeout 15 adb shell input keyevent KEYCODE_WAKEUP; then
+  echo "(device asleep: power key pressed from the emulator)"
+  adb emu event send EV_KEY:KEY_POWER:1 EV_KEY:KEY_POWER:0 >/dev/null 2>&1 || adb emu event send 1:116:1 1:116:0 >/dev/null 2>&1
+  sleep 5
+  timeout 60 adb wait-for-device
+fi
+sleep 3
+timeout 15 adb shell input keyevent 82; sleep 5
+TOP=$(timeout 20 adb shell dumpsys activity activities | grep -m1 -E "ResumedActivity" | tr -d '\r')
 echo "$TOP"
-adb logcat -d -s GlassHome | tail -2
+timeout 20 adb logcat -d -s GlassHome | tail -2
 if echo "$TOP" | grep -q "$PKG/"; then
   if $UI has '^Good (morning|afternoon|evening)$'; then echo "HOME ON POWER-ON: Home shown"; else echo "HOME ON POWER-ON: launcher in front but not on Home"; $UI text | head -10; HOME_FAIL=1; fi
 else
