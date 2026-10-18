@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.adnan.glasslauncher"
-    android:versionCode="13"
-    android:versionName="1.7.1">
+    android:versionCode="14"
+    android:versionName="1.8.0">
 
     <!-- Android 5.0 (API 21) to Android 15+ (API 35). Newer APIs are isolated in NewApi.java. -->
     <uses-sdk android:minSdkVersion="21" android:targetSdkVersion="35" />
@@ -13,6 +13,12 @@
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    <!-- "Make visible for pairing" (Android 12+), so a phone can pair with the head unit's own Bluetooth. -->
+    <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" />
+    <!-- Always open on Home after the car is switched on: notice the boot, and (Android 10+) open the
+         launcher from the background, which needs "Display over other apps". -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-permission android:name="android.permission.SET_WALLPAPER" />
     <!-- Wi-Fi page in Settings (switching and joining networks directly works up to Android 9). -->
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
@@ -112,5 +118,15 @@
         <receiver
             android:name=".Updater$Result"
             android:exported="false" />
+
+        <receiver
+            android:name=".HomeKeeper$Boot"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+                <action android:name="com.htc.intent.action.QUICKBOOT_POWERON" />
+            </intent-filter>
+        </receiver>
     </application>
 </manifest>

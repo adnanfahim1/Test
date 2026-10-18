@@ -209,7 +209,12 @@ final class MediaHub implements MediaSessionManager.OnActiveSessionsChangedListe
         return isPhone() ? (r.app != null ? r.app : "Music") + " on your phone" : null;
     }
 
-    private boolean phoneCommand(String cmd, long pos) {
+    /** The phone's music while it is the one shown, else null. */
+    RemoteMedia phone() { return isPhone() ? remote : null; }
+
+    private boolean phoneCommand(String cmd, long pos) { return phoneCommand(cmd, pos, -1, null); }
+
+    private boolean phoneCommand(String cmd, long pos, long id, String action) {
         if (!isPhone() || remoteControl == null) return false;
         RemoteMedia r = remote;
         // Show the change at once; the phone confirms a moment later.
@@ -222,7 +227,7 @@ final class MediaHub implements MediaSessionManager.OnActiveSessionsChangedListe
             r.position = Math.max(0, pos);
             r.receivedAt = SystemClock.elapsedRealtime();
         }
-        remoteControl.command(cmd, pos);
+        remoteControl.command(cmd, pos, id, action);
         notifyChanged();
         return true;
     }
@@ -312,7 +317,7 @@ final class MediaHub implements MediaSessionManager.OnActiveSessionsChangedListe
     }
 
     List<MediaSession.QueueItem> queue() {
-        if (isPhone()) return Collections.<MediaSession.QueueItem>emptyList();
+        if (isPhone()) return remote.queue != null ? remote.queue : Collections.<MediaSession.QueueItem>emptyList();
         LocalPlayer lp = lp();
         if (lp != null) return lp.queueWindow();
         List<MediaSession.QueueItem> q = controller != null ? controller.getQueue() : null;
@@ -320,6 +325,7 @@ final class MediaHub implements MediaSessionManager.OnActiveSessionsChangedListe
     }
 
     long activeQueueId() {
+        if (isPhone()) return remote.activeQueueId;
         LocalPlayer lp = lp();
         if (lp != null) return lp.queuePosition();
         PlaybackState st = controller != null ? controller.getPlaybackState() : null;
@@ -363,9 +369,38 @@ final class MediaHub implements MediaSessionManager.OnActiveSessionsChangedListe
     }
 
     void skipToQueueItem(long id) {
+        if (phoneCommand("queue", 0, id, null)) return;
         LocalPlayer lp = lp();
         if (lp != null) { lp.jumpTo((int) id); return; }
         if (controller != null) controller.getTransportControls().skipToQueueItem(id);
+    }
+
+    /** The playing app's own buttons (Like, Shuffle, Repeat, ...): {id, name}, at most 4. */
+    List<String[]> customActions() {
+        if (isPhone()) return remote.actions;
+        List<String[]> out = new java.util.ArrayList<String[]>();
+        if (lp() != null) return out;
+        PlaybackState st = controller != null ? controller.getPlaybackState() : null;
+        if (st == null) return out;
+        try {
+            for (PlaybackState.CustomAction ca : st.getCustomActions()) {
+                if (ca.getAction() == null || ca.getName() == null || ca.getName().length() == 0) continue;
+                out.add(new String[]{ca.getAction(), ca.getName().toString()});
+                if (out.size() >= 4) break;
+            }
+        } catch (Throwable ignored) {}
+        return out;
+    }
+
+    void customAction(String id) {
+        if (phoneCommand("custom", 0, -1, id)) return;
+        if (controller == null || lp() != null) return;
+        try {
+            android.os.Bundle extras = null;
+            PlaybackState st = controller.getPlaybackState();
+            if (st != null) for (PlaybackState.CustomAction ca : st.getCustomActions()) if (id.equals(ca.getAction())) extras = ca.getExtras();
+            controller.getTransportControls().sendCustomAction(id, extras);
+        } catch (Throwable ignored) {}
     }
 
     private void key(int code) {

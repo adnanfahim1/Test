@@ -10,8 +10,10 @@ import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothClass;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.content.pm.ServiceInfo;
@@ -26,6 +28,8 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
+import android.os.ParcelUuid;
+import android.provider.Settings;
 import android.text.format.DateFormat;
 
 import org.json.JSONObject;
@@ -43,6 +47,7 @@ import java.net.Socket;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
@@ -55,7 +60,8 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * Keeps the link to Glass Launcher on the head unit and sends it the phone's weather, the
- * maps app's next turn and (on request) app updates.
+ * maps app's next turn, what music plays (and where it comes out), new messages, the
+ * battery level and (on request) app updates.
  *
  * It tries every way at the same time and uses the first that works:
  *  - Bluetooth to the paired head unit (secure, then insecure RFCOMM);
@@ -92,6 +98,7 @@ public final class LinkService extends Service {
 
     /** Connection log shown (and copyable) in the app. */
     static void log(String s) {
+        android.util.Log.i("GlassLink", s);
         String line = DateFormat.format("HH:mm:ss", new Date()) + "  " + s;
         synchronized (LOG) {
             if (!LOG.isEmpty() && LOG.getLast().endsWith("  " + s)) return; // no repeats
@@ -201,6 +208,7 @@ public final class LinkService extends Service {
                     multicast.acquire();
                 }
             } catch (Throwable ignored) {}
+            registerEvents();
             thread("link-bt", new Runnable() { @Override public void run() { bluetoothLoop(); } });
             thread("link-discovery", new Runnable() { @Override public void run() { discoveryLoop(); } });
             thread("link-direct", new Runnable() { @Override public void run() { directLoop(); } });
@@ -259,7 +267,7 @@ public final class LinkService extends Service {
         int flags = PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE;
         return b.setSmallIcon(android.R.drawable.stat_sys_data_bluetooth)
                 .setContentTitle(linkedTo != null ? "Connected to " + linkedTo : "Glass Link")
-                .setContentText(linkedTo != null ? "Sharing weather and navigation with the car" : "Looking for the car")
+                .setContentText(linkedTo != null ? "Sharing weather, navigation, music and messages with the car" : "Looking for the car")
                 .setOngoing(true)
                 .setShowWhen(false)
                 .setContentIntent(PendingIntent.getActivity(this, 0, new Intent(this, MainActivity.class), flags))
@@ -281,6 +289,7 @@ public final class LinkService extends Service {
         main.removeCallbacks(pinger);
         main.removeCallbacks(navRepeat);
         close(conn);
+        try { unregisterReceiver(events); } catch (Throwable ignored) {}
         try { if (multicast != null) multicast.release(); } catch (Throwable ignored) {}
         state = ST_STOPPED;
         linkedTo = null;
@@ -292,7 +301,89 @@ public final class LinkService extends Service {
     @Override
     public IBinder onBind(Intent intent) { return null; }
 
+    // ---- Phone events: battery for the car's status chip; Bluetooth changes retry at once -------
+    private volatile int battery = -1;
+    private volatile boolean charging;
+    private final Object btKick = new Object();
+
+    private final BroadcastReceiver events = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context c, Intent i) {
+            try {
+                String a = i.getAction();
+                if (Intent.ACTION_BATTERY_CHANGED.equals(a)) {
+                    int level = i.getIntExtra("level", -1), scale = i.getIntExtra("scale", 100);
+                    int pct = level >= 0 && scale > 0 ? Math.round(level * 100f / scale) : -1;
+                    int plug = i.getIntExtra("plugged", 0);
+                    boolean ch = plug != 0;
+                    if (pct != battery || ch != charging) {
+                        battery = pct;
+                        charging = ch;
+                        sendStatus();
+                    }
+                } else {
+                    // A Bluetooth device connected, paired or reported its services: try now.
+                    synchronized (btKick) { btKick.notifyAll(); }
+                }
+            } catch (Throwable ignored) {}
+        }
+    };
+
+    private void registerEvents() {
+        IntentFilter f = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
+        f.addAction(BluetoothDevice.ACTION_ACL_CONNECTED);
+        f.addAction(BluetoothDevice.ACTION_BOND_STATE_CHANGED);
+        f.addAction(BluetoothDevice.ACTION_UUID);
+        f.addAction(BluetoothAdapter.ACTION_STATE_CHANGED);
+        try {
+            if (Build.VERSION.SDK_INT >= 33) registerReceiver(events, f, Context.RECEIVER_EXPORTED);
+            else registerReceiver(events, f);
+        } catch (Throwable ignored) {}
+    }
+
+    private void sendStatus() {
+        if (out == null || battery < 0) return;
+        try {
+            send(new JSONObject().put("t", "phone").put("battery", battery).put("charging", charging).toString());
+        } catch (Throwable ignored) {}
+    }
+
+    /** Waits up to ms, or less when a Bluetooth device connects or pairs. */
+    private void btWait(long ms) {
+        synchronized (btKick) {
+            try { btKick.wait(ms); } catch (InterruptedException ignored) {}
+        }
+    }
+
+    /** The car asked how to get the music into the car: a tap opens this phone's Bluetooth settings. */
+    private void audioHelp() {
+        try {
+            NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+            if (Build.VERSION.SDK_INT >= 26 && nm.getNotificationChannel("car") == null) {
+                nm.createNotificationChannel(new NotificationChannel("car", "From the car", NotificationManager.IMPORTANCE_HIGH));
+            }
+            @SuppressWarnings("deprecation")
+            Notification.Builder b = Build.VERSION.SDK_INT >= 26 ? new Notification.Builder(this, "car") : new Notification.Builder(this);
+            Intent bt = new Intent(Settings.ACTION_BLUETOOTH_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            String car = linkedTo != null ? linkedTo : "the car";
+            b.setSmallIcon(android.R.drawable.stat_sys_data_bluetooth)
+                    .setContentTitle("Play music through " + car)
+                    .setContentText("Tap: connect this phone to the car stereo's Bluetooth and turn on Media audio")
+                    .setStyle(new Notification.BigTextStyle().bigText("Tap to open Bluetooth. Connect to the car stereo "
+                            + "(the name it shows for calls and music) and make sure “Media audio” is on. "
+                            + "Then the music plays in the car and the car's screen still controls it."))
+                    .setAutoCancel(true)
+                    .setContentIntent(PendingIntent.getActivity(this, 2, bt, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE));
+            nm.notify(3, b.build());
+            log("Music: the car asked to play through its speakers; see the notification");
+        } catch (Throwable t) {
+            log("Music: couldn't show the Bluetooth tip (" + t.getClass().getSimpleName() + ")");
+        }
+    }
+
     // ---- Bluetooth -----------------------------------------------------------------------------------
+    private final java.util.Set<String> btLogged = new HashSet<String>();
+
     private void bluetoothLoop() {
         int rounds = 0;
         while (active) {
@@ -318,8 +409,15 @@ public final class LinkService extends Service {
                     if (!active || out != null) break;
                     tryBluetooth(d, false);
                 }
+                if (out == null && (rounds == 0 || rounds % 6 == 5)) {
+                    // Ask the paired devices which services they offer (cached for the next round),
+                    // so the head unit's own Bluetooth is tried first next time.
+                    for (BluetoothDevice d : devs) {
+                        try { d.fetchUuidsWithSdp(); } catch (Throwable ignored) {}
+                    }
+                }
                 rounds++;
-                pause(rounds < 8 ? 15000 : 45000); // retry often at first, then save battery
+                btWait(rounds < 8 ? 15000 : 45000); // retry often at first, then save battery
             } catch (Throwable t) {
                 log("Bluetooth: " + t.getClass().getSimpleName());
                 pause(15000);
@@ -339,11 +437,34 @@ public final class LinkService extends Service {
             serve(s, s.getInputStream(), s.getOutputStream(), name, "Bluetooth");
         } catch (Throwable t) {
             close(s);
-            if (secure) log("Bluetooth: " + name + " didn't answer (Glass Launcher not running there, or its Bluetooth is a separate module)");
+            if (!secure) {
+                // Once per device and session: say why, without filling the log every 15 s.
+                if (btLogged.add(d.getAddress())) {
+                    log("Bluetooth: " + name + (offers(d) ? " has Glass Launcher's link but didn't answer; retrying"
+                            : " has no Glass Launcher link. If it's the car's calls-and-music Bluetooth, that part of the "
+                            + "stereo can't carry data: pair with the name shown in the car's Settings › Phone link, or use Wi-Fi"));
+                }
+            }
         }
     }
 
-    /** The chosen head unit, else paired car/audio devices (a car stereo reports as audio). */
+    /** True when the device's last known services include the car app's link. */
+    private static boolean offers(BluetoothDevice d) {
+        try {
+            ParcelUuid[] u = d.getUuids();
+            if (u == null) return false;
+            for (ParcelUuid p : u) {
+                if (SERVICE_UUID.equals(p.getUuid()) || SERVICE_UUID_INSECURE.equals(p.getUuid())) return true;
+            }
+        } catch (Throwable ignored) {}
+        return false;
+    }
+
+    /**
+     * The chosen head unit first, then paired devices that offer the car app's link, then car
+     * stereos (audio class), then computers and phones (an Android head unit's own Bluetooth often
+     * reports itself as a phone or tablet). Keyboards, watches, health and imaging devices are skipped.
+     */
     private List<BluetoothDevice> candidates(BluetoothAdapter ad) {
         List<BluetoothDevice> list = new ArrayList<BluetoothDevice>();
         String chosen = sp.getString(K_DEVICE, null);
@@ -352,15 +473,21 @@ public final class LinkService extends Service {
                 if (d.getAddress().equals(chosen)) list.add(0, d);
             }
             if (sp.getBoolean(K_FIXED, false) && !list.isEmpty()) return list;
+            List<BluetoothDevice> link = new ArrayList<BluetoothDevice>(), audio = new ArrayList<BluetoothDevice>(),
+                    other = new ArrayList<BluetoothDevice>();
             for (BluetoothDevice d : ad.getBondedDevices()) {
                 if (d.getAddress().equals(chosen)) continue;
                 BluetoothClass bc = d.getBluetoothClass();
                 int major = bc != null ? bc.getMajorDeviceClass() : BluetoothClass.Device.Major.UNCATEGORIZED;
-                if (major == BluetoothClass.Device.Major.AUDIO_VIDEO || major == BluetoothClass.Device.Major.UNCATEGORIZED
-                        || major == BluetoothClass.Device.Major.COMPUTER) {
-                    list.add(d);
-                }
+                if (offers(d)) link.add(d);
+                else if (major == BluetoothClass.Device.Major.AUDIO_VIDEO) audio.add(d);
+                else if (major == BluetoothClass.Device.Major.UNCATEGORIZED || major == BluetoothClass.Device.Major.COMPUTER
+                        || major == BluetoothClass.Device.Major.PHONE || major == BluetoothClass.Device.Major.MISC
+                        || major == BluetoothClass.Device.Major.NETWORKING) other.add(d);
             }
+            list.addAll(link);
+            list.addAll(audio);
+            list.addAll(other);
         } catch (Throwable ignored) {}
         return list;
     }
@@ -583,6 +710,7 @@ public final class LinkService extends Service {
             String nav = lastNav;
             if (nav != null) send(nav);
             PhoneMedia.resend();
+            sendStatus();
             BufferedReader r = new BufferedReader(new InputStreamReader(in, "UTF-8"));
             String line;
             while (active && (line = r.readLine()) != null) {
@@ -626,7 +754,13 @@ public final class LinkService extends Service {
                 MainActivity.refreshSoon();
             }
         } else if ("media_cmd".equals(type)) {
-            PhoneMedia.command(m.optString("cmd"), m.optLong("pos", 0));
+            PhoneMedia.command(m.optString("cmd"), m.optLong("pos", 0), m.optLong("id", -1), m.optString("action", null));
+        } else if ("msg_reply".equals(type)) {
+            Messages.reply(this, m.optString("key"), m.optString("text", null));
+        } else if ("msg_read".equals(type)) {
+            Messages.markRead(this, m.optString("key"));
+        } else if ("audio_help".equals(type)) {
+            main.post(new Runnable() { @Override public void run() { audioHelp(); } });
         } else if ("req".equals(type) && "weather".equals(m.optString("what"))) {
             final String place = m.has("place") ? m.optString("place") : null;
             final double lat = m.optDouble("lat", Double.NaN), lon = m.optDouble("lon", Double.NaN);

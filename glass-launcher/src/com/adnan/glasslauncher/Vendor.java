@@ -20,14 +20,15 @@ import java.util.Locale;
 final class Vendor {
     static final String CAR_SETTINGS = "car_settings", RADIO = "radio", PHONE = "phone", CAMERA = "camera",
             EQ = "eq", AV_IN = "av_in", PROJECTION = "projection", VIDEO = "video", MUSIC = "music", FILES = "files",
-            BROWSER = "browser";
+            BROWSER = "browser", BT_MUSIC = "bt_music";
 
-    static final String[] ROLES = {CAR_SETTINGS, RADIO, PHONE, PROJECTION, CAMERA, EQ, AV_IN, MUSIC, VIDEO, FILES, BROWSER};
+    static final String[] ROLES = {CAR_SETTINGS, RADIO, PHONE, BT_MUSIC, PROJECTION, CAMERA, EQ, AV_IN, MUSIC, VIDEO, FILES, BROWSER};
 
     static String label(String role) {
         if (CAR_SETTINGS.equals(role)) return "Head unit settings";
         if (RADIO.equals(role)) return "Radio";
         if (PHONE.equals(role)) return "Bluetooth phone";
+        if (BT_MUSIC.equals(role)) return "Bluetooth music";
         if (PROJECTION.equals(role)) return "CarPlay / Android Auto";
         if (CAMERA.equals(role)) return "Reverse camera / DVR";
         if (EQ.equals(role)) return "Equalizer";
@@ -42,6 +43,7 @@ final class Vendor {
         if (CAR_SETTINGS.equals(role)) return "car";
         if (RADIO.equals(role)) return "radio";
         if (PHONE.equals(role)) return "phone";
+        if (BT_MUSIC.equals(role)) return "music";
         if (PROJECTION.equals(role)) return "link";
         if (CAMERA.equals(role)) return "camera";
         if (EQ.equals(role)) return "eq";
@@ -61,6 +63,9 @@ final class Vendor {
         if (PHONE.equals(role)) return new String[][]{
                 {"btphone", "bt.phone", "bluetooth phone", "bt phone", "btmusic", "carbt", "bluetooth"},
                 {"phone", "dialer", ".bt"}};
+        if (BT_MUSIC.equals(role)) return new String[][]{
+                {"btmusic", "bt.music", "bt_music", "bluetooth music", "bt music", "a2dp", "btaudio", "bt audio", "bluetooth audio"},
+                {"bluetooth", ".bt", "bt "}};
         if (PROJECTION.equals(role)) return new String[][]{
                 {"zlink", "carlink", "carplay", "autokit", "android auto", "androidauto", "projection", "easyconn", "tlink"},
                 {"phonelink", "mirror", "link"}};
@@ -78,6 +83,7 @@ final class Vendor {
         if (CAR_SETTINGS.equals(role)) return "com.android.settings".equals(pkg) || hay.contains("launcher");
         if (PHONE.equals(role)) return hay.contains("settings") && !hay.contains("phone");
         if (MUSIC.equals(role)) return hay.contains("video");
+        if (BT_MUSIC.equals(role)) return hay.contains("settings") || hay.contains("glasslink");
         if (VIDEO.equals(role)) return hay.contains("music");
         return false;
     }

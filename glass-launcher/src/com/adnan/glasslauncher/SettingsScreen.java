@@ -58,6 +58,18 @@ final class SettingsScreen extends SidebarScreen {
     // ---- Home screen ----------------------------------------------------------------------
     private void home(LinearLayout out) {
         heading(out, "Home screen", "Pick the layout you see when you press Home. It's saved and opens after every restart.");
+        toggle(out, "Always open on Home", "When the car is switched on, show Home, whatever app or screen was open before",
+                a.prefs().alwaysHome(), new Widgets.Toggle.OnChange() {
+                    @Override
+                    public void changed(boolean on) { a.prefs().setAlwaysHome(on); refresh(); }
+                });
+        if (a.prefs().alwaysHome() && !HomeKeeper.canOpenFromBackground(a)) {
+            nav(out, "Allow “Display over other apps”", "Android 10+ needs this so Home can come back by itself when another app was open",
+                    "Not allowed", new View.OnClickListener() {
+                        @Override
+                        public void onClick(View v) { a.openOverlaySettings(); }
+                    });
+        }
         String[] desc = {"Car, map, weather and music together.", "Just your car, big and centred.",
                 "A large clock only. No car or widgets.", "Big map with weather and music. No car."};
         int sel = a.prefs().homeLayout();
@@ -274,6 +286,28 @@ final class SettingsScreen extends SidebarScreen {
         nav(out, "Sound settings", "Touch sounds, ringtones and other volumes", null,
                 open(Settings.ACTION_SOUND_SETTINGS, "Sound settings aren't available"));
         para(out, "Some head units route volume through the vehicle module (MCU). If the slider doesn't change the real loudness, use the steering-wheel or hardware volume keys.");
+
+        heading(out, "Music from your phone", "With Glass Link, the phone's music shows here and the car's buttons control it. "
+                + "The sound comes over the phone's Bluetooth audio connection to the car stereo.");
+        nav(out, "Play the phone's music in the car", "Shows how to connect the phone's Bluetooth audio, and tells the phone too",
+                null, new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) { a.carAudioHelp(); }
+                });
+        toggle(out, "Resume music when the phone connects", "Like CarPlay: presses play once the phone's sound reaches the car",
+                a.prefs().resumeOnConnect(), new Widgets.Toggle.OnChange() {
+                    @Override
+                    public void changed(boolean on) { a.prefs().setResumeOnConnect(on); }
+                });
+        android.content.ComponentName bt = Vendor.find(a, a.prefs(), Vendor.BT_MUSIC);
+        String btName = bt != null ? AppsRepo.labelFor(a, bt.flattenToString()) : null;
+        toggle(out, "Switch the stereo to Bluetooth music", bt != null
+                        ? "Opens " + (btName != null ? btName : "Bluetooth music") + " for a moment when phone music starts, for units that need it"
+                        : "No Bluetooth music app found on this head unit (choose one under Connections)",
+                a.prefs().btMusicSwitch(), new Widgets.Toggle.OnChange() {
+                    @Override
+                    public void changed(boolean on) { a.prefs().setBtMusicSwitch(on); }
+                });
     }
 
     // ---- Weather --------------------------------------------------------------------------
@@ -331,6 +365,32 @@ final class SettingsScreen extends SidebarScreen {
                 @Override
                 public void onClick(View v) { a.requestBluetoothPermission(); }
             });
+        }
+        // Which Bluetooth the phone must pair with for the link. Many head units have a separate
+        // calls-and-music module that Android apps can't use; then only Wi-Fi works.
+        String bt = PhoneBridge.androidBluetoothName(a);
+        if (bt == null) {
+            nav(out, "Phone link over Bluetooth", "Not possible: this head unit's Android has no Bluetooth of its own. "
+                    + "Its calls-and-music Bluetooth can't carry data, so Glass Link uses Wi-Fi (the phone's hotspot).", "Wi-Fi only", null);
+        } else if (!PhoneBridge.androidBluetoothOn()) {
+            nav(out, "Phone link over Bluetooth", "This head unit's Android Bluetooth is off. Turn it on to also link over Bluetooth "
+                    + "(Wi-Fi works either way).", "Off", new View.OnClickListener() {
+                        @Override
+                        public void onClick(View v) {
+                            a.startSafe(new Intent(android.bluetooth.BluetoothAdapter.ACTION_REQUEST_ENABLE), "Turn Bluetooth on in the system settings");
+                        }
+                    });
+        } else {
+            nav(out, "Phone link over Bluetooth", "Pair the phone with “" + (bt.length() > 0 ? bt : "this head unit")
+                    + "”. If the car's calls use another name, that one is a separate module and can't carry the link.",
+                    bt.length() > 0 ? bt : "On", null);
+            if (!on) {
+                nav(out, "Make visible for pairing", "For 5 minutes, so the phone finds “" + (bt.length() > 0 ? bt : "the head unit")
+                        + "” under Bluetooth › Pair new device", null, new View.OnClickListener() {
+                            @Override
+                            public void onClick(View v) { a.makeDiscoverable(); }
+                        });
+            }
         }
     }
 
@@ -495,6 +555,16 @@ final class SettingsScreen extends SidebarScreen {
             @Override
             public void onClick(View v) { a.openBluetoothSettings(); }
         });
+        heading(out, "Messages from your phone", "New messages (SMS, WhatsApp, ...) pop up at the top with Read aloud and quick replies.");
+        segment(out, "Show messages", null, Prefs.MESSAGE_MODES, a.prefs().messageMode(), new Pick() {
+            @Override
+            public void picked(int i) { a.prefs().setMessageMode(i); refresh(); }
+        });
+        toggle(out, "Read new messages aloud", "Uses the head unit's text-to-speech voice", a.prefs().readMessagesAloud(),
+                new Widgets.Toggle.OnChange() {
+                    @Override
+                    public void changed(boolean on) { a.prefs().setReadMessagesAloud(on); }
+                });
         para(out, "Calls and phone audio on many head units are handled by the vendor's own Bluetooth app. If pairing here doesn't route calls, use that app from the App drawer.");
     }
 

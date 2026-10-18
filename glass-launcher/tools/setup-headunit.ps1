@@ -61,7 +61,11 @@ if ($Sdk -ge 23) {
     if ($Sdk -ge 31) {
         if ((Sh pm grant $Pkg android.permission.BLUETOOTH_CONNECT) -match '(?i)exception|error') { Skip 'Nearby devices' 'not grantable' }
         else { Ok 'Nearby devices granted (phone status)' }
+        Sh pm grant $Pkg android.permission.BLUETOOTH_ADVERTISE | Out-Null
     }
+    # Lets Home come back by itself when the car is switched on with another app open (Android 10+).
+    if ((Sh appops set $Pkg SYSTEM_ALERT_WINDOW allow) -match '(?i)exception|error|unknown') { Skip 'Display over other apps' 'not grantable on this firmware' }
+    else { Ok 'Display over other apps allowed (Home opens when the car is switched on)' }
 } else { Skip 'Runtime permissions' "Android $Rel grants them at install" }
 
 if ($Sdk -ge 31 -and -not $NoShade) {

@@ -87,7 +87,11 @@ if [ "$SDK" -ge 23 ]; then
   if [ "$SDK" -ge 31 ]; then
     if sh_ pm grant $PKG android.permission.BLUETOOTH_CONNECT | grep -q -i -E "exception|error"; then skip "Nearby devices" "not grantable"
     else ok "Nearby devices granted (phone status)"; fi
+    sh_ pm grant $PKG android.permission.BLUETOOTH_ADVERTISE >/dev/null 2>&1 || true
   fi
+  # Lets Home come back by itself when the car is switched on with another app open (Android 10+).
+  if sh_ appops set $PKG SYSTEM_ALERT_WINDOW allow | grep -q -i -E "exception|error|unknown"; then skip "Display over other apps" "not grantable on this firmware"
+  else ok "Display over other apps allowed (Home opens when the car is switched on)"; fi
 else
   skip "Runtime permissions" "Android $REL grants them at install"
 fi

@@ -38,7 +38,9 @@ import java.util.Set;
  */
 final class MusicScreen extends Screen {
     private Widgets.Disc disc;
-    private TextView title, artist, elapsed, total, emptyNote;
+    private TextView title, artist, elapsed, total, emptyNote, route;
+    private LinearLayout actionsRow;
+    private String actionsSig = "";
     private Widgets.Slider seek;
     private Icons.GlyphView playGlyph, volGlyph;
     private FrameLayout playBtn;
@@ -90,7 +92,7 @@ final class MusicScreen extends Screen {
         disc = new Widgets.Disc(c, 0.4545f, true);
         disc.showArm(true);
         box.addView(disc, new FrameLayout.LayoutParams(Ui.MATCH, Ui.MATCH));
-        col.addView(box, Ui.lp(Ui.u(250), Ui.u(250)));
+        col.addView(box, Ui.lp(Ui.u(230), Ui.u(230)));
 
         title = Ui.text(c, "", 34, Ui.TEXT, Ui.display(600));
         title.setGravity(Gravity.CENTER);
@@ -98,6 +100,19 @@ final class MusicScreen extends Screen {
         artist.setGravity(Gravity.CENTER);
         col.addView(title, Ui.margins(Ui.lp(Ui.u(460), Ui.WRAP), 0, 22, 0, 0));
         col.addView(artist, Ui.margins(Ui.lp(Ui.u(460), Ui.WRAP), 0, 6, 0, 0));
+        // Where the phone's music is heard; a tap helps move it to the car's speakers.
+        route = Ui.text(c, "", 14, Ui.TEXT_2, Ui.body(500));
+        route.setGravity(Gravity.CENTER);
+        route.setPadding(Ui.u(12), Ui.u(6), Ui.u(12), Ui.u(6));
+        route.setVisibility(View.GONE);
+        route.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                RemoteMedia ph = a.media().phone();
+                if (ph != null && !ph.throughBluetooth()) a.carAudioHelp();
+            }
+        });
+        col.addView(route, Ui.margins(Ui.lp(Ui.WRAP, Ui.WRAP), 0, 8, 0, 0));
 
         LinearLayout ctl = Ui.row(c);
         ctl.addView(Parts.ctlButton(c, Icons.REWIND, 56, "Back 10 seconds", new View.OnClickListener() {
@@ -158,6 +173,11 @@ final class MusicScreen extends Screen {
         seekRow.addView(seek, Ui.margins(Ui.lpw(0, Ui.u(36), 1), 14, 0, 14, 0));
         seekRow.addView(total, Ui.lp(Ui.u(48), Ui.WRAP));
         col.addView(seekRow, Ui.margins(Ui.lp(Ui.u(460), Ui.WRAP), 0, 22, 0, 0));
+        // The playing app's own buttons (Like, Shuffle, Repeat, ...).
+        actionsRow = Ui.row(c);
+        actionsRow.setGravity(Gravity.CENTER);
+        actionsRow.setVisibility(View.GONE);
+        col.addView(actionsRow, Ui.margins(Ui.lp(Ui.u(460), Ui.WRAP), 0, 16, 0, 0));
 
         f.addView(col, new FrameLayout.LayoutParams(Ui.MATCH, Ui.MATCH));
 
@@ -397,7 +417,7 @@ final class MusicScreen extends Screen {
             }
             if (q.isEmpty()) {
                 list.addView(note(m.phoneSource() != null
-                        ? "Playing " + m.phoneSource() + ". Pause, skip and seek with the controls on the right."
+                        ? "Playing " + m.phoneSource() + ". This app doesn't share its queue; pause, skip and seek with the controls on the right."
                         : m.hasSession()
                         ? "This music app doesn't share its queue. Use the controls on the right, or switch tracks in the app."
                         : "Nothing is playing. Pick a song under “My songs” or an app under “Music apps”.", null, null));
@@ -750,6 +770,26 @@ final class MusicScreen extends Screen {
             if (src != null) artist.setText(ar != null ? ar + "  ·  " + src : src);
             else artist.setText(ar != null ? ar : m.isLocal() ? "On this head unit" : a.appLabel(m.packageName()));
         }
+        RemoteMedia ph = m.phone();
+        if (ph != null && ph.route != null) {
+            route.setVisibility(View.VISIBLE);
+            if (ph.throughBluetooth()) {
+                Ui.setText(route, "♪  Playing through " + (ph.routeName != null ? ph.routeName : "Bluetooth") + " (Bluetooth)");
+                route.setBackground(null);
+                route.setTextColor(Ui.TEXT_2);
+            } else if (ph.onPhoneSpeaker()) {
+                Ui.setText(route, "Sound is on the phone  ·  Tap to play in the car");
+                route.setBackground(Ui.fill(Ui.white(0.10f), Ui.withAlpha(Ui.accent(), 0x99), 999));
+                route.setTextColor(Ui.TEXT);
+            } else {
+                Ui.setText(route, "♪  Playing through " + (ph.routeName != null ? ph.routeName : "the phone's audio output"));
+                route.setBackground(null);
+                route.setTextColor(Ui.TEXT_2);
+            }
+        } else {
+            route.setVisibility(View.GONE);
+        }
+        updateActions(m);
         disc.setArt(m.art());
         disc.setSpinning(playing);
         playGlyph.set(playing ? Icons.PAUSE : Icons.PLAY);
@@ -758,6 +798,24 @@ final class MusicScreen extends Screen {
         seek.setEnabled(m.duration() > 0);
         onTick();
         rebuildList();
+    }
+
+    private void updateActions(MediaHub m) {
+        List<String[]> acts = m.customActions();
+        StringBuilder sig = new StringBuilder();
+        for (String[] x : acts) sig.append(x[0]).append('=').append(x[1]).append(';');
+        if (sig.toString().equals(actionsSig)) return;
+        actionsSig = sig.toString();
+        actionsRow.removeAllViews();
+        for (final String[] x : acts) {
+            TextView b = Parts.outlineButton(a, x[1], 15, 18, 48, 24, new View.OnClickListener() {
+                @Override
+                public void onClick(View v) { a.media().customAction(x[0]); }
+            });
+            b.setContentDescription(x[1]);
+            actionsRow.addView(b, Ui.margins(Ui.lp(Ui.WRAP, Ui.u(48)), actionsRow.getChildCount() == 0 ? 0 : 10, 0, 0, 0));
+        }
+        actionsRow.setVisibility(acts.isEmpty() ? View.GONE : View.VISIBLE);
     }
 
     @Override

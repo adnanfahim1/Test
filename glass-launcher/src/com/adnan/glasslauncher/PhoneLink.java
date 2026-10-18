@@ -26,6 +26,7 @@ final class PhoneLink {
     /** Public profile ids: HEADSET 1, A2DP 2; car-side ids used by head units: A2DP_SINK 11, HEADSET_CLIENT 16. */
     private static final int[] PROFILES = {1, 2, 11, 16};
     static final String PERM_CONNECT = "android.permission.BLUETOOTH_CONNECT";
+    static final String PERM_ADVERTISE = "android.permission.BLUETOOTH_ADVERTISE";
 
     private final Context ctx;
     private final Map<Integer, BluetoothProfile> proxies = new HashMap<Integer, BluetoothProfile>();

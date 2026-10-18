@@ -50,7 +50,7 @@ public final class MainActivity extends Activity {
 
     private SharedPreferences sp;
     private LinearLayout setupList, tipsBox;
-    private TextView statusTitle, statusSub, statusDetail, startBtn, setupHeader, carInfo, hostInfo, updState, logView, logToggle;
+    private TextView statusTitle, statusSub, statusDetail, startBtn, setupHeader, carInfo, hostInfo, updState, logView, logToggle, msgToggle;
     private View statusDot;
     private TextView sendBundled;
     private File bundled;
@@ -98,7 +98,7 @@ public final class MainActivity extends Activity {
         head.addView(icon, new LinearLayout.LayoutParams(dp(52), dp(52)));
         LinearLayout ht = column();
         ht.addView(text("Glass Link", 24, TEXT, true));
-        ht.addView(text("Weather and directions from this phone to your car", 13, MUTED, false));
+        ht.addView(text("Weather, directions, music and messages from this phone to your car", 13, MUTED, false));
         head.addView(ht, weightLp(dp(12)));
         col.addView(head);
 
@@ -146,6 +146,14 @@ public final class MainActivity extends Activity {
             @Override
             public void onClick(View v) { askHost(); }
         }), topLp(dp(10)));
+        msgToggle = button("", false, new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                sp.edit().putBoolean(Messages.K_SHARE, !Messages.sharing(MainActivity.this)).apply();
+                refresh();
+            }
+        });
+        car.addView(msgToggle, topLp(dp(10)));
         col.addView(car, topLp(dp(14)));
 
         // Update
@@ -259,7 +267,12 @@ public final class MainActivity extends Activity {
         String turn = NavListener.lastTurn;
         if (turn != null) d.append(d.length() > 0 ? "\n" : "").append("➜  ").append(turn);
         String song = PhoneMedia.nowPlaying;
-        if (song != null) d.append(d.length() > 0 ? "\n" : "").append("♪  ").append(song);
+        if (song != null) {
+            d.append(d.length() > 0 ? "\n" : "").append("♪  ").append(song);
+            String[] r = PhoneMedia.route(this);
+            d.append("\n🔊  ").append("bt".equals(r[0]) ? "Sound: " + r[1] + " (Bluetooth)"
+                    : "Sound: this phone. Connect Bluetooth to the car stereo to hear it in the car");
+        }
         statusDetail.setText(d.toString());
         statusDetail.setVisibility(d.length() > 0 && state == LinkService.ST_CONNECTED ? View.VISIBLE : View.GONE);
         startBtn.setText(running ? "Stop" : "Start");
@@ -275,7 +288,8 @@ public final class MainActivity extends Activity {
                     + "2. Easiest: turn on this phone's hotspot and connect the car to it (car: Settings › Wi-Fi & internet). "
                     + "Glass Link finds it within seconds.\n"
                     + "3. Bluetooth works only if the car's Android Bluetooth is the one paired with this phone. On many head "
-                    + "units it's a separate module, so use Wi-Fi.\n"
+                    + "units the calls-and-music Bluetooth is a separate module: the car's Settings › Phone link shows the "
+                    + "name to pair with, or says to use Wi-Fi.\n"
                     + "4. Still nothing? On the car open Settings › Weather › Phone link, note the Wi-Fi address, and enter "
                     + "it below under Your car.", 13, MUTED, false), topLp(dp(6)));
         }
@@ -302,6 +316,8 @@ public final class MainActivity extends Activity {
         String host = sp.getString(LinkService.K_HOST, null), last = sp.getString(LinkService.K_LAST_HOST, null);
         hostInfo.setText("Wi-Fi: " + (host != null && host.length() > 0 ? host : "found automatically")
                 + (last != null && (host == null || host.length() == 0) ? " · last seen at " + last : ""));
+
+        msgToggle.setText(Messages.sharing(this) ? "Messages shown in the car: on (tap to turn off)" : "Messages shown in the car: off (tap to turn on)");
 
         // Update
         StringBuilder u = new StringBuilder();

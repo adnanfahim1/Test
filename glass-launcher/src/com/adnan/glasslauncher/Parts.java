@@ -128,9 +128,13 @@ final class Parts {
             Ui.setText(date, date());
             Ui.setText(clock, time());
             String phone = a.phoneName();
+            PhoneBridge b = a.bridge();
+            if (phone == null && b != null && b.connected()) phone = b.phoneName() != null ? b.phoneName() : "Phone";
             boolean on = phone != null;
             boolean needPerm = a.phoneLink().needsPermission();
-            Ui.setText(chipText, on ? phone + " connected" : needPerm ? "Allow Bluetooth" : "No phone");
+            int bat = b != null ? b.battery() : -1;
+            Ui.setText(chipText, on ? phone + (bat >= 0 ? " · " + bat + "%" + (b.charging() ? " ⚡" : "") : " connected")
+                    : needPerm ? "Allow Bluetooth" : "No phone");
             if (chipOn == null || chipOn != on) {
                 chipOn = on;
                 dot.set(on ? Ui.SUCCESS : Ui.FAINT, false);
@@ -319,7 +323,10 @@ final class Parts {
                 String t = m.title();
                 title.setText(t != null ? t : "Unknown track");
                 String ar = m.artist();
-                artist.setText(ar != null ? ar : m.isLocal() ? "On this head unit" : a.appLabel(m.packageName()));
+                RemoteMedia ph = m.phone();
+                String where = ph != null && ph.onPhoneSpeaker() ? "sound on the phone · tap for car audio" : null;
+                String line = ar != null ? ar : m.isLocal() ? "On this head unit" : a.appLabel(m.packageName());
+                artist.setText(where != null ? (line != null ? line + "  ·  " + where : where) : line);
                 Bitmap art = m.art();
                 disc.setArt(art);
                 long d = m.duration();

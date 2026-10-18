@@ -5,7 +5,12 @@ import android.content.Context;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
+import android.media.AudioDeviceCallback;
+import android.media.AudioDeviceInfo;
+import android.media.AudioManager;
+import android.media.MediaDescription;
 import android.media.MediaMetadata;
+import android.media.session.MediaSession;
 import android.media.session.MediaController;
 import android.media.session.MediaSessionManager;
 import android.media.session.PlaybackState;
@@ -14,6 +19,7 @@ import android.os.Looper;
 import android.os.SystemClock;
 import android.util.Base64;
 
+import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.ByteArrayOutputStream;
@@ -32,7 +38,7 @@ final class PhoneMedia implements MediaSessionManager.OnActiveSessionsChangedLis
     private final ComponentName listener;
     private MediaSessionManager msm;
     private MediaController controller;
-    private String lastJson, sentArtId;
+    private String lastJson, sentArtId, lastQueue;
     private String artId, artData;
     static volatile String nowPlaying; // for the app screen
 
@@ -63,13 +69,14 @@ final class PhoneMedia implements MediaSessionManager.OnActiveSessionsChangedLis
                 if (p == null) return;
                 p.lastJson = null;
                 p.sentArtId = null;
+                p.lastQueue = null;
                 p.publish();
             }
         });
     }
 
-    /** A command from the car: play, pause, next, prev, seek. */
-    static void command(final String cmd, final long pos) {
+    /** A command from the car: play, pause, next, prev, seek, queue (jump to an item), custom. */
+    static void command(final String cmd, final long pos, final long id, final String action) {
         MAIN.post(new Runnable() {
             @Override
             public void run() {
@@ -83,7 +90,10 @@ final class PhoneMedia implements MediaSessionManager.OnActiveSessionsChangedLis
                     else if ("next".equals(cmd)) t.skipToNext();
                     else if ("prev".equals(cmd)) t.skipToPrevious();
                     else if ("seek".equals(cmd)) t.seekTo(Math.max(0, pos));
-                    LinkService.log("Music: the car asked to " + cmd);
+                    else if ("queue".equals(cmd)) t.skipToQueueItem(id);
+                    else if ("custom".equals(cmd) && action != null) t.sendCustomAction(action, p.actionExtras(action));
+                    else return;
+                    LinkService.log("Music: the car asked to " + ("custom".equals(cmd) ? action : cmd));
                 } catch (Throwable e) {
                     LinkService.log("Music: " + mc.getPackageName() + " refused " + cmd);
                 }
@@ -91,11 +101,53 @@ final class PhoneMedia implements MediaSessionManager.OnActiveSessionsChangedLis
         });
     }
 
+    private android.os.Bundle actionExtras(String action) {
+        try {
+            PlaybackState st = controller != null ? controller.getPlaybackState() : null;
+            if (st != null) {
+                for (PlaybackState.CustomAction ca : st.getCustomActions()) {
+                    if (action.equals(ca.getAction())) return ca.getExtras();
+                }
+            }
+        } catch (Throwable ignored) {}
+        return null;
+    }
+
+    /** Where this phone's music comes out: {"bt", name} for Bluetooth audio (car, earbuds), else {"phone", null}. */
+    static String[] route(Context c) {
+        try {
+            AudioManager am = (AudioManager) c.getSystemService(Context.AUDIO_SERVICE);
+            String wired = null;
+            for (AudioDeviceInfo d : am.getDevices(AudioManager.GET_DEVICES_OUTPUTS)) {
+                int t = d.getType();
+                // 26/27/30 = Bluetooth LE headset / speaker / broadcast (Android 12+)
+                if (t == AudioDeviceInfo.TYPE_BLUETOOTH_A2DP || t == 26 || t == 27 || t == 30) {
+                    CharSequence n = d.getProductName();
+                    return new String[]{"bt", n != null && n.length() > 0 ? n.toString() : "Bluetooth audio"};
+                }
+                if (t == AudioDeviceInfo.TYPE_WIRED_HEADSET || t == AudioDeviceInfo.TYPE_WIRED_HEADPHONES
+                        || t == AudioDeviceInfo.TYPE_USB_DEVICE || t == 22 /* USB headset */) {
+                    wired = "Cable / USB audio";
+                }
+            }
+            if (wired != null) return new String[]{"wired", wired};
+        } catch (Throwable ignored) {}
+        return new String[]{"phone", null};
+    }
+
+    private final AudioDeviceCallback devices = new AudioDeviceCallback() {
+        @Override public void onAudioDevicesAdded(AudioDeviceInfo[] added) { lastJson = null; publish(); }
+        @Override public void onAudioDevicesRemoved(AudioDeviceInfo[] removed) { lastJson = null; publish(); }
+    };
+
     private void start() {
         if (msm != null) return;
         try {
             msm = (MediaSessionManager) ctx.getSystemService(Context.MEDIA_SESSION_SERVICE);
             msm.addOnActiveSessionsChangedListener(this, listener, MAIN);
+            try {
+                ((AudioManager) ctx.getSystemService(Context.AUDIO_SERVICE)).registerAudioDeviceCallback(devices, MAIN);
+            } catch (Throwable ignored) {}
             onActiveSessionsChanged(msm.getActiveSessions(listener));
             LinkService.log("Music: watching this phone's music apps");
         } catch (SecurityException e) {
@@ -127,6 +179,7 @@ final class PhoneMedia implements MediaSessionManager.OnActiveSessionsChangedLis
     private final MediaController.Callback cb = new MediaController.Callback() {
         @Override public void onPlaybackStateChanged(PlaybackState state) { publish(); }
         @Override public void onMetadataChanged(MediaMetadata metadata) { publish(); }
+        @Override public void onQueueChanged(List<MediaSession.QueueItem> queue) { publish(); }
         @Override public void onSessionDestroyed() {
             controller = null;
             publish();
@@ -185,6 +238,20 @@ final class PhoneMedia implements MediaSessionManager.OnActiveSessionsChangedLis
                 if (artist != null) o.put("artist", artist);
                 if (album != null) o.put("album", album);
                 if (artId != null) o.put("artId", artId);
+                String[] r = route(ctx);
+                o.put("route", r[0]);
+                if (r[1] != null) o.put("routeName", r[1]);
+                JSONArray acts = new JSONArray();
+                if (st != null) {
+                    for (PlaybackState.CustomAction ca : st.getCustomActions()) {
+                        CharSequence n = ca.getName();
+                        if (ca.getAction() == null || n == null || n.length() == 0) continue;
+                        acts.put(new JSONObject().put("id", ca.getAction()).put("name", n.toString()));
+                        if (acts.length() >= 4) break;
+                    }
+                    o.put("qid", st.getActiveQueueItemId());
+                }
+                if (acts.length() > 0) o.put("actions", acts);
                 nowPlaying = title + (artist != null ? " · " + artist : "") + " (" + app + ")";
                 if (playing) MAIN.postDelayed(resync, 10000);
             }
@@ -193,12 +260,35 @@ final class PhoneMedia implements MediaSessionManager.OnActiveSessionsChangedLis
                 lastJson = json;
                 LinkService.media(json);
             }
+            String q = queueJson(mc);
+            if (!q.equals(lastQueue) && LinkService.media(q)) lastQueue = q;
             if (artId != null && artData != null && !artId.equals(sentArtId) && LinkService.media(
                     new JSONObject().put("t", "media_art").put("artId", artId).put("data", artData).toString())) {
                 sentArtId = artId;
             }
             MainActivity.refreshSoon();
         } catch (Throwable ignored) {
+        }
+    }
+
+    /** The app's play queue ("Up next"), at most 60 items. */
+    private static String queueJson(MediaController mc) {
+        try {
+            JSONArray items = new JSONArray();
+            List<MediaSession.QueueItem> q = mc != null ? mc.getQueue() : null;
+            if (q != null) {
+                for (MediaSession.QueueItem it : q) {
+                    MediaDescription d = it.getDescription();
+                    if (d == null || d.getTitle() == null) continue;
+                    JSONObject o = new JSONObject().put("id", it.getQueueId()).put("title", d.getTitle().toString());
+                    if (d.getSubtitle() != null) o.put("sub", d.getSubtitle().toString());
+                    items.put(o);
+                    if (items.length() >= 60) break;
+                }
+            }
+            return new JSONObject().put("t", "media_queue").put("items", items).toString();
+        } catch (Throwable t) {
+            return "{\"t\":\"media_queue\",\"items\":[]}";
         }
     }
 

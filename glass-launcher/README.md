@@ -3,8 +3,27 @@
 An Android home-screen launcher for Nakamichi Android car players, built from the "NAM5240T
 Glass Launcher" design handoff (`design-source/`).
 
-**Download:** [`dist/GlassLauncher.apk`](dist/GlassLauncher.apk) (about 3 MB, version 1.7.1) for the head unit, and
-[`dist/GlassLink.apk`](dist/GlassLink.apk) (optional, about 3 MB, version 1.4.1) for your Android phone.
+**Download:** [`dist/GlassLauncher.apk`](dist/GlassLauncher.apk) (about 3 MB, version 1.8.0) for the head unit, and
+[`dist/GlassLink.apk`](dist/GlassLink.apk) (optional, about 3 MB, version 1.5.0) for your Android phone.
+
+## New in 1.8
+
+- **Phone music in the car's speakers.** The sound travels over the phone's normal Bluetooth audio
+  connection to the car stereo (the one calls use), like CarPlay over Bluetooth. Glass Link tells the car
+  where the sound comes out: the Music screen shows "Playing through <car stereo> (Bluetooth)", or "Sound is
+  on the phone · Tap to play in the car", which shows the steps on the car and a one-tap Bluetooth tip on the phone.
+  Optional: switch the stereo to its Bluetooth-music source automatically (Settings › Sound & music).
+- **Car-play style extras:** the phone app's **queue** (tap a song to play it), its own buttons (**Like**,
+  **Shuffle**, …), **resume music when the phone connects**, the phone's **battery** in the status chip, and
+  **messages** (SMS, WhatsApp, …) as a banner with **Read aloud**, **quick replies** and **Mark read**
+  (Settings › Bluetooth › Messages; off or sender-only if you prefer; "Messages shown in the car" in Glass Link).
+- **Always opens on Home** when the car is switched on, whatever app or screen was open (boot, wake from
+  sleep, or screen back on after 90 s). On Android 10+ this needs "Display over other apps", which the setup
+  script grants (or Settings › Home screen). Turn it off under Settings › Home screen.
+- **Bluetooth link:** Glass Link now tries every likely paired device (Android head units often show up as a
+  phone or tablet), asks them which services they offer, retries the moment a device connects, and explains
+  in its log why a device can't link. The car's Settings › Bluetooth shows which name to pair with, can make
+  the head unit visible for pairing, and says plainly when only Wi-Fi is possible (separate Bluetooth module).
 
 ## New in 1.7
 

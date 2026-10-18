@@ -156,6 +156,16 @@ final class NewApi {
         }
     }
 
+    // ---- API 23: "Display over other apps" (lets Home open itself after the car is switched on)
+    static boolean canDrawOverlays(Context c) {
+        if (SDK < 23) return true;
+        try {
+            return android.provider.Settings.canDrawOverlays(c);
+        } catch (Throwable t) {
+            return false;
+        }
+    }
+
     // ---- API 33 (Android 13) --------------------------------------------------------------
     static void registerReceiver(Context c, BroadcastReceiver r, IntentFilter f) {
         if (SDK >= 33) {

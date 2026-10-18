@@ -28,8 +28,10 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.SystemClock;
 import android.provider.Settings;
 import android.text.InputType;
+import android.util.Log;
 import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.View;
@@ -82,6 +84,10 @@ public class MainActivity extends Activity implements MediaHub.Listener {
     private PhoneBridge bridge;
     private PhoneBridge.Nav nav;
     private int weatherState = W_LOADING;
+    private MessageBanner banner;
+    private Speaker speaker;
+    private long linkUpAt;
+    private boolean resumedThisLink, btSwitchedThisLink;
     private long lastWeatherTry;
     private LocationListener pendingLocation;
 
@@ -130,9 +136,23 @@ public class MainActivity extends Activity implements MediaHub.Listener {
 
             @Override
             public void onPhoneLink() {
-                if (bridge.connected()) refreshWeather(true);
+                if (bridge.connected()) {
+                    if (linkUpAt == 0) {
+                        linkUpAt = SystemClock.elapsedRealtime();
+                        resumedThisLink = false;
+                        btSwitchedThisLink = false;
+                        refreshWeather(true);
+                    }
+                } else {
+                    linkUpAt = 0;
+                }
                 updatePhone();
                 weatherChanged();
+            }
+
+            @Override
+            public void onPhoneMessage(PhoneBridge.Message m) {
+                if (!safeMode && banner != null) banner.show(m);
             }
 
             @Override
@@ -153,8 +173,9 @@ public class MainActivity extends Activity implements MediaHub.Listener {
             public void onPhoneMedia(RemoteMedia m) {
                 media.setRemote(m, new RemoteMedia.Control() {
                     @Override
-                    public void command(String cmd, long pos) { bridge.mediaCommand(cmd, pos); }
+                    public void command(String cmd, long pos, long id, String action) { bridge.mediaCommand(cmd, pos, id, action); }
                 });
+                phoneMusicArrived(m);
             }
         });
         // Fallback for the Navigation card: a maps app navigating on the head unit itself.
@@ -165,6 +186,8 @@ public class MainActivity extends Activity implements MediaHub.Listener {
                 navChanged();
             }
         };
+        HomeKeeper.install(this);
+        speaker = new Speaker(this);
         weather = Weather.Data.fromJson(prefs.weatherCache());
         if (weather != null) weatherState = W_OK;
         safeMode = boot >= 2;
@@ -180,6 +203,10 @@ public class MainActivity extends Activity implements MediaHub.Listener {
         loader = new Widgets.WheelLoader(this);
         root.addView(loader, new FrameLayout.LayoutParams(Ui.MATCH, Ui.MATCH));
         buildToast(root);
+        banner = new MessageBanner(this);
+        FrameLayout.LayoutParams bp = Ui.flp(Ui.u(860), Ui.WRAP, Gravity.TOP | Gravity.CENTER_HORIZONTAL);
+        bp.topMargin = Ui.u(16);
+        root.addView(banner, bp);
         watchInsetsAndSize();
         // Compatibility mode: draw in software (avoids GPU-driver crashes on some head units).
         if (Ui.lite) root.setLayerType(View.LAYER_TYPE_SOFTWARE, null);
@@ -357,6 +384,10 @@ public class MainActivity extends Activity implements MediaHub.Listener {
         startedAt = System.currentTimeMillis();
         touched = false;
         CrashGuard.stage(this, "start");
+        // The car was switched off and on again: start from Home, whatever was open before.
+        if (HomeKeeper.consumePending() && !safeMode && current != HOME) {
+            try { show(HOME, false); } catch (Throwable t) { CrashGuard.report(this, "home reset", t); }
+        }
         try {
             registerReceivers();
             if (!safeMode) bridge.start();
@@ -378,6 +409,7 @@ public class MainActivity extends Activity implements MediaHub.Listener {
     protected void onDestroy() {
         super.onDestroy();
         try { bridge.stop(); } catch (Throwable ignored) {}
+        if (speaker != null) speaker.shutdown();
     }
 
     @Override
@@ -419,6 +451,7 @@ public class MainActivity extends Activity implements MediaHub.Listener {
         super.onNewIntent(intent);
         setIntent(intent);
         boolean handled = applyIntent(intent);
+        HomeKeeper.consumePending(); // this intent already shows Home
         // Pressing Home always returns to the chosen home layout.
         if (!handled && Intent.ACTION_MAIN.equals(intent.getAction()) && !safeMode) {
             hideKeyboard(getCurrentFocus());
@@ -902,7 +935,7 @@ public class MainActivity extends Activity implements MediaHub.Listener {
     }
 
     void requestBluetoothPermission() {
-        NewApi.request(this, new String[]{PhoneLink.PERM_CONNECT}, REQ_BLUETOOTH);
+        NewApi.request(this, new String[]{PhoneLink.PERM_CONNECT, PhoneLink.PERM_ADVERTISE}, REQ_BLUETOOTH);
     }
 
     /** Lets the user pick (or reset to auto-detect) the app for a connection role. */
@@ -1248,6 +1281,83 @@ public class MainActivity extends Activity implements MediaHub.Listener {
 
     // ---- Phone link (Glass Link app) --------------------------------------------------------
     PhoneBridge bridge() { return bridge; }
+
+    Speaker speaker() { return speaker; }
+
+    /**
+     * Car-play style: when the phone connects and its music comes out of the car's Bluetooth,
+     * resume it once; optionally switch the head unit to its Bluetooth-music source.
+     */
+    private void phoneMusicArrived(RemoteMedia m) {
+        if (m == null || !m.active || !m.throughBluetooth() || linkUpAt == 0) return;
+        long sinceLink = SystemClock.elapsedRealtime() - linkUpAt;
+        if (!resumedThisLink && prefs.resumeOnConnect() && !m.playing && sinceLink < 90000) {
+            resumedThisLink = true;
+            bridge.mediaCommand("play", 0);
+            Log.i(HomeKeeper.TAG, "Phone connected with Bluetooth audio: resuming its music");
+        }
+        if (m.playing) resumedThisLink = true; // already playing: nothing to resume this time
+        if (m.playing && !btSwitchedThisLink && prefs.btMusicSwitch() && started) {
+            btSwitchedThisLink = true;
+            final ComponentName cn = Vendor.find(this, prefs, Vendor.BT_MUSIC);
+            if (cn != null && AppsRepo.launch(this, cn)) {
+                // Its source is now active; come back to the launcher.
+                main.postDelayed(new Runnable() {
+                    @Override
+                    public void run() { HomeKeeper.bringHome(MainActivity.this); }
+                }, 2500);
+            }
+        }
+    }
+
+    /** "Tap to play in the car": the phone shows how to connect Bluetooth audio; the car helps from its side. */
+    void carAudioHelp() {
+        bridge.askAudioHelp();
+        final ComponentName btMusic = Vendor.find(this, prefs, Vendor.BT_MUSIC);
+        try {
+            AlertDialog.Builder b = new AlertDialog.Builder(this, AlertDialog.THEME_DEVICE_DEFAULT_DARK)
+                    .setTitle("Play the phone's music in the car")
+                    .setMessage("The music comes out of the car's speakers over Bluetooth, the same way as calls.\n\n"
+                            + "1. On the phone: tap the tip Glass Link just showed (or open Bluetooth) and connect to the car "
+                            + "stereo with “Media audio” on.\n"
+                            + "2. On some head units, also open Bluetooth music once so the stereo switches to it.\n\n"
+                            + "The car's screen keeps showing and controlling the song.")
+                    .setNegativeButton("Close", null);
+            if (btMusic != null) {
+                b.setPositiveButton("Open Bluetooth music", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface d, int w) {
+                        if (!AppsRepo.launch(MainActivity.this, btMusic)) toast("Couldn't open Bluetooth music");
+                    }
+                });
+            }
+            b.setNeutralButton("Car Bluetooth", new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface d, int w) { openRole(Vendor.PHONE); }
+            });
+            b.show();
+        } catch (Throwable t) {
+            CrashGuard.report(this, "audio help", t);
+        }
+    }
+
+    /** Settings page for "Display over other apps" (lets Home come back by itself after the car is switched on). */
+    void openOverlaySettings() {
+        Intent i = new Intent("android.settings.action.MANAGE_OVERLAY_PERMISSION", Uri.parse("package:" + getPackageName()));
+        if (!startSafe(i, null)) startSafe(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + getPackageName())),
+                "Open Android Settings › Apps › Glass Launcher › Display over other apps");
+    }
+
+    /** Makes the head unit's own Android Bluetooth visible so the phone can pair with it (for the Bluetooth link). */
+    void makeDiscoverable() {
+        if (phone.needsPermission() || (NewApi.SDK >= 31 && !NewApi.granted(this, PhoneLink.PERM_ADVERTISE))) {
+            requestBluetoothPermission();
+            return;
+        }
+        Intent i = new Intent(android.bluetooth.BluetoothAdapter.ACTION_REQUEST_DISCOVERABLE)
+                .putExtra(android.bluetooth.BluetoothAdapter.EXTRA_DISCOVERABLE_DURATION, 300);
+        startSafe(i, "This head unit can't make its Bluetooth visible; use Wi-Fi for the phone link");
+    }
 
     /** Turn-by-turn from the phone, or null when no route is active. */
     PhoneBridge.Nav nav() {

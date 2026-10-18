@@ -119,6 +119,27 @@ final class Prefs {
     void setWeatherCache(String json) { sp.edit().putString("w_cache", json).apply(); }
 
     boolean tempFahrenheit() { return getBool("w_f", false); }
+
+    // ---- Car-play style behaviour ----------------------------------------------------------
+    /** After the car is switched on (or wakes), show the Home screen whatever was open before. */
+    boolean alwaysHome() { return getBool("always_home", true); }
+    void setAlwaysHome(boolean on) { sp.edit().putBoolean("always_home", on).apply(); }
+
+    /** When the phone connects and its music comes out of the car's Bluetooth, press play. */
+    boolean resumeOnConnect() { return getBool("resume_on_connect", true); }
+    void setResumeOnConnect(boolean on) { sp.edit().putBoolean("resume_on_connect", on).apply(); }
+
+    /** Switch the head unit to its Bluetooth-music source when phone music starts over Bluetooth. */
+    boolean btMusicSwitch() { return getBool("bt_music_switch", false); }
+    void setBtMusicSwitch(boolean on) { sp.edit().putBoolean("bt_music_switch", on).apply(); }
+
+    static final String[] MESSAGE_MODES = {"Off", "Sender only", "Sender and text"};
+    /** 0 off, 1 sender only, 2 sender and text. */
+    int messageMode() { int m = getInt("msg_mode", 2); return m < 0 || m > 2 ? 2 : m; }
+    void setMessageMode(int m) { sp.edit().putInt("msg_mode", m).apply(); }
+
+    boolean readMessagesAloud() { return getBool("msg_aloud", false); }
+    void setReadMessagesAloud(boolean on) { sp.edit().putBoolean("msg_aloud", on).apply(); }
     void setTempFahrenheit(boolean v) { sp.edit().putBoolean("w_f", v).apply(); }
 
     // ---- Diagnostics ----------------------------------------------------------------------

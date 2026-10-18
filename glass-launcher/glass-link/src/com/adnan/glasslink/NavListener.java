@@ -21,7 +21,8 @@ import java.util.List;
 
 /**
  * Reads the ongoing navigation notification of maps apps and forwards the next turn to the
- * car. Other apps' notifications are ignored and never leave the phone.
+ * car, and new chat messages (see {@link Messages}; can be turned off). Other notifications
+ * are ignored and never leave the phone.
  */
 public final class NavListener extends NotificationListenerService {
     static final String[] MAPS = {
@@ -69,6 +70,7 @@ public final class NavListener extends NotificationListenerService {
     public void onNotificationPosted(StatusBarNotification sbn) {
         try {
             PhoneMedia.ping(this);
+            Messages.posted(this, sbn);
             int app = mapsIndex(sbn.getPackageName());
             if (app < 0) return;
             Notification n = sbn.getNotification();

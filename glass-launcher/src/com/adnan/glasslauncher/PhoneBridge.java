@@ -53,18 +53,55 @@ final class PhoneBridge {
         void onUpdateFailed(String message);
         /** What the phone plays changed (null = nothing / link gone). */
         void onPhoneMedia(RemoteMedia m);
+        /** A new chat message arrived on the phone. */
+        void onPhoneMessage(Message m);
     }
+
+    /** A chat message from the phone (SMS, WhatsApp, ...). */
+    static final class Message {
+        String key, app, from, text;
+        boolean canReply, canMarkRead;
+        long at;
+    }
+
+    private volatile int battery = -1;
+    private volatile boolean charging;
+
+    /** The phone's battery in percent, or -1 when unknown. */
+    int battery() { return linked ? battery : -1; }
+
+    boolean charging() { return charging; }
+
+    private volatile java.util.List<android.media.session.MediaSession.QueueItem> queue =
+            new java.util.ArrayList<android.media.session.MediaSession.QueueItem>();
 
     private volatile RemoteMedia media;
 
     RemoteMedia media() { return media; }
 
-    /** Play/pause/next/prev/seek for the phone's music app. */
-    void mediaCommand(String cmd, long positionMs) {
+    /** Play/pause/next/prev/seek/queue/custom for the phone's music app. */
+    void mediaCommand(String cmd, long positionMs, long id, String action) {
         try {
-            send(new JSONObject().put("t", "media_cmd").put("cmd", cmd).put("pos", positionMs).toString());
+            JSONObject o = new JSONObject().put("t", "media_cmd").put("cmd", cmd).put("pos", positionMs);
+            if (id >= 0) o.put("id", id);
+            if (action != null) o.put("action", action);
+            send(o.toString());
         } catch (Throwable ignored) {}
     }
+
+    void mediaCommand(String cmd, long positionMs) { mediaCommand(cmd, positionMs, -1, null); }
+
+    /** Quick reply to a message, sent by the phone's messaging app. */
+    void replyMessage(String key, String text) {
+        try { send(new JSONObject().put("t", "msg_reply").put("key", key).put("text", text).toString()); } catch (Throwable ignored) {}
+    }
+
+    void markMessageRead(String key) {
+        try { send(new JSONObject().put("t", "msg_read").put("key", key).toString()); } catch (Throwable ignored) {}
+    }
+
+    /** Asks Glass Link to show the phone's "connect Bluetooth audio to the car" tip. */
+    void askAudioHelp() { send("{\"t\":\"audio_help\"}"); }
 
     static final class Nav {
         boolean active;
@@ -135,6 +172,28 @@ final class PhoneBridge {
         close(server2);
         close(lanServer);
         close(conn);
+    }
+
+    /** The head unit's own Android Bluetooth name ("" when it can't be read), or null when there is none. */
+    static String androidBluetoothName(Context c) {
+        try {
+            BluetoothAdapter ad = BluetoothAdapter.getDefaultAdapter();
+            if (ad == null) return null;
+            if (!NewApi.granted(c, PhoneLink.PERM_CONNECT)) return "";
+            String n = ad.getName();
+            return n != null ? n : "";
+        } catch (Throwable t) {
+            return "";
+        }
+    }
+
+    static boolean androidBluetoothOn() {
+        try {
+            BluetoothAdapter ad = BluetoothAdapter.getDefaultAdapter();
+            return ad != null && ad.isEnabled();
+        } catch (Throwable t) {
+            return false;
+        }
     }
 
     /** What the link is doing, for Settings › Weather › Phone link. */
@@ -371,6 +430,8 @@ final class PhoneBridge {
                 out = null;
                 conn = null;
             }
+            battery = -1;
+            queue = new java.util.ArrayList<android.media.session.MediaSession.QueueItem>();
             if (media != null) {
                 media = null;
                 post(new Runnable() { @Override public void run() { if (listener != null) listener.onPhoneMedia(null); } });
@@ -478,8 +539,60 @@ final class PhoneBridge {
                 m.receivedAt = android.os.SystemClock.elapsedRealtime();
                 m.artId = str(o, "artId");
                 if (old != null && m.artId != null && m.artId.equals(old.artId)) m.art = old.art; // same cover
+                m.route = str(o, "route");
+                m.routeName = str(o, "routeName");
+                m.activeQueueId = o.optLong("qid", -1);
+                m.queue = queue;
+                org.json.JSONArray acts = o.optJSONArray("actions");
+                if (acts != null) {
+                    for (int i = 0; i < acts.length() && i < 4; i++) {
+                        JSONObject a = acts.optJSONObject(i);
+                        String id = a != null ? str(a, "id") : null, nm = a != null ? str(a, "name") : null;
+                        if (id != null && nm != null) m.actions.add(new String[]{id, nm});
+                    }
+                }
                 media = m.active ? m : null;
                 post(new Runnable() { @Override public void run() { if (listener != null) listener.onPhoneMedia(media); } });
+                return;
+            }
+            if ("media_queue".equals(t)) {
+                java.util.List<android.media.session.MediaSession.QueueItem> q =
+                        new java.util.ArrayList<android.media.session.MediaSession.QueueItem>();
+                org.json.JSONArray items = o.optJSONArray("items");
+                for (int i = 0; items != null && i < items.length() && i < 60; i++) {
+                    JSONObject it = items.optJSONObject(i);
+                    String title = it != null ? str(it, "title") : null;
+                    if (title == null) continue;
+                    long id = it.optLong("id", i);
+                    android.media.MediaDescription d = new android.media.MediaDescription.Builder()
+                            .setMediaId(String.valueOf(id)).setTitle(title).setSubtitle(str(it, "sub")).build();
+                    q.add(new android.media.session.MediaSession.QueueItem(d, id));
+                }
+                queue = q;
+                final RemoteMedia m = media;
+                if (m != null) {
+                    m.queue = q;
+                    post(new Runnable() { @Override public void run() { if (listener != null) listener.onPhoneMedia(m); } });
+                }
+                return;
+            }
+            if ("msg".equals(t)) {
+                final Message msg = new Message();
+                msg.key = str(o, "key");
+                msg.app = str(o, "app");
+                msg.from = str(o, "from");
+                msg.text = str(o, "text");
+                msg.canReply = o.optBoolean("reply", false);
+                msg.canMarkRead = o.optBoolean("read", false);
+                msg.at = System.currentTimeMillis();
+                if (msg.key == null || msg.text == null) return;
+                post(new Runnable() { @Override public void run() { if (listener != null) listener.onPhoneMessage(msg); } });
+                return;
+            }
+            if ("phone".equals(t)) {
+                battery = o.optInt("battery", -1);
+                charging = o.optBoolean("charging", false);
+                post(new Runnable() { @Override public void run() { if (listener != null) listener.onPhoneLink(); } });
                 return;
             }
             if ("media_art".equals(t)) {

@@ -74,6 +74,26 @@ adb shell am start -n $ACT --es screen home >/dev/null; sleep 3
 if $UI tap '^Apps$'; then sleep 2; if $UI has '^[0-9]+ apps$'; then echo "RAIL: Apps opens the app drawer"; else echo "RAIL: Apps didn't open the drawer"; RAIL_FAIL=1; fi; else echo "RAIL: Apps button not found"; RAIL_FAIL=1; fi
 adb shell am start -n $ACT --es screen home >/dev/null; sleep 2
 
+echo "-- Always open on Home: car switched off with Settings open, then on again"
+HOME_FAIL=0
+adb shell locksettings set-disabled true >/dev/null 2>&1 || true
+adb shell am start -n $ACT --es screen settings >/dev/null; sleep 2
+adb shell am start -a android.settings.SETTINGS >/dev/null; sleep 4
+adb shell dumpsys activity activities | grep -m1 -E "ResumedActivity" | tr -d '\r'
+adb shell input keyevent KEYCODE_SLEEP; sleep 100
+adb shell input keyevent KEYCODE_WAKEUP; sleep 3
+adb shell input keyevent 82; sleep 5
+TOP=$(adb shell dumpsys activity activities | grep -m1 -E "ResumedActivity" | tr -d '\r')
+echo "$TOP"
+adb logcat -d -s GlassHome | tail -2
+if echo "$TOP" | grep -q "$PKG/"; then
+  if $UI has '^Good (morning|afternoon|evening)$'; then echo "HOME ON POWER-ON: Home shown"; else echo "HOME ON POWER-ON: launcher in front but not on Home"; $UI text | head -10; HOME_FAIL=1; fi
+else
+  echo "HOME ON POWER-ON: FAILED (another app stayed in front)"; HOME_FAIL=1
+fi
+shot home-after-power-on 1
+adb shell am start -n $ACT --es screen home >/dev/null; sleep 2
+
 echo "== Pull-down panel"
 adb shell settings get secure theme_customization_overlay_packages
 adb shell cmd statusbar expand-settings >/dev/null 2>&1 || adb shell service call statusbar 2 >/dev/null 2>&1
@@ -152,6 +172,30 @@ if [ -f dist/GlassLink.apk ] && [ "${API:-0}" -ge 23 ]; then
     adb logcat -d -s E2E_MEDIA | grep -q "cmd=pause" && echo "PHONE CONTROL: steering-wheel play/pause reached the phone" || { echo "PHONE CONTROL: play/pause FAILED"; LINK_FAIL=1; }
     adb shell input keyevent KEYCODE_MEDIA_PLAY_PAUSE; sleep 2
     adb shell am start -n $ACT --es screen music >/dev/null; shot music-phone 4
+    # 1.8: where the sound plays, the app's own buttons, the phone's queue, messages.
+    adb logcat -c
+    if $UI wait 'Sound is on the phone' 15; then echo "PHONE AUDIO: the car shows the sound is on the phone"; else echo "PHONE AUDIO: route FAILED"; $UI text | head -20; LINK_FAIL=1; fi
+    if $UI tap '^Like$'; then
+      sleep 3; adb logcat -d -s E2E_MEDIA | grep -q "cmd=custom=like" && echo "PHONE BUTTONS: Like reached the music app" || { echo "PHONE BUTTONS: FAILED"; LINK_FAIL=1; }
+    else echo "PHONE BUTTONS: Like not shown"; LINK_FAIL=1; fi
+    if $UI tap '^Queue$' && sleep 2 && $UI tap 'Queue item 3'; then
+      sleep 3; adb logcat -d -s E2E_MEDIA | grep -q "cmd=queue 103" && echo "PHONE QUEUE: picking a song in the car's queue played it on the phone" || { echo "PHONE QUEUE: FAILED"; LINK_FAIL=1; }
+    else echo "PHONE QUEUE: queue not shown"; $UI text | head -20; LINK_FAIL=1; fi
+    shot music-phone-queue 2
+    if $UI tap 'Sound is on the phone' && $UI wait "Play the phone.s music in the car" 10; then
+      echo "PHONE AUDIO: help shown on the car"; shot car-audio-help 1
+      $UI tap '^(Close|CLOSE)$' >/dev/null; sleep 2
+      adb logcat -d -s GlassLink | grep -q "play through its speakers" && echo "PHONE AUDIO: the phone shows its Bluetooth tip" || { echo "PHONE AUDIO: phone tip FAILED"; LINK_FAIL=1; }
+    else echo "PHONE AUDIO: help FAILED"; LINK_FAIL=1; fi
+    echo "-- Messages from the phone"
+    adb shell am start -n com.waze/.TestActivity --ez msg true >/dev/null; sleep 1
+    adb shell am start -n $ACT --es screen home >/dev/null
+    if $UI wait 'Message from Alex' 20; then
+      echo "MESSAGES: shown on the car"; shot message-banner 1
+      if $UI tap '^Reply$' && sleep 1 && $UI tap '^On my way$'; then
+        sleep 3; adb logcat -d -s E2E_MSG | grep -q "reply=On my way" && echo "MESSAGES: quick reply from the car reached the app" || { echo "MESSAGES: reply FAILED"; adb logcat -d -s E2E_MSG GlassLink | tail -6; LINK_FAIL=1; }
+      else echo "MESSAGES: reply buttons FAILED"; $UI text | head -20; LINK_FAIL=1; fi
+    else echo "MESSAGES: FAILED"; adb logcat -d -s GlassLink E2E_MSG | tail -6; LINK_FAIL=1; fi
     adb shell settings put secure enabled_notification_listeners "$LIS"
   fi
 
@@ -198,6 +242,7 @@ if grep -q -E "FATAL EXCEPTION" "$OUT/logcat-$LABEL.txt" && grep -A3 "FATAL EXCE
 fi
 if grep -q -E "CRASH: $PKG|// CRASH" "$OUT/monkey-$LABEL.txt"; then echo "Monkey reported a crash"; FAIL=1; fi
 if [ $LINK_FAIL = 1 ]; then echo "Phone link test failed"; FAIL=1; fi
+if [ $HOME_FAIL = 1 ]; then echo "Home-on-power-on test failed"; FAIL=1; fi
 if [ $RAIL_FAIL = 1 ]; then echo "Rail test failed"; FAIL=1; fi
 if ! adb shell pidof $PKG >/dev/null 2>&1 && ! adb shell ps | grep -q $PKG; then echo "Launcher is not running at the end"; FAIL=1; fi
 RECOVERED=$(adb shell run-as $PKG cat shared_prefs/glass_launcher.xml 2>/dev/null | grep -c last_error || true)
