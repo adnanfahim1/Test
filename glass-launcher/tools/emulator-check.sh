@@ -161,7 +161,12 @@ if [ -f dist/GlassLink.apk ] && [ "${API:-0}" -ge 23 ]; then
     echo "LINK: not found automatically; entering the address by hand"
     $UI tap "Enter the car's Wi-Fi address" --scroll && sleep 1 && $UI edit 127.0.0.1 && $UI tap '^(Save|SAVE)$'
     adb shell input swipe 640 200 640 700 200; adb shell input swipe 640 200 640 700 200
-    if $UI wait '^Connected to' 40; then echo "LINK: connected with the typed address"; else echo "LINK: FAILED"; LINK_FAIL=1; fi
+    if $UI wait '^Connected to' 40; then echo "LINK: connected with the typed address"; else
+      echo "LINK: FAILED"; LINK_FAIL=1
+      echo "   Glass Link's log:"; timeout 20 adb logcat -d -s GlassLink | tail -25
+      echo "   Network:"; timeout 10 adb shell ip -4 addr | grep -E "inet |state" | head -8
+      timeout 10 adb shell "netstat -ltn 2>/dev/null || ss -ltn" | grep -E "4782[0-9]" | head -5
+    fi
   fi
   shot glass-link-connected 2
   $UI tap '^Show$' --scroll >/dev/null; shot glass-link-log 2
