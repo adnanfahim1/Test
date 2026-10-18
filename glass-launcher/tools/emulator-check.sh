@@ -252,8 +252,30 @@ adb shell am start -n $ACT --es screen home >/dev/null; sleep 3
 adb logcat -d > "$OUT/logcat-$LABEL.txt" || true
 
 FAIL=0
-if grep -q -E "FATAL EXCEPTION" "$OUT/logcat-$LABEL.txt" && grep -A3 "FATAL EXCEPTION" "$OUT/logcat-$LABEL.txt" | grep -q -E "$PKG|com.adnan.glasslink"; then
-  echo "CRASH found in logcat:"; grep -A25 "FATAL EXCEPTION" "$OUT/logcat-$LABEL.txt" | head -60; FAIL=1
+# Crashes of our apps fail the run. One exception, reported but not counted: Android 8.0 can start
+# the app's process while the update is replacing its package and die inside Android's own start-up
+# (handleBindApplication, no app code); Android removes that half-started process right away.
+python3 - "$OUT/logcat-$LABEL.txt" "$PKG" > "$OUT/crashes-$LABEL.txt" <<'PY'
+import re, sys
+lines = open(sys.argv[1], errors="replace").read().splitlines()
+pkg = sys.argv[2]
+for i, l in enumerate(lines):
+    if "FATAL EXCEPTION" not in l: continue
+    block = lines[i:i + 40]
+    head = "\n".join(block[:3])
+    if pkg not in head and "com.adnan.glasslink" not in head: continue
+    trace = [b for b in block[1:] if "AndroidRuntime" in b]
+    ours = any("com.adnan." in b and "Process:" not in b for b in trace)
+    during_update = any("handleBindApplication" in b for b in trace) and any(
+        "pkg removed" in b and pkg in b for b in lines[i:i + 25])
+    print(("UPDATE-RACE " if (during_update and not ours) else "CRASH ") + str(i))
+    for b in block[:25]: print("   " + b)
+PY
+if grep -q "^CRASH " "$OUT/crashes-$LABEL.txt"; then
+  echo "CRASH found in logcat:"; head -60 "$OUT/crashes-$LABEL.txt"; FAIL=1
+elif grep -q "^UPDATE-RACE " "$OUT/crashes-$LABEL.txt"; then
+  echo "NOTE: Android killed a half-started launcher process while installing the update (Android-only start-up code, no app code):"
+  head -8 "$OUT/crashes-$LABEL.txt"
 fi
 if grep -q -E "CRASH: $PKG|// CRASH" "$OUT/monkey-$LABEL.txt"; then echo "Monkey reported a crash"; FAIL=1; fi
 if [ $LINK_FAIL = 1 ]; then echo "Phone link test failed"; FAIL=1; fi
