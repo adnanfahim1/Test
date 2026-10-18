@@ -179,7 +179,7 @@ final class PhoneBridge {
         try {
             BluetoothAdapter ad = BluetoothAdapter.getDefaultAdapter();
             if (ad == null) return null;
-            if (!NewApi.granted(c, PhoneLink.PERM_CONNECT)) return "";
+            if (NewApi.SDK >= 31 && !NewApi.granted(c, PhoneLink.PERM_CONNECT)) return ""; // permission exists from Android 12
             String n = ad.getName();
             return n != null ? n : "";
         } catch (Throwable t) {

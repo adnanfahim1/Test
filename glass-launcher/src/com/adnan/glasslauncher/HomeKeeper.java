@@ -33,6 +33,9 @@ final class HomeKeeper {
 
     private static boolean installed;
     private static volatile boolean pending;
+    private static volatile long pendingAt;
+    /** A reset not shown within this time is dropped (e.g. "Display over other apps" was off). */
+    static final long PENDING_MS = 2 * 60 * 1000L;
     private static long screenOffAt = -1;
     private static long sleptBase = -1;
     private static long lastBring;
@@ -62,6 +65,7 @@ final class HomeKeeper {
         public void onReceive(Context c, Intent i) {
             if (Intent.ACTION_SCREEN_OFF.equals(i.getAction())) {
                 screenOffAt = SystemClock.elapsedRealtime();
+                pending = false; // an old reset that never showed doesn't carry over
             } else if (Intent.ACTION_SCREEN_ON.equals(i.getAction())) {
                 long off = screenOffAt < 0 ? 0 : SystemClock.elapsedRealtime() - screenOffAt;
                 screenOffAt = -1;
@@ -91,6 +95,7 @@ final class HomeKeeper {
         if (lastBring > 0 && now - lastBring < 10000) return; // one reset per power-on
         lastBring = now;
         pending = true;
+        pendingAt = now;
         Log.i(TAG, "Car on (" + why + "): opening Home");
         bringHome(c);
     }
@@ -112,7 +117,7 @@ final class HomeKeeper {
 
     /** True once after a power-on: the launcher shows Home instead of the screen it had open. */
     static boolean consumePending() {
-        boolean p = pending;
+        boolean p = pending && SystemClock.elapsedRealtime() - pendingAt < PENDING_MS;
         pending = false;
         return p;
     }

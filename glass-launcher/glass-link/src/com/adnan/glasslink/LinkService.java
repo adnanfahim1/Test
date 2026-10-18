@@ -305,6 +305,8 @@ public final class LinkService extends Service {
     private volatile int battery = -1;
     private volatile boolean charging;
     private final Object btKick = new Object();
+    private volatile long btRoundAt;
+    private static final long BT_KICK_MIN_MS = 12000;
 
     private final BroadcastReceiver events = new BroadcastReceiver() {
         @Override
@@ -321,8 +323,9 @@ public final class LinkService extends Service {
                         charging = ch;
                         sendStatus();
                     }
-                } else {
-                    // A Bluetooth device connected, paired or reported its services: try now.
+                } else if (System.currentTimeMillis() - btRoundAt > BT_KICK_MIN_MS) {
+                    // A Bluetooth device connected, paired or reported its services: try now. Not
+                    // right after a round, whose own connection attempts cause these broadcasts.
                     synchronized (btKick) { btKick.notifyAll(); }
                 }
             } catch (Throwable ignored) {}
@@ -417,6 +420,7 @@ public final class LinkService extends Service {
                     }
                 }
                 rounds++;
+                btRoundAt = System.currentTimeMillis();
                 btWait(rounds < 8 ? 15000 : 45000); // retry often at first, then save battery
             } catch (Throwable t) {
                 log("Bluetooth: " + t.getClass().getSimpleName());
