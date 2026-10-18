@@ -79,23 +79,26 @@ adb shell am start -n $ACT --es screen home >/dev/null; sleep 2
 echo "-- Always open on Home: car switched off with Settings open, then on again"
 HOME_FAIL=0
 adb shell locksettings set-disabled true >/dev/null 2>&1 || true
-# Keep the CPU awake while the screen is off (root-only, i.e. the Android 5 test image): there the
-# emulator otherwise suspends fully and adb no longer reaches it after waking. The screen still goes
-# off, so the launcher sees the same "screen back on after the car was off" as on a head unit.
-adb shell 'echo glasscheck > /sys/power/wake_lock' >/dev/null 2>&1 || true
 adb shell am start -n $ACT --es screen settings >/dev/null; sleep 2
 adb shell am start -a android.settings.SETTINGS >/dev/null; sleep 4
 adb shell dumpsys activity activities | grep -m1 -E "ResumedActivity" | tr -d '\r'
-timeout 20 adb shell input keyevent KEYCODE_SLEEP; sleep 100
-# Some Android versions (5.x) really suspend once the screen is off, like a head unit at ACC-off,
-# and adb can't reach them: then press the power key from the emulator side, like switching the car on.
-if ! timeout 15 adb shell input keyevent KEYCODE_WAKEUP; then
-  echo "(device asleep: power key pressed from the emulator)"
-  adb emu event send EV_KEY:KEY_POWER:1 EV_KEY:KEY_POWER:0 >/dev/null 2>&1 || adb emu event send 1:116:1 1:116:0 >/dev/null 2>&1
-  sleep 5
-  timeout 60 adb wait-for-device
+SDK_NOW=$(adb shell getprop ro.build.version.sdk | tr -d '\r')
+if [ "${SDK_NOW:-0}" -lt 23 ]; then
+  # The Android 5 emulator suspends fully once its screen is off and adb can't reach it afterwards,
+  # so there the head unit's quick-boot power-on signal is sent instead (the launcher listens for it).
+  echo "(Android 5: sending the quick-boot power-on signal)"
+  adb shell am broadcast -a android.intent.action.QUICKBOOT_POWERON -n $PKG/.HomeKeeper\$Boot >/dev/null
+  sleep 10
+else
+  timeout 20 adb shell input keyevent KEYCODE_SLEEP; sleep 100
+  if ! timeout 15 adb shell input keyevent KEYCODE_WAKEUP; then
+    echo "(device asleep: power key pressed from the emulator)"
+    adb emu event send EV_KEY:KEY_POWER:1 EV_KEY:KEY_POWER:0 >/dev/null 2>&1 || adb emu event send 1:116:1 1:116:0 >/dev/null 2>&1
+    sleep 5
+    timeout 60 adb wait-for-device
+  fi
+  sleep 3
 fi
-sleep 3
 timeout 15 adb shell input keyevent 82; sleep 5
 TOP=$(timeout 20 adb shell dumpsys activity activities | grep -m1 -E "ResumedActivity" | tr -d '\r')
 echo "$TOP"
@@ -106,7 +109,6 @@ else
   echo "HOME ON POWER-ON: FAILED (another app stayed in front)"; HOME_FAIL=1
 fi
 shot home-after-power-on 1
-timeout 15 adb shell 'echo glasscheck > /sys/power/wake_unlock' >/dev/null 2>&1 || true
 adb shell am start -n $ACT --es screen home >/dev/null; sleep 2
 
 echo "== Pull-down panel"
