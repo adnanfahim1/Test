@@ -61,9 +61,9 @@ data="42"
 :Sending Trackball (ACTION_MOVE): 0:(-4.0,-3.0)
 :Sending Touch (ACTION_DOWN): 0:(583.0,673.0)
 :Sending Touch (ACTION_UP): 0:(578.01697,662.46387)
-    //[calendar_time:2026-10-18 16:42:55.712  system_uptime:272230]
+    //[calendar_time:2026-10-18 16:12:21.102  system_uptime:263627]
     // Sending event #100
-    //[calendar_time:2026-10-18 16:42:55.862  system_uptime:272381]
+    //[calendar_time:2026-10-18 16:12:21.252  system_uptime:263777]
     // Sending event #100
 :Sending Touch (ACTION_DOWN): 0:(710.0,493.0)
 :Sending Touch (ACTION_UP): 0:(710.8976,487.48795)
@@ -84,7 +84,7 @@ data="42"
 :Sending Touch (ACTION_DOWN): 0:(576.0,684.0)
 :Sending Touch (ACTION_UP): 0:(618.1666,629.98096)
 :Sending Touch (ACTION_DOWN): 0:(242.0,527.0)
-    //[calendar_time:2026-10-18 16:43:00.659  system_uptime:277177]
+    //[calendar_time:2026-10-18 16:12:26.018  system_uptime:268543]
     // Sending event #200
 :Sending Touch (ACTION_UP): 0:(256.28848,551.2756)
 :Sending Touch (ACTION_DOWN): 0:(627.0,623.0)
@@ -112,7 +112,7 @@ data="42"
 :Sending Touch (ACTION_DOWN): 0:(1213.0,2.0)
 :Sending Touch (ACTION_UP): 0:(1190.8182,0.0)
 :Sending Touch (ACTION_DOWN): 0:(445.0,455.0)
-    //[calendar_time:2026-10-18 16:43:04.051  system_uptime:280569]
+    //[calendar_time:2026-10-18 16:12:29.390  system_uptime:271915]
     // Sending event #300
 :Sending Touch (ACTION_UP): 0:(507.69513,385.3596)
 :Sending Trackball (ACTION_MOVE): 0:(-4.0,2.0)
@@ -133,14 +133,14 @@ data="42"
 :Sending Touch (ACTION_UP): 0:(298.27316,405.94788)
 :Sending Trackball (ACTION_MOVE): 0:(-5.0,2.0)
 :Sending Trackball (ACTION_MOVE): 0:(-5.0,-4.0)
-    //[calendar_time:2026-10-18 16:43:06.569  system_uptime:283087]
+    //[calendar_time:2026-10-18 16:12:31.873  system_uptime:274398]
     // Sending event #400
 :Sending Touch (ACTION_DOWN): 0:(441.0,28.0)
 :Sending Touch (ACTION_UP): 0:(456.4128,42.739956)
 :Sending Trackball (ACTION_MOVE): 0:(4.0,3.0)
 :Sending Touch (ACTION_DOWN): 0:(571.0,552.0)
-    // Rejecting start of Intent { act=android.intent.action.MAIN cat=[android.intent.category.LAUNCHER] cmp=com.android.gallery3d/.app.GalleryActivity } in package com.android.gallery3d
 :Sending Touch (ACTION_UP): 0:(550.7931,528.9786)
+    // Rejecting start of Intent { act=android.intent.action.MAIN cat=[android.intent.category.LAUNCHER] cmp=com.android.gallery3d/.app.GalleryActivity } in package com.android.gallery3d
 :Sending Touch (ACTION_DOWN): 0:(66.0,284.0)
 :Sending Touch (ACTION_UP): 0:(61.03625,301.36945)
     // Rejecting start of Intent { act=android.intent.action.MAIN cat=[android.intent.category.LAUNCHER] cmp=com.example.android.apis/.ApiDemos } in package com.example.android.apis
@@ -161,7 +161,7 @@ data="42"
 :Sending Touch (ACTION_DOWN): 0:(4.0,68.0)
 :Sending Touch (ACTION_UP): 0:(11.141901,72.56054)
 :Sending Trackball (ACTION_MOVE): 0:(2.0,-3.0)
-    //[calendar_time:2026-10-18 16:43:09.693  system_uptime:286211]
+    //[calendar_time:2026-10-18 16:12:34.958  system_uptime:277484]
     // Sending event #500
 :Sending Trackball (ACTION_MOVE): 0:(2.0,-1.0)
 :Sending Trackball (ACTION_MOVE): 0:(-1.0,-4.0)
@@ -173,7 +173,7 @@ data="42"
 :Sending Touch (ACTION_UP): 0:(431.9242,324.08878)
 :Sending Trackball (ACTION_MOVE): 0:(2.0,-4.0)
 :Sending Trackball (ACTION_MOVE): 0:(-2.0,0.0)
-    //[calendar_time:2026-10-18 16:43:11.646  system_uptime:288164]
+    //[calendar_time:2026-10-18 16:12:36.904  system_uptime:279429]
     // Sending event #600
 :Sending Trackball (ACTION_MOVE): 0:(-4.0,-4.0)
 :Sending Touch (ACTION_DOWN): 0:(1246.0,156.0)
@@ -198,9 +198,9 @@ data="42"
     // Allowing start of Intent { act=android.intent.action.MAIN cat=[android.intent.category.LAUNCHER] cmp=com.adnan.glasslauncher/.HelpActivity } in package com.adnan.glasslauncher
 :Sending Touch (ACTION_DOWN): 0:(217.0,511.0)
 :Sending Touch (ACTION_UP): 0:(217.94987,491.42538)
-    //[calendar_time:2026-10-18 16:43:15.011  system_uptime:291529]
+    //[calendar_time:2026-10-18 16:12:40.205  system_uptime:282730]
     // Sending event #700
-    //[calendar_time:2026-10-18 16:43:15.161  system_uptime:291680]
+    //[calendar_time:2026-10-18 16:12:40.356  system_uptime:282881]
     // Sending event #700
 :Sending Trackball (ACTION_MOVE): 0:(-3.0,-4.0)
 :Sending Trackball (ACTION_UP): 0:(0.0,0.0)
@@ -238,5 +238,5 @@ data="42"
 Events injected: 800
 :Sending rotation degree=0, persist=false
 :Dropped: keys=0 pointers=0 trackballs=0 flips=0 rotations=0
-## Network stats: elapsed time=25731ms (0ms mobile, 0ms wifi, 25731ms not connected)
+## Network stats: elapsed time=25412ms (0ms mobile, 0ms wifi, 25412ms not connected)
 // Monkey finished
