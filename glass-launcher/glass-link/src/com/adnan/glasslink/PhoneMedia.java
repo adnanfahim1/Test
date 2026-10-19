@@ -300,15 +300,7 @@ final class PhoneMedia implements MediaSessionManager.OnActiveSessionsChangedLis
         return s.length() == 0 ? null : s;
     }
 
-    private String appName(String pkg) {
-        try {
-            PackageManager pm = ctx.getPackageManager();
-            ApplicationInfo ai = pm.getApplicationInfo(pkg, 0);
-            return pm.getApplicationLabel(ai).toString();
-        } catch (Throwable t) {
-            return pkg;
-        }
-    }
+    private String appName(String pkg) { return AppNames.of(ctx, pkg); }
 
     /** Cover as a JPEG of at most 320 px (small enough for Bluetooth). */
     private static String encode(Bitmap b) {

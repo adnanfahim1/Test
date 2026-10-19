@@ -160,15 +160,7 @@ final class Messages {
         } catch (Throwable ignored) {}
     }
 
-    private static String appName(Context c, String pkg) {
-        try {
-            PackageManager pm = c.getPackageManager();
-            ApplicationInfo ai = pm.getApplicationInfo(pkg, 0);
-            return pm.getApplicationLabel(ai).toString();
-        } catch (Throwable t) {
-            return pkg;
-        }
-    }
+    private static String appName(Context c, String pkg) { return AppNames.of(c, pkg); }
 
     private static String str(CharSequence c) {
         if (c == null) return null;

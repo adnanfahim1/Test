@@ -185,6 +185,8 @@ if [ -f dist/GlassLink.apk ] && [ "${API:-0}" -ge 23 ]; then
     adb shell am start -n com.waze/.TestActivity >/dev/null; sleep 5
     adb shell am start -n $ACT --es screen home >/dev/null; sleep 4
     if $UI wait 'E2E Test Song 1' 30 && $UI has 'ON YOUR PHONE'; then echo "PHONE MUSIC: shown on the car (from the phone)"; else echo "PHONE MUSIC: FAILED"; $UI text | head -30; LINK_FAIL=1; fi
+    # The app's name, not its package name (Android 11+ hides other apps unless declared).
+    if $UI has 'E2E NAV.MUSIC TEST ON YOUR PHONE'; then echo "PHONE MUSIC: app name shown"; else echo "PHONE MUSIC: app name FAILED"; $UI text | grep -i "on your phone"; LINK_FAIL=1; fi
     if $UI wait '^300 m$' 20 && $UI has '^Waze on (?!this head unit)'; then echo "PHONE NAV: shown on the car (from the phone)"; $UI text | grep -E "300 m|Test Street|ETA|Waze on"; else echo "PHONE NAV: FAILED"; LINK_FAIL=1; fi
     shot home-phone-music-nav 1
     adb logcat -c

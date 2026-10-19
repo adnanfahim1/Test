@@ -4,7 +4,7 @@ An Android home-screen launcher for Nakamichi Android car players, built from th
 Glass Launcher" design handoff (`design-source/`).
 
 **Download:** [`dist/GlassLauncher.apk`](dist/GlassLauncher.apk) (about 3 MB, version 1.8.0) for the head unit, and
-[`dist/GlassLink.apk`](dist/GlassLink.apk) (optional, about 3 MB, version 1.5.0) for your Android phone.
+[`dist/GlassLink.apk`](dist/GlassLink.apk) (optional, about 3 MB, version 1.5.1) for your Android phone.
 
 ## New in 1.8
 

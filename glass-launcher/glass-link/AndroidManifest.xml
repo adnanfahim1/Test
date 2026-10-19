@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.adnan.glasslink"
-    android:versionCode="8"
-    android:versionName="1.5.0">
+    android:versionCode="9"
+    android:versionName="1.5.1">
 
     <!-- Phone app for Glass Launcher: sends weather and turn-by-turn to the head unit. -->
     <uses-sdk android:minSdkVersion="23" android:targetSdkVersion="35" />
@@ -29,6 +29,14 @@
 
     <uses-feature android:name="android.hardware.bluetooth" android:required="false" />
     <uses-feature android:name="android.hardware.location" android:required="false" />
+
+    <!-- Android 11+: lets Glass Link read app names (Spotify, WhatsApp, ...) for the car's screen. -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
+    </queries>
 
     <application
         android:label="@string/app_name"
