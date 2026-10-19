@@ -388,6 +388,7 @@ public class MainActivity extends Activity implements MediaHub.Listener {
         if (HomeKeeper.consumePending() && !safeMode && current != HOME) {
             try { show(HOME, false); } catch (Throwable t) { CrashGuard.report(this, "home reset", t); }
         }
+        if (!safeMode) MapWidget.startListening(this);
         try {
             registerReceivers();
             if (!safeMode) bridge.start();
@@ -429,6 +430,7 @@ public class MainActivity extends Activity implements MediaHub.Listener {
         CrashGuard.endBootCleanly(this);
         main.removeCallbacks(tick);
         main.removeCallbacks(stable);
+        MapWidget.stopListening(this);
         try { unregisterReceiver(receiver); } catch (Throwable ignored) {}
         try { unregisterReceiver(storageReceiver); } catch (Throwable ignored) {}
         try {
@@ -457,6 +459,12 @@ public class MainActivity extends Activity implements MediaHub.Listener {
             hideKeyboard(getCurrentFocus());
             if (current != HOME) show(HOME, true);
         }
+    }
+
+    @Override
+    protected void onActivityResult(int req, int result, Intent data) {
+        super.onActivityResult(req, result, data);
+        try { MapWidget.onResult(this, req, result); } catch (Throwable t) { CrashGuard.report(this, "map widget", t); }
     }
 
     @Override

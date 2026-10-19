@@ -138,6 +138,10 @@ final class Prefs {
     int messageMode() { int m = getInt("msg_mode", 2); return m < 0 || m > 2 ? 2 : m; }
     void setMessageMode(int m) { sp.edit().putInt("msg_mode", m).apply(); }
 
+    /** App widget shown as the map in the Navigation card, or -1 for the drawn map. */
+    int mapWidget() { return getInt("map_widget", -1); }
+    void setMapWidget(int id) { sp.edit().putInt("map_widget", id).apply(); }
+
     boolean readMessagesAloud() { return getBool("msg_aloud", false); }
     void setReadMessagesAloud(boolean on) { sp.edit().putBoolean("msg_aloud", on).apply(); }
     void setTempFahrenheit(boolean v) { sp.edit().putBoolean("w_f", v).apply(); }

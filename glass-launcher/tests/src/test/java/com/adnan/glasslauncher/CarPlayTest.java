@@ -311,6 +311,45 @@ public class CarPlayTest {
     }
 
     @Test
+    public void mapWidgetShowsInTheNavigationCard() throws Exception {
+        MainActivity a = controller().get();
+        Application app = RuntimeEnvironment.getApplication();
+        idle(500);
+        android.appwidget.AppWidgetProviderInfo info = new android.appwidget.AppWidgetProviderInfo();
+        info.provider = new android.content.ComponentName("com.google.android.apps.maps", "com.google.maps.TrafficWidget");
+        info.initialLayout = android.R.layout.simple_list_item_1;
+        info.label = "Traffic nearby";
+        org.robolectric.shadows.ShadowAppWidgetManager w = shadowOf(android.appwidget.AppWidgetManager.getInstance(app));
+        w.addInstalledProvider(info);
+        w.setAllowedToBindAppWidgets(true);
+        assertEquals("map apps first", "com.google.android.apps.maps", MapWidget.providers(a).get(0).provider.getPackageName());
+        ((org.robolectric.shadows.ShadowAppWidgetHost) org.robolectric.shadow.api.Shadow.extract(MapWidget.host(a))).setAppWidgetIdToAllocate(7);
+        MapWidget.pick(a, info);
+        idle(800);
+        org.robolectric.shadows.ShadowActivity.IntentForResult ir = shadowOf(a).peekNextStartedActivityForResult();
+        assertTrue("widget saved: id=" + a.prefs().mapWidget() + " started=" + (ir != null ? ir.intent : null), a.prefs().mapWidget() > 0);
+        a.show(MainActivity.HOME);
+        idle(800);
+        assertNotNull("hosted in the card", find(root(a), android.appwidget.AppWidgetHostView.class));
+        shot(a, "50-home-map-widget");
+        a.openSettingsSection(SettingsScreen.HOME);
+        idle(600);
+        assertNotNull(text(root(a), "Map in the Navigation card"));
+    }
+
+    static View find(View v, Class<?> c) {
+        if (c.isInstance(v)) return v;
+        if (v instanceof ViewGroup) {
+            ViewGroup g = (ViewGroup) v;
+            for (int i = 0; i < g.getChildCount(); i++) {
+                View f = find(g.getChildAt(i), c);
+                if (f != null) return f;
+            }
+        }
+        return null;
+    }
+
+    @Test
     public void settingsExplainTheBluetoothLinkAndNewOptions() throws Exception {
         MainActivity a = controller().get();
         idle(500);

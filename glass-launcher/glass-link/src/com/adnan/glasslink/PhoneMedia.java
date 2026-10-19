@@ -176,8 +176,31 @@ final class PhoneMedia implements MediaSessionManager.OnActiveSessionsChangedLis
             LinkService.log("Music: watching this phone's music apps");
         } catch (SecurityException e) {
             msm = null; // notification access not granted yet
+        } catch (Throwable t) {
+            msm = null; // anything else: try again on the next ping
+            LinkService.log("Music: couldn't watch music apps yet (" + t.getClass().getSimpleName() + "); retrying");
         }
     }
+
+    /** Looks at the music apps again (in case Android missed telling us). Safe to call often. */
+    static void rescan(final Context c) {
+        MAIN.post(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    if (instance == null) instance = new PhoneMedia(c);
+                    PhoneMedia p = instance;
+                    if (p.msm == null) { p.start(); return; }
+                    p.onActiveSessionsChanged(p.msm.getActiveSessions(p.listener));
+                } catch (SecurityException e) {
+                    if (instance != null) instance.msm = null;
+                } catch (Throwable ignored) {}
+            }
+        });
+    }
+
+    /** True once Glass Link can read this phone's music apps. */
+    static boolean watching() { return instance != null && instance.msm != null; }
 
     @Override
     public void onActiveSessionsChanged(List<MediaController> list) {

@@ -79,6 +79,9 @@ public class TestActivity extends Activity {
         Log.i("E2E_MSG", "posted");
     }
 
+    /** A "map" home-screen widget, so the car's Navigation card can host a widget in the test. */
+    public static final class Map extends android.appwidget.AppWidgetProvider {}
+
     /** Receives the reply / mark-as-read sent from the car through Glass Link. */
     public static final class Reply extends BroadcastReceiver {
         @Override

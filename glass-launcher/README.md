@@ -3,8 +3,19 @@
 An Android home-screen launcher for Nakamichi Android car players, built from the "NAM5240T
 Glass Launcher" design handoff (`design-source/`).
 
-**Download:** [`dist/GlassLauncher.apk`](dist/GlassLauncher.apk) (about 3 MB, version 1.8.1) for the head unit, and
-[`dist/GlassLink.apk`](dist/GlassLink.apk) (optional, about 3 MB, version 1.5.1) for your Android phone.
+**Download:** [`dist/GlassLauncher.apk`](dist/GlassLauncher.apk) (about 3 MB, version 1.9.0) for the head unit, and
+[`dist/GlassLink.apk`](dist/GlassLink.apk) (optional, about 3 MB, version 1.6.0) for your Android phone.
+
+## New in 1.9
+
+- **Phone music and navigation keep working.** Glass Link now notices when Android drops its notification
+  access connection (it can after an update) and asks Android to reconnect, re-checks the phone's music apps
+  every 15 s, and reads Android 16+ "live update" navigation notifications. Its log says what it skipped and why.
+- **A real map in the Navigation card.** Settings › Home screen › Map in the Navigation card (or long-press the
+  card's title) hosts a map widget, e.g. Google Maps traffic if the head unit's Maps app offers one. Directions
+  from the phone still show on top. The setup script pre-allows widgets.
+- **Glass Link redesign:** what's shared right now (weather, navigation, music, sound), each with its fix when
+  something is missing; the set-up list folds away once done; clearer tips.
 
 ## New in 1.8
 

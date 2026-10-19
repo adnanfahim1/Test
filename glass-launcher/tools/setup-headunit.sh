@@ -90,6 +90,8 @@ if [ "$SDK" -ge 23 ]; then
     sh_ pm grant $PKG android.permission.BLUETOOTH_ADVERTISE >/dev/null 2>&1 || true
   fi
   # Lets Home come back by itself when the car is switched on with another app open (Android 10+).
+  # Lets the launcher show a map widget (e.g. Google Maps traffic) without asking.
+  sh_ appwidget grantbind --package $PKG --user 0 >/dev/null 2>&1 || true
   if sh_ appops set $PKG SYSTEM_ALERT_WINDOW allow | grep -q -i -E "exception|error|unknown"; then skip "Display over other apps" "not grantable on this firmware"
   else ok "Display over other apps allowed (Home opens when the car is switched on)"; fi
 else

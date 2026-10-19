@@ -50,6 +50,8 @@ public final class MainActivity extends Activity {
 
     private SharedPreferences sp;
     private LinearLayout setupList, tipsBox;
+    private LinearLayout liveBox;
+    private boolean showSetup;
     private TextView statusTitle, statusSub, statusDetail, startBtn, setupHeader, carInfo, hostInfo, updState, logView, logToggle, msgToggle;
     private View statusDot;
     private TextView sendBundled;
@@ -97,8 +99,8 @@ public final class MainActivity extends Activity {
         icon.setImageResource(R.mipmap.ic_launcher);
         head.addView(icon, new LinearLayout.LayoutParams(dp(52), dp(52)));
         LinearLayout ht = column();
-        ht.addView(text("Glass Link", 24, TEXT, true));
-        ht.addView(text("Weather, directions, music and messages from this phone to your car", 13, MUTED, false));
+        ht.addView(text("Glass Link", 26, TEXT, true));
+        ht.addView(text("Your phone on the car's screen", 14, MUTED, false), topLp(dp(2)));
         head.addView(ht, weightLp(dp(12)));
         col.addView(head);
 
@@ -113,7 +115,9 @@ public final class MainActivity extends Activity {
         statusSub = text("", 14, MUTED, false);
         status.addView(statusSub, topLp(dp(6)));
         statusDetail = text("", 14, TEXT, false);
-        status.addView(statusDetail, topLp(dp(10)));
+        statusDetail.setVisibility(View.GONE);
+        liveBox = column();
+        status.addView(liveBox, topLp(dp(14)));
         startBtn = button("Start", true, new View.OnClickListener() {
             @Override
             public void onClick(View v) { toggleLink(); }
@@ -125,7 +129,11 @@ public final class MainActivity extends Activity {
 
         // Set-up checklist
         LinearLayout setup = card();
-        setupHeader = text("Set up", 17, TEXT, true);
+        setupHeader = text("Set up", 18, TEXT, true);
+        setupHeader.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) { showSetup = !showSetup; refresh(); }
+        });
         setup.addView(setupHeader);
         setupList = column();
         setup.addView(setupList, topLp(dp(6)));
@@ -133,7 +141,7 @@ public final class MainActivity extends Activity {
 
         // Car
         LinearLayout car = card();
-        car.addView(text("Your car", 17, TEXT, true));
+        car.addView(text("Your car", 18, TEXT, true));
         carInfo = text("", 14, MUTED, false);
         car.addView(carInfo, topLp(dp(6)));
         car.addView(button("Choose the car's Bluetooth", false, new View.OnClickListener() {
@@ -158,7 +166,7 @@ public final class MainActivity extends Activity {
 
         // Update
         LinearLayout upd = card();
-        upd.addView(text("Update the car app", 17, TEXT, true));
+        upd.addView(text("Update the car app", 18, TEXT, true));
         updState = text("", 14, MUTED, false);
         upd.addView(updState, topLp(dp(6)));
         sendBundled = button("Send update to car", true, new View.OnClickListener() {
@@ -180,7 +188,7 @@ public final class MainActivity extends Activity {
         // Log
         LinearLayout lg = card();
         LinearLayout lh = row();
-        lh.addView(text("Connection log", 17, TEXT, true), weightLp(0));
+        lh.addView(text("Connection log", 18, TEXT, true), weightLp(0));
         logToggle = text("Show", 14, ACCENT, true);
         logToggle.setPadding(dp(10), dp(6), dp(4), dp(6));
         logToggle.setOnClickListener(new View.OnClickListener() {
@@ -262,22 +270,31 @@ public final class MainActivity extends Activity {
         dot.setShape(GradientDrawable.OVAL);
         dot.setColor(dotColor);
         statusDot.setBackground(dot);
-        StringBuilder d = new StringBuilder();
-        if (LinkService.lastWeatherAt > 0) d.append("☀  Weather sent at ").append(DateFormat.format("h:mm a", new Date(LinkService.lastWeatherAt)));
-        String turn = NavListener.lastTurn;
-        if (turn != null) d.append(d.length() > 0 ? "\n" : "").append("➜  ").append(turn);
-        String song = PhoneMedia.nowPlaying;
-        if (song != null) {
-            d.append(d.length() > 0 ? "\n" : "").append("♪  ").append(song);
-            String[] r = PhoneMedia.route(this);
-            String calls = "phone".equals(r[0]) ? BtAudio.callsOnly() : null;
-            d.append("\n🔊  ").append("bt".equals(r[0]) ? "Sound: " + r[1] + " (Bluetooth)"
-                    : calls != null ? "Sound: this phone. " + calls + " is connected for calls only: open Bluetooth › "
-                            + calls + " ⚙ and turn on Media audio"
-                    : "Sound: this phone. Connect Bluetooth to the car stereo to hear it in the car");
+        // What's shared right now, one balanced row each, with the fix when something is missing.
+        liveBox.removeAllViews();
+        if (state == LinkService.ST_CONNECTED) {
+            boolean access = NavListener.accessGranted(this);
+            Runnable openAccess = new Runnable() { public void run() { openNotificationAccess(); } };
+            live("Weather", LinkService.lastWeatherAt > 0
+                    ? "Sent at " + DateFormat.format("h:mm a", new Date(LinkService.lastWeatherAt)) : "Getting it…", false, null);
+            String turn = NavListener.lastTurn;
+            if (turn != null) live("Navigation", turn, false, null);
+            else if (!access) live("Navigation", "Needs Navigation & music access · tap", true, openAccess);
+            else if (!NavListener.connected) live("Navigation", "Reconnecting to Android… tap if it stays like this", true, openAccess);
+            else live("Navigation", "Start a route in Google Maps or Waze", false, null);
+            String song = PhoneMedia.nowPlaying;
+            if (song != null) live("Music", song, false, null);
+            else if (!access) live("Music", "Needs Navigation & music access · tap", true, openAccess);
+            else live("Music", PhoneMedia.watching() ? "Nothing playing" : "Connecting to music apps…", false, null);
+            if (song != null) {
+                String[] r = PhoneMedia.route(this);
+                String calls = "phone".equals(r[0]) ? BtAudio.callsOnly() : null;
+                Runnable bt = new Runnable() { public void run() { startActivity(new Intent(Settings.ACTION_BLUETOOTH_SETTINGS)); } };
+                if ("bt".equals(r[0])) live("Sound", r[1] + " (Bluetooth)", false, null);
+                else if (calls != null) live("Sound", "On this phone: " + calls + " is set for calls only. Tap, then ⚙ › Media audio", true, bt);
+                else live("Sound", "On this phone. Tap to connect the car stereo's Bluetooth", true, bt);
+            }
         }
-        statusDetail.setText(d.toString());
-        statusDetail.setVisibility(d.length() > 0 && state == LinkService.ST_CONNECTED ? View.VISIBLE : View.GONE);
         startBtn.setText(running ? "Stop" : "Start");
         startBtn.setBackground(pill(running ? LINE : ACCENT));
         startBtn.setTextColor(running ? TEXT : 0xFF001018);
@@ -286,15 +303,18 @@ public final class MainActivity extends Activity {
         tipsBox.removeAllViews();
         if (state == LinkService.ST_SEARCHING && now - LinkService.searchingSince > 40000) {
             tipsBox.addView(text("Can't find your car?", 15, TEXT, true));
-            tipsBox.addView(text("1. Turn the car on and check it runs Glass Launcher 1.6.2 or newer (car: Settings › About device › "
-                    + "Launcher). Older versions only connect over this phone's hotspot.\n"
-                    + "2. Easiest: turn on this phone's hotspot and connect the car to it (car: Settings › Wi-Fi & internet). "
-                    + "Glass Link finds it within seconds.\n"
-                    + "3. Bluetooth works only if the car's Android Bluetooth is the one paired with this phone. On many head "
-                    + "units the calls-and-music Bluetooth is a separate module: the car's Settings › Phone link shows the "
-                    + "name to pair with, or says to use Wi-Fi.\n"
-                    + "4. Still nothing? On the car open Settings › Weather › Phone link, note the Wi-Fi address, and enter "
-                    + "it below under Your car.", 13, MUTED, false), topLp(dp(6)));
+            String[] tips = {
+                    "Turn the car on. Its Glass Launcher should be 1.6.2 or newer.",
+                    "Easiest: turn on this phone's hotspot and connect the car to it. Glass Link finds it in seconds.",
+                    "Bluetooth only works with the head unit's own Android Bluetooth (the car's Settings › Bluetooth shows the name).",
+                    "Still nothing? Type the car's Wi-Fi address under Your car (car: Settings › Bluetooth › Phone link)."};
+            for (int i = 0; i < tips.length; i++) {
+                LinearLayout tr = row();
+                tr.setGravity(Gravity.TOP);
+                tr.addView(text((i + 1) + ".", 14, ACCENT, true), new LinearLayout.LayoutParams(dp(22), ViewGroup.LayoutParams.WRAP_CONTENT));
+                tr.addView(text(tips[i], 14, MUTED, false), weightLp(0));
+                tipsBox.addView(tr, topLp(dp(8)));
+            }
         }
 
         // Set-up checklist
@@ -303,14 +323,13 @@ public final class MainActivity extends Activity {
         missing += check("Nearby devices (Bluetooth)", LinkService.hasBluetoothPermission(this), new Runnable() { public void run() { askPermissions(); } });
         missing += check("Location (weather where you are)", has(Manifest.permission.ACCESS_COARSE_LOCATION), new Runnable() { public void run() { askPermissions(); } });
         missing += check("Notifications", Build.VERSION.SDK_INT < 33 || has("android.permission.POST_NOTIFICATIONS"), new Runnable() { public void run() { askPermissions(); } });
-        missing += check("Navigation & music access (next turn and songs in the car)", navAccess(), new Runnable() {
-            public void run() {
-                try { startActivity(new Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS")); }
-                catch (Throwable t) { startActivity(new Intent(Settings.ACTION_SETTINGS)); }
-            }
+        missing += check("Navigation & music access", navAccess(), new Runnable() {
+            public void run() { openNotificationAccess(); }
         });
         missing += check("Keep running in the background", batteryOk(), new Runnable() { public void run() { askBattery(); } });
-        setupHeader.setText(missing == 0 ? "Set up  ✓ all done" : "Set up  ·  " + missing + " to do");
+        setupHeader.setText(missing == 0 ? (showSetup ? "Set up  ✓ all done  ·  hide" : "Set up  ✓ all done  ·  show")
+                : "Set up  ·  " + missing + " to do");
+        setupList.setVisibility(missing > 0 || showSetup ? View.VISIBLE : View.GONE);
 
         // Car
         String dev = sp.getString(LinkService.K_DEVICE, null);
@@ -585,6 +604,39 @@ public final class MainActivity extends Activity {
 
     private String versionName() {
         try { return getPackageManager().getPackageInfo(getPackageName(), 0).versionName; } catch (Throwable t) { return "?"; }
+    }
+
+    private void openNotificationAccess() {
+        try {
+            if (Build.VERSION.SDK_INT >= 30) {
+                startActivity(new Intent("android.settings.NOTIFICATION_LISTENER_DETAIL_SETTINGS")
+                        .putExtra("android.provider.extra.NOTIFICATION_LISTENER_COMPONENT_NAME",
+                                new android.content.ComponentName(this, NavListener.class).flattenToString()));
+                return;
+            }
+        } catch (Throwable ignored) {}
+        try { startActivity(new Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS")); }
+        catch (Throwable t) { startActivity(new Intent(Settings.ACTION_SETTINGS)); }
+    }
+
+    /** One "what's shared" row: a fixed-width label and a value that wraps; amber + tappable when it needs a fix. */
+    private void live(String label, String value, boolean fix, final Runnable action) {
+        LinearLayout r = row();
+        r.setGravity(Gravity.TOP);
+        r.setPadding(0, dp(7), 0, dp(7));
+        TextView l = text(label, 14, MUTED, true);
+        r.addView(l, new LinearLayout.LayoutParams(dp(96), ViewGroup.LayoutParams.WRAP_CONTENT));
+        TextView v = text(value, 15, fix ? AMBER : TEXT, false);
+        r.addView(v, weightLp(dp(8)));
+        if (action != null) {
+            r.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View x) {
+                    try { action.run(); } catch (Throwable t) { toast("Open Android Settings"); }
+                }
+            });
+        }
+        liveBox.addView(r);
     }
 
     // ---- Views ---------------------------------------------------------------------------------

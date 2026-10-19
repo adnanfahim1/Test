@@ -34,6 +34,10 @@ public final class NavListener extends NotificationListenerService {
             "Yandex Navigator", "TomTom GO", "Google Maps Go"};
 
     static volatile String lastTurn;
+    /** True while Android has this listener connected (it can drop it, e.g. after an update). */
+    static volatile boolean connected;
+    static volatile long connectedAt;
+    private static long rebindAskedAt;
     private String navKey;
 
     static int mapsIndex(String pkg) {
@@ -43,11 +47,47 @@ public final class NavListener extends NotificationListenerService {
 
     @Override
     public void onListenerConnected() {
+        connected = true;
+        connectedAt = System.currentTimeMillis();
+        LinkService.log("Notification access connected (navigation, music, messages)");
         PhoneMedia.ping(this);
         try {
             StatusBarNotification[] all = getActiveNotifications();
             if (all != null) for (StatusBarNotification s : all) onNotificationPosted(s);
         } catch (Throwable ignored) {}
+    }
+
+    @Override
+    public void onListenerDisconnected() {
+        connected = false;
+        LinkService.log("Android disconnected notification access; asking it to reconnect");
+        rebind(this);
+    }
+
+    static boolean accessGranted(android.content.Context c) {
+        String flat = android.provider.Settings.Secure.getString(c.getContentResolver(), "enabled_notification_listeners");
+        return flat != null && flat.contains(c.getPackageName() + "/");
+    }
+
+    /**
+     * Android sometimes leaves the listener disconnected (after an app update, or when memory is
+     * low) even though access is still granted; then navigation and messages stop. Ask it to
+     * reconnect. Safe to call often (asks at most once a minute).
+     */
+    static void ensureConnected(android.content.Context c) {
+        if (connected || Build.VERSION.SDK_INT < 24 || !accessGranted(c)) return;
+        rebind(c);
+    }
+
+    private static void rebind(android.content.Context c) {
+        long now = System.currentTimeMillis();
+        if (Build.VERSION.SDK_INT < 24 || now - rebindAskedAt < 60000) return;
+        rebindAskedAt = now;
+        try {
+            requestRebind(new android.content.ComponentName(c, NavListener.class));
+        } catch (Throwable t) {
+            LinkService.log("Couldn't reconnect notification access (" + t.getClass().getSimpleName() + "): turn it off and on in Set up");
+        }
     }
 
     private static final java.util.regex.Pattern DISTANCE = java.util.regex.Pattern.compile(
@@ -57,14 +97,25 @@ public final class NavListener extends NotificationListenerService {
             ".*(\\bmin\\b|\\bhr\\b|\\bh\\b|\\beta\\b|arrive|[0-9]{1,2}:[0-9]{2}).*", java.util.regex.Pattern.CASE_INSENSITIVE);
     private String loggedRoute;
 
-    /** Turn-by-turn is a navigation / ongoing / foreground-service notification of a maps app. */
+    /**
+     * Turn-by-turn is a navigation / ongoing / foreground-service notification of a maps app, an
+     * Android 16+ "live update" (promoted, progress style), or one whose text is a distance / ETA.
+     */
     static boolean isNavigation(Notification n) {
         if ((n.flags & Notification.FLAG_ONGOING_EVENT) != 0) return true;
         if ((n.flags & 0x40) != 0) return true; // FLAG_FOREGROUND_SERVICE: Android 14+ lets users dismiss these
+        if ((n.flags & 0x40000) != 0) return true; // FLAG_PROMOTED_ONGOING: Android 16+ live updates
         if (Notification.CATEGORY_NAVIGATION.equals(n.category)) return true;
         String ch = Build.VERSION.SDK_INT >= 26 ? n.getChannelId() : null;
-        return ch != null && ch.toLowerCase(java.util.Locale.US).contains("nav");
+        if (ch != null && ch.toLowerCase(java.util.Locale.US).contains("nav")) return true;
+        Bundle x = n.extras;
+        String tpl = x != null ? x.getString("android.template") : null;
+        if (tpl != null && tpl.endsWith("ProgressStyle")) return true;
+        String t = text(x, Notification.EXTRA_TITLE), b = text(x, Notification.EXTRA_TEXT);
+        return (t != null && DISTANCE.matcher(t).matches()) || (b != null && DISTANCE.matcher(b).matches());
     }
+
+    private String ignoredLogged;
 
     @Override
     public void onNotificationPosted(StatusBarNotification sbn) {
@@ -74,7 +125,17 @@ public final class NavListener extends NotificationListenerService {
             int app = mapsIndex(sbn.getPackageName());
             if (app < 0) return;
             Notification n = sbn.getNotification();
-            if (!isNavigation(n)) return; // traffic alerts, tips etc.
+            if (!isNavigation(n)) {
+                // Traffic alerts, tips etc. Logged once per kind so an unknown navigation format shows up.
+                String kind = NAMES[app] + "/" + (Build.VERSION.SDK_INT >= 26 ? n.getChannelId() : "") + "/" + n.category;
+                if (!kind.equals(ignoredLogged)) {
+                    ignoredLogged = kind;
+                    LinkService.log("Navigation: skipped a " + NAMES[app] + " notification that isn't turn-by-turn (channel "
+                            + (Build.VERSION.SDK_INT >= 26 ? n.getChannelId() : "?") + ", category " + n.category
+                            + ", flags 0x" + Integer.toHexString(n.flags) + ")");
+                }
+                return;
+            }
             Bundle x = n.extras;
             String title = text(x, Notification.EXTRA_TITLE);
             String body = text(x, Notification.EXTRA_TEXT);

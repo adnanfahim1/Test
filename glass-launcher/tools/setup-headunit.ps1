@@ -64,6 +64,7 @@ if ($Sdk -ge 23) {
         Sh pm grant $Pkg android.permission.BLUETOOTH_ADVERTISE | Out-Null
     }
     # Lets Home come back by itself when the car is switched on with another app open (Android 10+).
+    Sh appwidget grantbind --package $Pkg --user 0 | Out-Null
     if ((Sh appops set $Pkg SYSTEM_ALERT_WINDOW allow) -match '(?i)exception|error|unknown') { Skip 'Display over other apps' 'not grantable on this firmware' }
     else { Ok 'Display over other apps allowed (Home opens when the car is switched on)' }
 } else { Skip 'Runtime permissions' "Android $Rel grants them at install" }

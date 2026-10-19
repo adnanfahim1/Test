@@ -58,6 +58,12 @@ final class SettingsScreen extends SidebarScreen {
     // ---- Home screen ----------------------------------------------------------------------
     private void home(LinearLayout out) {
         heading(out, "Home screen", "Pick the layout you see when you press Home. It's saved and opens after every restart.");
+        String mapLabel = MapWidget.chosenLabel(a);
+        nav(out, "Map in the Navigation card", "Show a real map widget, e.g. Google Maps traffic (if the head unit's maps app has one). "
+                + "Directions from your phone still show on top.", mapLabel != null ? mapLabel : "Drawn map", new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) { MapWidget.choose(a); }
+                });
         toggle(out, "Always open on Home", "When the car is switched on, show Home, whatever app or screen was open before",
                 a.prefs().alwaysHome(), new Widgets.Toggle.OnChange() {
                     @Override

@@ -221,6 +221,16 @@ if [ -f dist/GlassLink.apk ] && [ "${API:-0}" -ge 23 ]; then
         sleep 3; adb logcat -d -s E2E_MSG | grep -q "reply=On my way" && echo "MESSAGES: quick reply from the car reached the app" || { echo "MESSAGES: reply FAILED"; adb logcat -d -s E2E_MSG GlassLink | tail -6; LINK_FAIL=1; }
       else echo "MESSAGES: reply buttons FAILED"; $UI text | head -20; LINK_FAIL=1; fi
     else echo "MESSAGES: FAILED"; adb logcat -d -s GlassLink E2E_MSG | tail -6; LINK_FAIL=1; fi
+    echo "-- Map widget in the Navigation card"
+    adb shell am start -n $ACT --es screen settings --ei settings_section 0 >/dev/null; sleep 3
+    if $UI tap 'Map in the Navigation card' --scroll && sleep 2 && $UI tap 'E2E map'; then
+      sleep 3
+      # Only if the setup script couldn't pre-allow widgets: Android's one-time "allow" dialog.
+      $UI has '(?i)allow .* to create widgets|create widget' && { $UI tap '(?i)always|allow' >/dev/null; $UI tap '^(Create|CREATE)$' >/dev/null; sleep 3; }
+      adb shell am start -n $ACT --es screen home >/dev/null; sleep 3
+      if $UI wait 'E2E MAP WIDGET' 15; then echo "MAP WIDGET: shown in the Navigation card"; shot home-map-widget 1
+      else echo "MAP WIDGET: FAILED"; $UI text | head -20; LINK_FAIL=1; fi
+    else echo "MAP WIDGET: picker FAILED"; $UI text | head -20; LINK_FAIL=1; fi
     adb shell settings put secure enabled_notification_listeners "$LIS"
   fi
 

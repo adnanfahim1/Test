@@ -808,6 +808,9 @@ public final class LinkService extends Service {
                     send("{\"t\":\"ping\"}");
                 }
             }
+            // Keep music and navigation flowing even if Android dropped a connection.
+            NavListener.ensureConnected(LinkService.this);
+            PhoneMedia.rescan(LinkService.this);
             main.postDelayed(this, 15000);
         }
     };

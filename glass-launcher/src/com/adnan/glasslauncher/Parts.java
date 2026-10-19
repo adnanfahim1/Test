@@ -501,16 +501,29 @@ final class Parts {
         private final LinearLayout navPanel;
         private final android.widget.ImageView navIcon;
         private final Icons.GlyphView navGlyph;
+        private View mapWidget;
         private String shown = "";
+
+        @Override
+        protected void onSizeChanged(int w, int h, int ow, int oh) {
+            super.onSizeChanged(w, h, ow, oh);
+            if (mapWidget != null) MapWidget.size(mapWidget, w, h);
+        }
 
         MapCard(final MainActivity a, boolean stretch) {
             super(a);
             this.a = a;
             setBackground(Ui.glass(28));
             setClipToOutline(true);
-            Widgets.MapArt map = new Widgets.MapArt(a, stretch);
-            map.setAlpha(0.55f);
-            addView(map, new LayoutParams(Ui.MATCH, Ui.MATCH));
+            // A real map widget (e.g. Google Maps traffic) when the driver chose one, else the drawn map.
+            mapWidget = MapWidget.view(a);
+            if (mapWidget != null) {
+                addView(mapWidget, new LayoutParams(Ui.MATCH, Ui.MATCH));
+            } else {
+                Widgets.MapArt map = new Widgets.MapArt(a, stretch);
+                map.setAlpha(0.55f);
+                addView(map, new LayoutParams(Ui.MATCH, Ui.MATCH));
+            }
 
             LinearLayout top = Ui.row(a);
             top.setPadding(Ui.u(12), Ui.u(10), Ui.u(12), Ui.u(10));
@@ -521,6 +534,11 @@ final class Parts {
             appName = Ui.text(a, "", 12, Ui.TEXT_2, Ui.body(400));
             tcol.addView(appName, Ui.margins(Ui.lp(Ui.WRAP, Ui.WRAP), 0, 3, 0, 0));
             top.addView(tcol, Ui.margins(Ui.lpw(0, Ui.WRAP, 1), 10, 0, 0, 0));
+            top.setOnLongClickListener(new OnLongClickListener() {
+                @Override
+                public boolean onLongClick(View v) { MapWidget.choose(a); return true; }
+            });
+            top.setContentDescription("Navigation. Long-press to choose the map");
             LayoutParams tp = Ui.flp(Ui.MATCH, Ui.WRAP, Gravity.TOP);
             tp.setMargins(Ui.u(14), Ui.u(14), Ui.u(14), 0);
             addView(top, tp);
@@ -576,12 +594,14 @@ final class Parts {
         void update() {
             PhoneBridge.Nav n = a.nav();
             String label = AppsRepo.labelFor(a, a.prefs().mapsApp());
-            String sig = n == null ? "none:" + label : n.at + ":" + n.title + ":" + n.text;
+            String sig = n == null ? "none:" + label + ":" + (a.bridge() != null && a.bridge().connected()) : n.at + ":" + n.title + ":" + n.text;
             if (sig.equals(shown)) return;
             shown = sig;
             if (n == null) {
                 navPanel.setVisibility(GONE);
-                appName.setText(label != null ? "Opens " + label : "Choose your maps app on first tap");
+                PhoneBridge b = a.bridge();
+                appName.setText(b != null && b.connected() ? "Your phone's route shows here when Maps navigates"
+                        : label != null ? "Opens " + label : "Choose your maps app on first tap");
                 btnLabel.setText("Open navigation");
                 return;
             }

@@ -13,5 +13,9 @@
             </intent-filter>
         </activity>
         <receiver android:name=".TestActivity$Reply" android:exported="false" />
+        <receiver android:name=".TestActivity$Map" android:exported="true" android:label="E2E map">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/e2e_map" />
+        </receiver>
     </application>
 </manifest>
