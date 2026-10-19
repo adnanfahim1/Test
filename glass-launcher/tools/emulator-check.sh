@@ -91,7 +91,10 @@ if [ "${SDK_NOW:-0}" -lt 23 ]; then
   adb shell "am broadcast -a android.intent.action.QUICKBOOT_POWERON -n '$PKG/.HomeKeeper\$Boot'"
   sleep 10
 else
-  timeout 20 adb shell input keyevent KEYCODE_SLEEP; sleep 100
+  echo "   launcher process before: $(timeout 10 adb shell pidof $PKG | tr -d '\r')"
+  timeout 20 adb shell input keyevent KEYCODE_SLEEP; sleep 2
+  echo "   screen after sleep key: $(timeout 10 adb shell dumpsys power | grep -m1 -i -E 'mWakefulness=|Display Power: state=' | tr -d '\r ')"
+  sleep 98
   if ! timeout 15 adb shell input keyevent KEYCODE_WAKEUP; then
     echo "(device asleep: power key pressed from the emulator)"
     adb emu event send EV_KEY:KEY_POWER:1 EV_KEY:KEY_POWER:0 >/dev/null 2>&1 || adb emu event send 1:116:1 1:116:0 >/dev/null 2>&1
@@ -108,6 +111,9 @@ if echo "$TOP" | grep -q "$PKG/"; then
   if $UI has '^Good (morning|afternoon|evening)$'; then echo "HOME ON POWER-ON: Home shown"; else echo "HOME ON POWER-ON: launcher in front but not on Home"; $UI text | head -10; HOME_FAIL=1; fi
 else
   echo "HOME ON POWER-ON: FAILED (another app stayed in front)"; HOME_FAIL=1
+  echo "   launcher process after: $(timeout 10 adb shell pidof $PKG | tr -d '\r')"
+  timeout 20 adb logcat -d -b events | grep -E "am_(proc_died|kill|proc_start).*glasslauncher" | tail -5
+  timeout 20 adb logcat -d | grep -i -E "screen_(on|off)|GlassHome|ActivityTaskManager.*(Background activity start|Abort)" | tail -8
 fi
 shot home-after-power-on 1
 adb shell am start -n $ACT --es screen home >/dev/null; sleep 2
