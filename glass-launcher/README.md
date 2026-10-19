@@ -3,7 +3,7 @@
 An Android home-screen launcher for Nakamichi Android car players, built from the "NAM5240T
 Glass Launcher" design handoff (`design-source/`).
 
-**Download:** [`dist/GlassLauncher.apk`](dist/GlassLauncher.apk) (about 3 MB, version 1.8.0) for the head unit, and
+**Download:** [`dist/GlassLauncher.apk`](dist/GlassLauncher.apk) (about 3 MB, version 1.8.1) for the head unit, and
 [`dist/GlassLink.apk`](dist/GlassLink.apk) (optional, about 3 MB, version 1.5.1) for your Android phone.
 
 ## New in 1.8

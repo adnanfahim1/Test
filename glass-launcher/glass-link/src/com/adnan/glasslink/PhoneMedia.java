@@ -60,6 +60,19 @@ final class PhoneMedia implements MediaSessionManager.OnActiveSessionsChangedLis
         });
     }
 
+    /** Bluetooth audio changed: send the state again (where the sound goes). */
+    static void refresh() {
+        MAIN.post(new Runnable() {
+            @Override
+            public void run() {
+                PhoneMedia p = instance;
+                if (p == null) return;
+                p.lastJson = null;
+                p.publish();
+            }
+        });
+    }
+
     /** The car connected: send the current state (and cover) again. */
     static void resend() {
         MAIN.post(new Runnable() {
@@ -147,6 +160,17 @@ final class PhoneMedia implements MediaSessionManager.OnActiveSessionsChangedLis
             msm.addOnActiveSessionsChangedListener(this, listener, MAIN);
             try {
                 ((AudioManager) ctx.getSystemService(Context.AUDIO_SERVICE)).registerAudioDeviceCallback(devices, MAIN);
+            } catch (Throwable ignored) {}
+            BtAudio.init(ctx);
+            try {
+                android.content.IntentFilter f = new android.content.IntentFilter("android.bluetooth.headset.profile.action.CONNECTION_STATE_CHANGED");
+                f.addAction("android.bluetooth.a2dp.profile.action.CONNECTION_STATE_CHANGED");
+                android.content.BroadcastReceiver r = new android.content.BroadcastReceiver() {
+                    @Override
+                    public void onReceive(Context c, android.content.Intent i) { refresh(); }
+                };
+                if (android.os.Build.VERSION.SDK_INT >= 33) ctx.registerReceiver(r, f, Context.RECEIVER_EXPORTED);
+                else ctx.registerReceiver(r, f);
             } catch (Throwable ignored) {}
             onActiveSessionsChanged(msm.getActiveSessions(listener));
             LinkService.log("Music: watching this phone's music apps");
@@ -241,6 +265,11 @@ final class PhoneMedia implements MediaSessionManager.OnActiveSessionsChangedLis
                 String[] r = route(ctx);
                 o.put("route", r[0]);
                 if (r[1] != null) o.put("routeName", r[1]);
+                if ("phone".equals(r[0])) {
+                    BtAudio.init(ctx);
+                    String calls = BtAudio.callsOnly();
+                    if (calls != null) o.put("btCalls", calls); // connected for calls only: Media audio is off
+                }
                 JSONArray acts = new JSONArray();
                 if (st != null) {
                     for (PlaybackState.CustomAction ca : st.getCustomActions()) {

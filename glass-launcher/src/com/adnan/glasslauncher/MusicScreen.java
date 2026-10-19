@@ -778,7 +778,8 @@ final class MusicScreen extends Screen {
                 route.setBackground(null);
                 route.setTextColor(Ui.TEXT_2);
             } else if (ph.onPhoneSpeaker()) {
-                Ui.setText(route, "Sound is on the phone  ·  Tap to play in the car");
+                Ui.setText(route, ph.btCalls != null ? ph.btCalls + " is connected for calls only  ·  Tap to fix"
+                        : "Sound is on the phone  ·  Tap to play in the car");
                 route.setBackground(Ui.fill(Ui.white(0.10f), Ui.withAlpha(Ui.accent(), 0x99), 999));
                 route.setTextColor(Ui.TEXT);
             } else {

@@ -369,12 +369,20 @@ public final class LinkService extends Service {
             Notification.Builder b = Build.VERSION.SDK_INT >= 26 ? new Notification.Builder(this, "car") : new Notification.Builder(this);
             Intent bt = new Intent(Settings.ACTION_BLUETOOTH_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             String car = linkedTo != null ? linkedTo : "the car";
+            String calls = BtAudio.callsOnly();
+            String text = calls != null
+                    ? calls + " is connected for calls only. Tap, then " + calls + " ⚙ › turn on “Media audio”."
+                    : "Tap: connect this phone to the car stereo's Bluetooth and turn on Media audio";
+            String big = calls != null
+                    ? "Your phone is connected to " + calls + " for calls, but “Media audio” is off, so music stays on the phone. "
+                    + "Tap to open Bluetooth, tap the ⚙ next to " + calls + " and turn on “Media audio”. "
+                    + "If there's no such switch, tap Forget and pair with " + calls + " again."
+                    : "Tap to open Bluetooth. Connect to the car stereo (the name it shows for calls and music) and make sure "
+                    + "“Media audio” is on. Then the music plays in the car and the car's screen still controls it.";
             b.setSmallIcon(android.R.drawable.stat_sys_data_bluetooth)
                     .setContentTitle("Play music through " + car)
-                    .setContentText("Tap: connect this phone to the car stereo's Bluetooth and turn on Media audio")
-                    .setStyle(new Notification.BigTextStyle().bigText("Tap to open Bluetooth. Connect to the car stereo "
-                            + "(the name it shows for calls and music) and make sure “Media audio” is on. "
-                            + "Then the music plays in the car and the car's screen still controls it."))
+                    .setContentText(text)
+                    .setStyle(new Notification.BigTextStyle().bigText(big))
                     .setAutoCancel(true)
                     .setContentIntent(PendingIntent.getActivity(this, 2, bt, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE));
             nm.notify(3, b.build());

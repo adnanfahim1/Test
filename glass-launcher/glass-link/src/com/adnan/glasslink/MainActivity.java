@@ -270,7 +270,10 @@ public final class MainActivity extends Activity {
         if (song != null) {
             d.append(d.length() > 0 ? "\n" : "").append("♪  ").append(song);
             String[] r = PhoneMedia.route(this);
+            String calls = "phone".equals(r[0]) ? BtAudio.callsOnly() : null;
             d.append("\n🔊  ").append("bt".equals(r[0]) ? "Sound: " + r[1] + " (Bluetooth)"
+                    : calls != null ? "Sound: this phone. " + calls + " is connected for calls only: open Bluetooth › "
+                            + calls + " ⚙ and turn on Media audio"
                     : "Sound: this phone. Connect Bluetooth to the car stereo to hear it in the car");
         }
         statusDetail.setText(d.toString());

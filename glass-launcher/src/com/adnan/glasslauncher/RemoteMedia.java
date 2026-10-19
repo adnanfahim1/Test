@@ -15,6 +15,8 @@ final class RemoteMedia {
     Bitmap art;
     /** Where the phone's sound comes out: "bt" (Bluetooth, e.g. the car stereo), "wired" or "phone". */
     String route, routeName;
+    /** The car stereo the phone uses for calls only ("Media audio" off), when the sound is on the phone. */
+    String btCalls;
     /** The app's own buttons (Like, Shuffle, ...): {id, name}. */
     java.util.List<String[]> actions = new java.util.ArrayList<String[]>();
     /** The app's play queue, carried over from the previous message (sent only when it changes). */

@@ -1314,10 +1314,19 @@ public class MainActivity extends Activity implements MediaHub.Listener {
     void carAudioHelp() {
         bridge.askAudioHelp();
         final ComponentName btMusic = Vendor.find(this, prefs, Vendor.BT_MUSIC);
+        RemoteMedia ph = media.phone();
+        String calls = ph != null ? ph.btCalls : null;
         try {
             AlertDialog.Builder b = new AlertDialog.Builder(this, AlertDialog.THEME_DEVICE_DEFAULT_DARK)
                     .setTitle("Play the phone's music in the car")
-                    .setMessage("The music comes out of the car's speakers over Bluetooth, the same way as calls.\n\n"
+                    .setMessage(calls != null
+                            ? "Your phone is connected to " + calls + " for calls, but its “Media audio” is off, so the music "
+                            + "stays on the phone.\n\n"
+                            + "On the phone: Settings › Connected devices (Bluetooth) › tap ⚙ next to " + calls
+                            + " › turn on “Media audio”. Glass Link just showed a shortcut.\n\n"
+                            + "No Media audio switch? Tap Forget there and pair with " + calls + " again.\n\n"
+                            + "The car's screen keeps showing and controlling the song."
+                            : "The music comes out of the car's speakers over Bluetooth, the same way as calls.\n\n"
                             + "1. On the phone: tap the tip Glass Link just showed (or open Bluetooth) and connect to the car "
                             + "stereo with “Media audio” on.\n"
                             + "2. On some head units, also open Bluetooth music once so the stereo switches to it.\n\n"

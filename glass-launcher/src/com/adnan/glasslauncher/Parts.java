@@ -324,7 +324,8 @@ final class Parts {
                 title.setText(t != null ? t : "Unknown track");
                 String ar = m.artist();
                 RemoteMedia ph = m.phone();
-                String where = ph != null && ph.onPhoneSpeaker() ? "sound on the phone · tap for car audio" : null;
+                String where = ph != null && ph.onPhoneSpeaker()
+                        ? (ph.btCalls != null ? "Media audio off on the phone · tap to fix" : "sound on the phone · tap for car audio") : null;
                 String line = ar != null ? ar : m.isLocal() ? "On this head unit" : a.appLabel(m.packageName());
                 artist.setText(where != null ? (line != null ? line + "  ·  " + where : where) : line);
                 Bitmap art = m.art();

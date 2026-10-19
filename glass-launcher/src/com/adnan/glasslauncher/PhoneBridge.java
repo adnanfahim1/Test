@@ -541,6 +541,7 @@ final class PhoneBridge {
                 if (old != null && m.artId != null && m.artId.equals(old.artId)) m.art = old.art; // same cover
                 m.route = str(o, "route");
                 m.routeName = str(o, "routeName");
+                m.btCalls = str(o, "btCalls");
                 m.activeQueueId = o.optLong("qid", -1);
                 m.queue = queue;
                 org.json.JSONArray acts = o.optJSONArray("actions");

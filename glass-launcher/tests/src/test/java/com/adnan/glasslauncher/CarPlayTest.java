@@ -169,6 +169,17 @@ public class CarPlayTest {
         shot(a, "42-car-audio-help");
         d.dismiss();
 
+        // Connected to the stereo for calls only (Media audio off): says exactly that.
+        phoneSays(a, song(true, "phone").put("btCalls", "Amader Gari"));
+        idle(500);
+        assertNotNull(text(root(a), "Amader Gari is connected for calls only"));
+        shot(a, "49-music-calls-only");
+        text(root(a), "Amader Gari is connected for calls only").performClick();
+        idle(300);
+        AlertDialog d2 = ShadowAlertDialog.getLatestAlertDialog();
+        assertNotNull(d2);
+        d2.dismiss();
+
         // Over the car's Bluetooth: says so, no button.
         phoneSays(a, song(true, "bt"));
         idle(500);
