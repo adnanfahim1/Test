@@ -36,9 +36,9 @@
 :Sending Trackball (ACTION_MOVE): 0:(-4.0,-3.0)
 :Sending Touch (ACTION_DOWN): 0:(583.0,673.0)
 :Sending Touch (ACTION_UP): 0:(578.01697,662.46387)
-    //[calendar_time:2026-10-19 05:02:45.908  system_uptime:162489]
+    //[calendar_time:2026-10-19 05:16:04.752  system_uptime:161515]
     // Sending event #100
-    //[calendar_time:2026-10-19 05:02:46.066  system_uptime:162639]
+    //[calendar_time:2026-10-19 05:16:04.907  system_uptime:161666]
     // Sending event #100
 :Sending Touch (ACTION_DOWN): 0:(710.0,493.0)
 :Sending Touch (ACTION_UP): 0:(710.8976,487.48795)
@@ -60,9 +60,9 @@
 :Sending Trackball (ACTION_MOVE): 0:(1.0,4.0)
 :Sending Touch (ACTION_DOWN): 0:(140.0,613.0)
 :Sending Touch (ACTION_UP): 0:(130.07915,604.9398)
-    //[calendar_time:2026-10-19 05:02:50.497  system_uptime:167070]
+    //[calendar_time:2026-10-19 05:16:09.249  system_uptime:166008]
     // Sending event #200
-    //[calendar_time:2026-10-19 05:02:50.649  system_uptime:167222]
+    //[calendar_time:2026-10-19 05:16:09.399  system_uptime:166158]
     // Sending event #200
 :Sending Touch (ACTION_DOWN): 0:(1148.0,347.0)
 :Sending Touch (ACTION_UP): 0:(1136.4921,336.0257)
@@ -87,7 +87,7 @@
 :Sending Touch (ACTION_DOWN): 0:(1213.0,2.0)
 :Sending Touch (ACTION_UP): 0:(1190.8182,0.0)
 :Sending Touch (ACTION_DOWN): 0:(445.0,455.0)
-    //[calendar_time:2026-10-19 05:02:53.721  system_uptime:170294]
+    //[calendar_time:2026-10-19 05:16:12.184  system_uptime:168943]
     // Sending event #300
 :Sending Touch (ACTION_UP): 0:(507.69513,385.3596)
 :Sending Trackball (ACTION_MOVE): 0:(-4.0,2.0)
@@ -100,7 +100,6 @@
 :Sending Touch (ACTION_UP): 0:(902.5406,404.87976)
 :Sending Touch (ACTION_DOWN): 0:(178.0,228.0)
 :Sending Touch (ACTION_UP): 0:(178.859,227.40765)
-    // Rejecting start of Intent { act=android.intent.action.MAIN cat=[android.intent.category.LAUNCHER] cmp=com.android.calculator2/.Calculator } in package com.android.calculator2
 :Sending Touch (ACTION_DOWN): 0:(471.0,168.0)
 :Sending Touch (ACTION_UP): 0:(446.07547,201.4201)
 :Sending Trackball (ACTION_MOVE): 0:(3.0,4.0)
@@ -110,17 +109,15 @@
 :Sending Trackball (ACTION_MOVE): 0:(-5.0,-4.0)
 :Sending Touch (ACTION_DOWN): 0:(441.0,28.0)
 :Sending Touch (ACTION_UP): 0:(456.4128,42.739956)
-    //[calendar_time:2026-10-19 05:02:56.322  system_uptime:172896]
+    //[calendar_time:2026-10-19 05:16:15.091  system_uptime:171850]
     // Sending event #400
-    //[calendar_time:2026-10-19 05:02:56.473  system_uptime:173046]
+    //[calendar_time:2026-10-19 05:16:15.241  system_uptime:172000]
     // Sending event #400
 :Sending Trackball (ACTION_MOVE): 0:(4.0,3.0)
 :Sending Touch (ACTION_DOWN): 0:(571.0,552.0)
 :Sending Touch (ACTION_UP): 0:(550.7931,528.9786)
-    // Rejecting start of Intent { act=android.intent.action.MAIN cat=[android.intent.category.LAUNCHER] cmp=com.android.gallery/com.android.camera.GalleryPicker } in package com.android.gallery
 :Sending Touch (ACTION_DOWN): 0:(66.0,284.0)
 :Sending Touch (ACTION_UP): 0:(61.03625,301.36945)
-    // Rejecting start of Intent { act=android.intent.action.MAIN cat=[android.intent.category.LAUNCHER] cmp=com.android.calculator2/.Calculator } in package com.android.calculator2
 :Sending Trackball (ACTION_MOVE): 0:(-2.0,1.0)
 :Sending Touch (ACTION_DOWN): 0:(1119.0,113.0)
 :Sending Touch (ACTION_UP): 0:(1125.3868,115.4997)
@@ -138,7 +135,7 @@
 :Sending Touch (ACTION_DOWN): 0:(4.0,68.0)
 :Sending Touch (ACTION_UP): 0:(11.141901,72.56054)
 :Sending Trackball (ACTION_MOVE): 0:(2.0,-3.0)
-    //[calendar_time:2026-10-19 05:02:59.462  system_uptime:176035]
+    //[calendar_time:2026-10-19 05:16:18.209  system_uptime:174968]
     // Sending event #500
 :Sending Trackball (ACTION_MOVE): 0:(2.0,-1.0)
     // Allowing start of Intent { cmp=com.adnan.glasslauncher/.MainActivity } in package com.adnan.glasslauncher
@@ -153,7 +150,7 @@
 :Sending Trackball (ACTION_MOVE): 0:(2.0,-4.0)
 :Sending Trackball (ACTION_MOVE): 0:(-2.0,0.0)
 :Sending Trackball (ACTION_MOVE): 0:(-4.0,-4.0)
-    //[calendar_time:2026-10-19 05:03:01.630  system_uptime:178203]
+    //[calendar_time:2026-10-19 05:16:20.393  system_uptime:177152]
     // Sending event #600
 :Sending Touch (ACTION_DOWN): 0:(1246.0,156.0)
 :Sending Touch (ACTION_UP): 0:(1239.3988,150.7758)
@@ -176,9 +173,9 @@
 :Sending Touch (ACTION_UP): 0:(217.94987,491.42538)
     // Allowing start of Intent { cmp=com.adnan.glasslauncher/.MainActivity } in package com.adnan.glasslauncher
     // activityResuming(com.adnan.glasslauncher)
-    //[calendar_time:2026-10-19 05:03:04.915  system_uptime:181489]
+    //[calendar_time:2026-10-19 05:16:23.711  system_uptime:180471]
     // Sending event #700
-    //[calendar_time:2026-10-19 05:03:05.066  system_uptime:181639]
+    //[calendar_time:2026-10-19 05:16:23.863  system_uptime:180622]
     // Sending event #700
 :Sending Trackball (ACTION_MOVE): 0:(-3.0,-4.0)
 :Sending Trackball (ACTION_UP): 0:(0.0,0.0)
@@ -216,5 +213,5 @@
 Events injected: 800
 :Sending rotation degree=0, persist=false
 :Dropped: keys=0 pointers=2 trackballs=0 flips=0 rotations=0
-## Network stats: elapsed time=25929ms (0ms mobile, 0ms wifi, 25929ms not connected)
+## Network stats: elapsed time=25596ms (0ms mobile, 0ms wifi, 25596ms not connected)
 // Monkey finished
