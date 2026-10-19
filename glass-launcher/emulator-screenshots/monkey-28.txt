@@ -61,9 +61,9 @@ data="42"
 :Sending Trackball (ACTION_MOVE): 0:(-4.0,-3.0)
 :Sending Touch (ACTION_DOWN): 0:(583.0,673.0)
 :Sending Touch (ACTION_UP): 0:(578.01697,662.46387)
-    //[calendar_time:2026-10-19 05:03:56.717  system_uptime:261026]
+    //[calendar_time:2026-10-19 05:17:39.290  system_uptime:268951]
     // Sending event #100
-    //[calendar_time:2026-10-19 05:03:56.867  system_uptime:261176]
+    //[calendar_time:2026-10-19 05:17:39.441  system_uptime:269101]
     // Sending event #100
 :Sending Trackball (ACTION_MOVE): 0:(-4.0,-1.0)
 :Sending Trackball (ACTION_MOVE): 0:(2.0,3.0)
@@ -76,7 +76,7 @@ data="42"
 :Sending Trackball (ACTION_MOVE): 0:(1.0,4.0)
 :Sending Touch (ACTION_DOWN): 0:(140.0,613.0)
 :Sending Touch (ACTION_UP): 0:(130.07915,604.9398)
-    //[calendar_time:2026-10-19 05:03:58.463  system_uptime:262773]
+    //[calendar_time:2026-10-19 05:17:41.080  system_uptime:270741]
     // Sending event #200
 :Sending Touch (ACTION_DOWN): 0:(1148.0,347.0)
 :Sending Touch (ACTION_UP): 0:(1136.4921,336.0257)
@@ -101,7 +101,7 @@ data="42"
 :Sending Touch (ACTION_DOWN): 0:(1213.0,2.0)
 :Sending Touch (ACTION_UP): 0:(1190.8182,0.0)
 :Sending Touch (ACTION_DOWN): 0:(445.0,455.0)
-    //[calendar_time:2026-10-19 05:04:01.232  system_uptime:265542]
+    //[calendar_time:2026-10-19 05:17:44.008  system_uptime:273668]
     // Sending event #300
 :Sending Touch (ACTION_UP): 0:(507.69513,385.3596)
 :Sending Trackball (ACTION_MOVE): 0:(-4.0,2.0)
@@ -123,7 +123,7 @@ data="42"
 :Sending Touch (ACTION_UP): 0:(298.27316,405.94788)
 :Sending Trackball (ACTION_MOVE): 0:(-5.0,2.0)
 :Sending Trackball (ACTION_MOVE): 0:(-5.0,-4.0)
-    //[calendar_time:2026-10-19 05:04:05.239  system_uptime:269548]
+    //[calendar_time:2026-10-19 05:17:48.084  system_uptime:277745]
     // Sending event #400
 :Sending Touch (ACTION_DOWN): 0:(441.0,28.0)
 :Sending Touch (ACTION_UP): 0:(456.4128,42.739956)
@@ -151,7 +151,7 @@ data="42"
 :Sending Touch (ACTION_DOWN): 0:(4.0,68.0)
 :Sending Touch (ACTION_UP): 0:(11.141901,72.56054)
 :Sending Trackball (ACTION_MOVE): 0:(2.0,-3.0)
-    //[calendar_time:2026-10-19 05:04:08.317  system_uptime:272627]
+    //[calendar_time:2026-10-19 05:17:51.201  system_uptime:280862]
     // Sending event #500
 :Sending Trackball (ACTION_MOVE): 0:(2.0,-1.0)
 :Sending Trackball (ACTION_MOVE): 0:(-1.0,-4.0)
@@ -163,7 +163,7 @@ data="42"
 :Sending Touch (ACTION_UP): 0:(431.9242,324.08878)
 :Sending Trackball (ACTION_MOVE): 0:(2.0,-4.0)
 :Sending Trackball (ACTION_MOVE): 0:(-2.0,0.0)
-    //[calendar_time:2026-10-19 05:04:10.248  system_uptime:274557]
+    //[calendar_time:2026-10-19 05:17:53.173  system_uptime:282834]
     // Sending event #600
 :Sending Trackball (ACTION_MOVE): 0:(-4.0,-4.0)
 :Sending Touch (ACTION_DOWN): 0:(1246.0,156.0)
@@ -181,9 +181,9 @@ data="42"
 :Sending Trackball (ACTION_MOVE): 0:(-3.0,-4.0)
 :Sending Touch (ACTION_DOWN): 0:(749.0,569.0)
 :Sending Touch (ACTION_UP): 0:(609.4988,506.56155)
-    //[calendar_time:2026-10-19 05:04:12.833  system_uptime:277143]
+    //[calendar_time:2026-10-19 05:17:56.028  system_uptime:285689]
     // Sending event #700
-    //[calendar_time:2026-10-19 05:04:12.984  system_uptime:277293]
+    //[calendar_time:2026-10-19 05:17:56.180  system_uptime:285840]
     // Sending event #700
 :Switch: #Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;launchFlags=0x10200000;component=com.adnan.glasslauncher/.HelpActivity;end
     // Allowing start of Intent { act=android.intent.action.MAIN cat=[android.intent.category.LAUNCHER] cmp=com.adnan.glasslauncher/.HelpActivity } in package com.adnan.glasslauncher
@@ -208,13 +208,22 @@ data="42"
 :Sending Touch (ACTION_UP): 0:(1239.028,145.44113)
     // Allowing start of Intent { cmp=com.adnan.glasslauncher/.MainActivity } in package com.adnan.glasslauncher
 :Sending Touch (ACTION_DOWN): 0:(907.0,216.0)
+    // Injection Failed
+    // Injection Failed
+    // Injection Failed
+    // Injection Failed
+    // Injection Failed
+    // Injection Failed
+    // Injection Failed
 :Sending Touch (ACTION_UP): 0:(833.9916,178.16327)
+    // Injection Failed
+    // Rejecting start of Intent { act=android.settings.BLUETOOTH_SETTINGS cmp=com.android.settings/.Settings$ConnectedDeviceDashboardActivity } in package com.android.settings
 :Sending Touch (ACTION_DOWN): 0:(1097.0,286.0)
 :Sending Touch (ACTION_UP): 0:(1083.4495,261.97247)
 :Sending Touch (ACTION_DOWN): 0:(159.0,238.0)
 :Sending Touch (ACTION_UP): 0:(161.38113,247.4042)
 Events injected: 800
 :Sending rotation degree=0, persist=false
-:Dropped: keys=0 pointers=0 trackballs=0 flips=0 rotations=0
-## Network stats: elapsed time=22355ms (0ms mobile, 0ms wifi, 22355ms not connected)
+:Dropped: keys=0 pointers=8 trackballs=0 flips=0 rotations=0
+## Network stats: elapsed time=23282ms (0ms mobile, 0ms wifi, 23282ms not connected)
 // Monkey finished
